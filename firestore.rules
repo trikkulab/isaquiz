@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Scheletro iniziale. Finché il login vero (Fase 2) non è collegato, il progetto
+// gira in emulatore con queste regole permissive SOLO in locale — non deployare
+// su un progetto Firebase reale finché le regole sotto non sono complete.
+//
+// Struttura dati di riferimento (vedi schema condiviso nel progetto):
+// docenti, classi, studenti, domande, quiz, risposte, badge.
+//
+// Principi da implementare qui quando arriva il login vero:
+// - un docente legge/scrive solo le proprie classi e le proprie domande;
+// - una domanda è leggibile da altri docenti solo se domanda.condivisa == true;
+// - uno studente scrive solo le proprie risposte, solo per un quiz con stato "attivo";
+// - il campo "corretta" su una risposta non è mai scrivibile dal client:
+//   lo scrive solo la Cloud Function calcolaPunteggio (vedi functions/).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // TODO Fase 2: sostituire con regole reali legate a request.auth.
+    // Placeholder di sviluppo — da NON usare in produzione.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

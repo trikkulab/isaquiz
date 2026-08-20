@@ -1,0 +1,23 @@
+# Dipendenze
+node_modules/
+
+# Build
+dist/
+build/
+
+# Ambiente / segreti — mai versionare
+.env
+.env.local
+*.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.runtimeconfig.json
+
+# Editor / OS
+.DS_Store
+.vscode/
+*.log
