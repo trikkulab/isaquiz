@@ -1,11 +1,116 @@
-// Pagina che lo studente apre via QR/link. Deve restare la più semplice e leggera
-// di tutte: nessun layout condiviso, una domanda alla volta, solo avanti (niente
-// tasto indietro), feedback immediato giusto/sbagliato ma senza spiegazione
-// (la spiegazione completa si vede dopo, in QuizRisultati).
-//
-// Componenti previsti: BarraQuiz (header minimale) + DomandaCard.
-// TODO Fase 1.
+// Pagina che lo studente apre via QR/link. La più semplice e leggera di tutte:
+// nessun layout condiviso, una domanda alla volta, solo avanti (niente tasto
+// indietro), feedback immediato giusto/sbagliato ma senza spiegazione (la
+// spiegazione completa si vede dopo, in QuizRisultati).
+
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import BarraQuiz from "../components/BarraQuiz.jsx";
+import DomandaCard from "../components/DomandaCard.jsx";
+import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { saveAnswer } from "../../../data/risposteRepository.js";
+
+// TODO Fase 1 (seguito): sostituire con getQuizConDomande(quizId) non appena
+// Firestore ha dati di prova. Stessa forma dati, così il cambio è isolato qui.
+const QUIZ_MOCK = {
+  id: "demo",
+  titolo: "Verifica: il Rinascimento",
+  materia: "Storia",
+  docente: "Prof. Rossi",
+  domande: [
+    {
+      id: "d1",
+      testo: "In quale città nasce il Rinascimento italiano?",
+      opzioni: ["Venezia", "Firenze", "Roma", "Milano"],
+      indiceCorretto: 1,
+    },
+    {
+      id: "d2",
+      testo: "Chi ha dipinto la Gioconda?",
+      opzioni: ["Michelangelo", "Raffaello", "Leonardo da Vinci", "Botticelli"],
+      indiceCorretto: 2,
+    },
+    {
+      id: "d3",
+      testo: "Quale famiglia fiorentina finanziò molti artisti del Rinascimento?",
+      opzioni: ["I Borgia", "I Medici", "I Visconti", "Gli Sforza"],
+      indiceCorretto: 1,
+    },
+    {
+      id: "d4",
+      testo: "Cosa si intende per 'prospettiva' in pittura?",
+      opzioni: [
+        "Una tecnica per mescolare i colori",
+        "Un modo di rappresentare la profondità sulla tela",
+        "Il contorno scuro delle figure",
+        "Un tipo di pennello",
+      ],
+      indiceCorretto: 1,
+    },
+  ],
+};
 
 export default function QuizStudente() {
-  return <div>QuizStudente — TODO</div>;
+  const { quizId } = useParams();
+  const navigate = useNavigate();
+
+  const studente = getUtenteCorrente("studente");
+  const quiz = QUIZ_MOCK;
+
+  const [indiceDomanda, setIndiceDomanda] = useState(0);
+  const [indiceSelezionato, setIndiceSelezionato] = useState(null);
+
+  const domandaCorrente = quiz.domande[indiceDomanda];
+  const ultimaDomanda = indiceDomanda === quiz.domande.length - 1;
+
+  function handleSeleziona(indice) {
+    if (indiceSelezionato !== null) return;
+
+    setIndiceSelezionato(indice);
+    saveAnswer(quiz.id ?? quizId, studente.id, domandaCorrente.id, {
+      opzioneScelta: indice,
+    });
+  }
+
+  function handleAvanti() {
+    if (ultimaDomanda) {
+      navigate(`/quiz/${quiz.id ?? quizId}/risultati`);
+      return;
+    }
+    setIndiceDomanda((i) => i + 1);
+    setIndiceSelezionato(null);
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col pb-[100px]">
+      <BarraQuiz
+        studente={studente}
+        quiz={quiz}
+        corrente={indiceDomanda + 1}
+        totale={quiz.domande.length}
+      />
+
+      <main className="mx-auto w-full max-w-[560px] flex-1 px-4 pt-5">
+        <DomandaCard
+          domanda={domandaCorrente}
+          indiceSelezionato={indiceSelezionato}
+          indiceCorretto={indiceSelezionato !== null ? domandaCorrente.indiceCorretto : null}
+          onSeleziona={handleSeleziona}
+        />
+      </main>
+
+      {indiceSelezionato !== null && (
+        <div className="fixed inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-sfondo to-transparent p-4">
+          <button
+            type="button"
+            className="w-full max-w-[560px] animate-comparsa rounded-full bg-gradient-to-br from-accento to-primario p-4 font-titoli text-base font-bold text-white shadow-bottone active:scale-[0.98]"
+            onClick={handleAvanti}
+          >
+            {ultimaDomanda ? "Vedi risultati" : "Avanti"} →
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }

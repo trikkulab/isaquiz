@@ -1,0 +1,49 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-primario: #7c5cff;
+  --color-primario-scuro: #5e3fe0;
+  --color-accento: #ff5da2;
+  --color-corretto: #22c55e;
+  --color-corretto-sfondo: #e9fbef;
+  --color-errore: #ef4444;
+  --color-errore-sfondo: #fdecec;
+  --color-sfondo: #f4f2ff;
+  --color-bordo: #e7e3f7;
+
+  --font-titoli: "Poppins", "Segoe UI", system-ui, sans-serif;
+  --font-testo: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  --shadow-morbida: 0 10px 30px rgba(94, 63, 224, 0.12);
+  --shadow-bottone: 0 8px 20px rgba(124, 92, 255, 0.35);
+
+  --animate-comparsa: comparsa 0.2s ease;
+}
+
+@keyframes comparsa {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-sfondo text-[#1e1b2e] font-testo antialiased m-0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-titoli m-0;
+  }
+
+  p {
+    @apply m-0;
+  }
+}

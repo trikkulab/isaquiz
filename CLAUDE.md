@@ -16,7 +16,13 @@ lezione al quiz" — la semplicità d'uso è un requisito, non un nice-to-have.
 
 React + Vite (SPA, routing con react-router-dom) — Firebase/Firestore (regione
 europe-west) — Cloud Functions solo per ciò che richiede un segreto o fiducia
-(proxy IA, calcolo punteggio) — nessun framework CSS scelto ancora.
+(proxy IA, calcolo punteggio) — styling con Tailwind CSS v4 (plugin
+`@tailwindcss/vite`, niente `tailwind.config.js`: i design token del progetto
+— colori, font, ombre, animazioni — vivono in `@theme` dentro
+`ui/src/index.css`). Componenti in classi utility inline, niente CSS Modules
+o file `.css` per componente. shadcn/ui non ancora introdotto: da rivalutare
+quando si affronta la pagina statistiche (probabile lato docente, non
+studente — l'estetica di default è più "pannello" che "giocosa").
 
 ## Regole architetturali fisse — non violarle senza discuterne esplicitamente
 
