@@ -5,34 +5,33 @@
 // Props:
 //   - domanda: { testo, opzioni: string[] }
 //   - indiceSelezionato: number | null — opzione scelta dallo studente, null se non ancora risposto
-//   - indiceCorretto: number | null — noto solo dopo la risposta (vedi nota sotto)
+//   - corretta: boolean | null — esito della scelta, noto solo dopo aver risposto
 //   - onSeleziona(indice): chiamata solo se non si è ancora risposto
 //
-// Nota di design ancora aperta: per mostrare il feedback SUBITO, senza andata e
-// ritorno dal server, questo componente deve conoscere l'opzione corretta della
-// domanda non appena lo studente risponde. Questo è un dato di dominio della
-// domanda (non del punteggio) e non viola la regola su risposta.corretta — che
-// riguarda solo il campo scritto lato server nella collezione risposte. Va
-// però deciso esplicitamente, quando si disegnano le regole di sicurezza di
-// Firestore, se e come esporre l'opzione corretta della domanda al client.
+// Importante (vedi DECISIONI_DESIGN.md, "Flusso quiz studente"): questo
+// componente non riceve MAI, durante lo svolgimento, quale sia l'opzione
+// corretta — solo se la scelta fatta era giusta o sbagliata. Se lo studente
+// sbaglia, l'opzione corretta non viene evidenziata in alcun modo: è
+// l'informazione più facile da suggerire a voce a un compagno ancora sulla
+// stessa domanda. La prop che rivela l'opzione corretta esiste solo nel
+// contesto QuizRisultati (fuori dallo scope di questo componente).
 
 const BASE_OPZIONE =
   "flex w-full items-center justify-between gap-2.5 rounded-[14px] border-2 px-4 py-3.5 text-left text-[15px] font-medium transition-colors duration-150 [&:not(:disabled)]:cursor-pointer [&:not(:disabled)]:hover:border-primario [&:not(:disabled)]:active:scale-[0.98] disabled:cursor-default";
 
-export default function DomandaCard({ domanda, indiceSelezionato, indiceCorretto, onSeleziona }) {
+export default function DomandaCard({ domanda, indiceSelezionato, corretta, onSeleziona }) {
   const haRisposto = indiceSelezionato !== null;
 
   function classeOpzione(indice) {
+    if (indice !== indiceSelezionato) {
+      return `${BASE_OPZIONE} border-bordo bg-white text-[#1e1b2e]` + (haRisposto ? " opacity-55" : "");
+    }
     if (!haRisposto) {
       return `${BASE_OPZIONE} border-bordo bg-white text-[#1e1b2e]`;
     }
-    if (indice === indiceCorretto) {
-      return `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-[#1e1b2e]`;
-    }
-    if (indice === indiceSelezionato) {
-      return `${BASE_OPZIONE} border-errore bg-errore-sfondo text-[#1e1b2e]`;
-    }
-    return `${BASE_OPZIONE} border-bordo bg-white text-[#1e1b2e] opacity-55`;
+    return corretta
+      ? `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-[#1e1b2e]`
+      : `${BASE_OPZIONE} border-errore bg-errore-sfondo text-[#1e1b2e]`;
   }
 
   return (
@@ -49,14 +48,12 @@ export default function DomandaCard({ domanda, indiceSelezionato, indiceCorretto
             disabled={haRisposto}
           >
             <span className="flex-1">{opzione}</span>
-            {haRisposto && indice === indiceCorretto && (
-              <span className="text-base font-bold text-corretto" aria-hidden="true">
-                ✓
-              </span>
-            )}
-            {haRisposto && indice === indiceSelezionato && indice !== indiceCorretto && (
-              <span className="text-base font-bold text-errore" aria-hidden="true">
-                ✗
+            {haRisposto && indice === indiceSelezionato && (
+              <span
+                className={"text-base font-bold " + (corretta ? "text-corretto" : "text-errore")}
+                aria-hidden="true"
+              >
+                {corretta ? "✓" : "✗"}
               </span>
             )}
           </button>

@@ -5,6 +5,16 @@ a inizio sessione — tienilo aggiornato quando una decisione presa in una sessi
 deve valere anche per le altre. Per il contesto esteso: `README.md` (struttura
 cartelle) e `DECISIONI_DESIGN.md` (perché le cose sono fatte così).
 
+Documenti di riferimento più estesi in `docs/` — NON leggerli per intero ad
+ogni sessione, solo quando il compito lo richiede davvero:
+- `docs/project-charter.md` — visione, obiettivi, criteri di successo
+- `docs/analisi-gdpr.md` — consultare prima di aggiungere/modificare campi
+  legati a dati personali, conservazione, condivisione tra docenti, o prima
+  di collegare un provider IA esterno
+- `docs/documenti-sperimentazione.md` — informative e consensi per la Fase 5
+- `docs/piano-sviluppo.md` — versione estesa delle fasi (qui sotto solo lo
+  stato corrente)
+  
 ## Cos'è isaquiz
 
 Piattaforma web per quiz in classe: il docente crea/genera domande, somministra

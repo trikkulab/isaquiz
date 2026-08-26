@@ -13,6 +13,13 @@ import { saveAnswer } from "../../../data/risposteRepository.js";
 
 // TODO Fase 1 (seguito): sostituire con getQuizConDomande(quizId) non appena
 // Firestore ha dati di prova. Stessa forma dati, così il cambio è isolato qui.
+//
+// Nota di design ancora aperta: indiceCorretto qui serve solo a calcolare
+// SUBITO, in memoria, se la scelta dello studente è giusta o sbagliata (senza
+// andata/ritorno dal server) — non viene mai passato a DomandaCard, che
+// riceve solo l'esito booleano (vedi DECISIONI_DESIGN.md). Resta comunque da
+// decidere, quando si scrivono le regole di sicurezza Firestore, se e come
+// esporre questo campo al client sul documento domanda reale.
 const QUIZ_MOCK = {
   id: "demo",
   titolo: "Verifica: il Rinascimento",
@@ -95,7 +102,7 @@ export default function QuizStudente() {
         <DomandaCard
           domanda={domandaCorrente}
           indiceSelezionato={indiceSelezionato}
-          indiceCorretto={indiceSelezionato !== null ? domandaCorrente.indiceCorretto : null}
+          corretta={indiceSelezionato !== null ? indiceSelezionato === domandaCorrente.indiceCorretto : null}
           onSeleziona={handleSeleziona}
         />
       </main>
