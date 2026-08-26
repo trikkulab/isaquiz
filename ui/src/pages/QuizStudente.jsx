@@ -31,18 +31,26 @@ const QUIZ_MOCK = {
       testo: "In quale città nasce il Rinascimento italiano?",
       opzioni: ["Venezia", "Firenze", "Roma", "Milano"],
       indiceCorretto: 1,
+      argomento: "Contesto storico",
+      spiegazione:
+        "Firenze, grazie al mecenatismo di famiglie come i Medici, fu il centro propulsore del Rinascimento tra '400 e '500.",
     },
     {
       id: "d2",
       testo: "Chi ha dipinto la Gioconda?",
       opzioni: ["Michelangelo", "Raffaello", "Leonardo da Vinci", "Botticelli"],
       indiceCorretto: 2,
+      argomento: "Arte",
+      spiegazione: "La Gioconda (Monna Lisa) è un dipinto di Leonardo da Vinci, realizzato tra il 1503 e il 1519.",
     },
     {
       id: "d3",
       testo: "Quale famiglia fiorentina finanziò molti artisti del Rinascimento?",
       opzioni: ["I Borgia", "I Medici", "I Visconti", "Gli Sforza"],
       indiceCorretto: 1,
+      argomento: "Mecenatismo",
+      spiegazione:
+        "I Medici, potente famiglia di banchieri fiorentini, finanziarono artisti come Botticelli e Michelangelo.",
     },
     {
       id: "d4",
@@ -54,6 +62,9 @@ const QUIZ_MOCK = {
         "Un tipo di pennello",
       ],
       indiceCorretto: 1,
+      argomento: "Tecniche pittoriche",
+      spiegazione:
+        "La prospettiva è la tecnica geometrica che permette di rappresentare la profondità e lo spazio tridimensionale su una superficie piana.",
     },
   ],
 };
@@ -67,6 +78,7 @@ export default function QuizStudente() {
 
   const [indiceDomanda, setIndiceDomanda] = useState(0);
   const [indiceSelezionato, setIndiceSelezionato] = useState(null);
+  const [risposte, setRisposte] = useState({}); // { [domandaId]: indiceSelezionato }
 
   const domandaCorrente = quiz.domande[indiceDomanda];
   const ultimaDomanda = indiceDomanda === quiz.domande.length - 1;
@@ -75,6 +87,7 @@ export default function QuizStudente() {
     if (indiceSelezionato !== null) return;
 
     setIndiceSelezionato(indice);
+    setRisposte((precedenti) => ({ ...precedenti, [domandaCorrente.id]: indice }));
     saveAnswer(quiz.id ?? quizId, studente.id, domandaCorrente.id, {
       opzioneScelta: indice,
     });
@@ -82,7 +95,11 @@ export default function QuizStudente() {
 
   function handleAvanti() {
     if (ultimaDomanda) {
-      navigate(`/quiz/${quiz.id ?? quizId}/risultati`);
+      // Lo studente ha appena finito: passiamo quiz + risposte già in memoria,
+      // così QuizRisultati non deve rileggere nulla (vedi commento nello stub
+      // originale). Se la pagina viene aperta senza questo state (refresh,
+      // link diretto), QuizRisultati lo gestisce con un fallback proprio.
+      navigate(`/quiz/${quiz.id ?? quizId}/risultati`, { state: { quiz, risposte } });
       return;
     }
     setIndiceDomanda((i) => i + 1);
