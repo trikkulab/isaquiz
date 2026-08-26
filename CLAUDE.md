@@ -76,7 +76,7 @@ studente — l'estetica di default è più "pannello" che "giocosa").
 
 ## Stato attuale del progetto
 
-Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
+**Coda della Fase 0** (setup iniziale):
 
 - [x] Struttura cartelle `/ui`, `/data`, `/functions`
 - [x] Mock auth (stub funzionante in `data/mockAuth.js`)
@@ -84,9 +84,27 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       ancora popolato nemmeno in emulatore)
 - [ ] Hosting statico configurato (GitHub Pages o Cloudflare Pages)
 
-Prossimo passo dopo la Fase 0: **Fase 1**, somministrazione quiz — partendo da
-`ui/src/pages/QuizStudente.jsx` e `ui/src/components/BarraQuiz.jsx`, con mock
-auth, senza toccare ancora login reale, IA o gamification.
+**Fase 1 (somministrazione quiz), lato studente in buono stato:**
+
+- [x] `ui/src/pages/QuizStudente.jsx` — svolgimento quiz, una domanda alla
+      volta, feedback immediato ✓/✗, nessun tasto indietro
+- [x] `ui/src/components/BarraQuiz.jsx` — header con identità studente, quiz,
+      livello (solo display), barra di avanzamento a segmenti
+- [x] `ui/src/components/DomandaCard.jsx` — riusato in due modalità
+      (`"quiz"` e `"correzione"`)
+- [x] `ui/src/pages/QuizRisultati.jsx` — correzione completa con punteggio
+      totale, spiegazione e tag argomento per domanda
+- [ ] Tutto quanto sopra gira ancora su un quiz mock hardcoded in
+      `QuizStudente.jsx` (`QUIZ_MOCK`), non su Firestore — `quizRepository.js` /
+      `domandeRepository.js` / `risposteRepository.js` restano stub
+- [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
+      giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
+      (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
+- [ ] Interfaccia docente non iniziata: `DocenteHome.jsx`, `CreaQuiz.jsx`
+
+Prossimo passo naturale: lato docente (per uscire dai dati mock), oppure
+chiudere la coda della Fase 0 (Firestore popolato, hosting) — non ancora
+deciso quale per primo.
 
 ## Cosa NON fare in questa fase
 

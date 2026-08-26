@@ -14,12 +14,14 @@ import { saveAnswer } from "../../../data/risposteRepository.js";
 // TODO Fase 1 (seguito): sostituire con getQuizConDomande(quizId) non appena
 // Firestore ha dati di prova. Stessa forma dati, così il cambio è isolato qui.
 //
-// Nota di design ancora aperta: indiceCorretto qui serve solo a calcolare
-// SUBITO, in memoria, se la scelta dello studente è giusta o sbagliata (senza
-// andata/ritorno dal server) — non viene mai passato a DomandaCard, che
-// riceve solo l'esito booleano (vedi DECISIONI_DESIGN.md). Resta comunque da
-// decidere, quando si scrivono le regole di sicurezza Firestore, se e come
-// esporre questo campo al client sul documento domanda reale.
+// Rischio noto e accettato (vedi DECISIONI_DESIGN.md, "Flusso quiz studente"):
+// indiceCorretto arriva al client insieme al resto della domanda, per poter
+// calcolare l'esito SUBITO senza andata/ritorno dal server — quindi uno
+// studente che ispeziona il codice/stato React può vedere in anticipo tutte
+// le risposte corrette del quiz. Scelta deliberata per evitare il costo (in
+// Cloud Function invocate, una per risposta) e la complessità di validare
+// ogni risposta lato server. Da rivedere SOLO se il problema si presenta
+// concretamente, non preventivamente.
 const QUIZ_MOCK = {
   id: "demo",
   titolo: "Verifica: il Rinascimento",

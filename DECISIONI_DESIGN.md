@@ -28,6 +28,19 @@ scelta didattica, non solo tecnica: i ragazzi vedono solo il prodotto finito.
   l'informazione più facile da suggerire a voce a un compagno, quindi la prima
   da proteggere. La prop che rivela la risposta corretta su `DomandaCard`
   esiste solo nel contesto `QuizRisultati`, mai durante lo svolgimento.
+- **Il calcolo di giusto/sbagliato resta lato client (per ora), rischio noto e
+  accettato.** La UI non mostra mai la risposta corretta durante il quiz (vedi
+  sopra), ma il dato `indiceCorretto` arriva comunque al client insieme alla
+  domanda — chi ispeziona il codice o lo stato React vede in anticipo tutte le
+  risposte corrette del quiz. La correzione "vera" (validare ogni risposta
+  server-side, rivelare l'esito solo dopo, tramite `calcolaPunteggio.js`
+  triggerato dalla scrittura Firestore, già previsto per il campo `corretta`
+  su `risposte`) è stata scartata per ora: moltiplica le invocazioni Cloud
+  Function per il numero di risposte, un costo che ha senso affrontare solo se
+  la piattaforma prende piede davvero. Scelta esplicita, non dimenticanza — da
+  rivedere se il problema si presenta concretamente, non preventivamente. Chi
+  trova questa falla sa già usare gli strumenti sviluppatore meglio della
+  media: accettabile in un contesto didattico di informatica.
 
 ## Correzione (`QuizRisultati`)
 
