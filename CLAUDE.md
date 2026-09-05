@@ -14,7 +14,7 @@ ogni sessione, solo quando il compito lo richiede davvero:
 - `docs/documenti-sperimentazione.md` — informative e consensi per la Fase 5
 - `docs/piano-sviluppo.md` — versione estesa delle fasi (qui sotto solo lo
   stato corrente)
-  
+
 ## Cos'è isaquiz
 
 Piattaforma web per quiz in classe: il docente crea/genera domande, somministra
@@ -30,9 +30,62 @@ europe-west) — Cloud Functions solo per ciò che richiede un segreto o fiducia
 `@tailwindcss/vite`, niente `tailwind.config.js`: i design token del progetto
 — colori, font, ombre, animazioni — vivono in `@theme` dentro
 `ui/src/index.css`). Componenti in classi utility inline, niente CSS Modules
-o file `.css` per componente. shadcn/ui non ancora introdotto: da rivalutare
+o file `.css` per componente. shadcn/ui (o altre librerie di componenti) non ancora introdotto: da rivalutare
 quando si affronta la pagina statistiche (probabile lato docente, non
 studente — l'estetica di default è più "pannello" che "giocosa").
+
+## Styling
+
+**Tailwind CSS**, classi di utilità direttamente nei componenti — niente file
+`.css` separati da tenere sincronizzati a mano. Non ancora shadcn/ui: se ne
+riparla quando si arriva alla pagina statistiche (accordion, modale, tabs), per
+ora si lavora con Tailwind puro.
+
+- **Schermate studente (`QuizStudente`, `BarraQuiz`, `DomandaCard`)**: qui c'è
+  libertà di giudizio estetico — target sono studenti giovani, quindi
+  l'interfaccia deve risultare moderna, accattivante, viva (non uno stile
+  "form aziendale"), pur restando pulita e velocissima da usare. Va bene
+  osare un po' di più con colori, micro-animazioni Tailwind (transizioni su
+  hover/tap, feedback visivo immediato su risposta corretta/sbagliata), senza
+  però appesantire il caricamento su connessioni scolastiche incerte.
+- **Schermate docente e statistiche**: stile più sobrio, funzionale — priorità
+  a leggibilità e densità di informazione piuttosto che a effetti visivi.
+  Decisioni di dettaglio rimandate a quando si affronta quella parte.
+
+## Modello dati: ruoli e corsi (leggere prima di toccare auth/permessi)
+
+- **Tabella `UTENTE` unica**, niente `STUDENTE`/`DOCENTE` separate. Contiene
+  email, nome, cognome, un campo `ruolo` (cache di comodo per la dashboard di
+  default) e `classeId` (rilevante solo se studente).
+- **Il campo `ruolo` su `UTENTE` non è mai la fonte di verità per un corso
+  specifico.** Per sapere cosa è una persona in un dato corso, si legge sempre
+  la riga di collegamento pertinente: `ISCRIZIONE_CORSO` (studente),
+  `DOCENTE_CORSO` con `ruolo: titolare|assistente` (docente in quel corso),
+  `DOCENTE_CLASSE` con `ruolo: coordinatore`. Non dedurre mai il ruolo in un
+  contesto specifico dal campo generale su `UTENTE`.
+- **`CORSO`, non `CLASSE`, è il contenitore dei quiz.** Un corso è per
+  combinazione materia+classe+anno scolastico (es. "Informatica 3AINF
+  2025/26"), con proprio `codiceAccesso`. `CLASSE` esiste come entità
+  amministrativa separata (per la vista coordinatore), NON come contenitore di
+  quiz.
+- **Vista coordinatore: schema sì, funzionalità NO prima della Fase 4/5.** Le
+  tabelle (`DOCENTE_CLASSE`, `ISCRIZIONE_CLASSE`) esistono già, ma nessuna
+  query/vista aggregata cross-materia va scritta prima che sia stata fatta la
+  DPIA (vedi `docs/analisi-gdpr.md`, sezione 6). Se un task sembra richiedere
+  "far vedere al coordinatore i dati di più materie insieme", fermarsi e
+  chiederne conferma esplicita, non è coperto dall'MVP.
+- **Ruolo docente assegnato per lista, mai autoregistrazione.** Al login si
+  controlla se l'email è in `CONFIG.docentiAutorizzati`; se sì ruolo docente,
+  altrimenti resta studente. Controllo ad ogni login, non solo al primo.
+  Nessun bottone/flusso "diventa docente" dentro l'app.
+- **Ruolo `admin`**: mai assegnabile da dentro l'app, solo scrivendolo
+  direttamente su Firestore. Dà accesso a un cruscotto minimale (gestione
+  lista docenti autorizzati, elenco corsi, disattivazione corso) — non un
+  workflow di approvazione con notifiche/coda.
+- **Nessuna migrazione dati tra anni scolastici.** Cambio anno, promozione,
+  bocciatura: si creano nuove righe, quelle vecchie non si toccano mai.
+  `CONFIG` contiene l'anno scolastico corrente, usato per invalidare i codici
+  di accesso delle annate precedenti.
 
 ## Regole architetturali fisse — non violarle senza discuterne esplicitamente
 
@@ -76,7 +129,7 @@ studente — l'estetica di default è più "pannello" che "giocosa").
 
 ## Stato attuale del progetto
 
-**Coda della Fase 0** (setup iniziale):
+Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 
 - [x] Struttura cartelle `/ui`, `/data`, `/functions`
 - [x] Mock auth (stub funzionante in `data/mockAuth.js`)
@@ -111,3 +164,4 @@ deciso quale per primo.
 Non anticipare Fase 2 (login vero), Fase 3 (IA), Fase 4 (banca dati condivisa e
 badge) mentre si lavora sull'MVP di somministrazione — sono volutamente
 rimandate, vedi "Cosa resta fuori dal primo rilascio" nel piano di sviluppo.
+

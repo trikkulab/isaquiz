@@ -13,6 +13,72 @@ con Google si collega solo alla fine (Fase 2 del piano di sviluppo). Nessuno
 studente deve usare la piattaforma prima che il login vero sia attivo — è una
 scelta didattica, non solo tecnica: i ragazzi vedono solo il prodotto finito.
 
+## Modello dati: classi, corsi, iscrizioni (multi-anno)
+
+**Corso, non classe, come contenitore dei quiz.** Sul modello di Google
+Classroom: non esiste un'unica "3AINF" che contiene tutti i quiz di tutte le
+materie. Esiste un `CORSO` per ogni combinazione materia più anno scolastico
+(es. "Informatica 3AINF 2025/26"), ciascuno con il proprio codice di accesso.
+Risolve anche il caso titolare più assistente: due insegnanti sono semplicemente
+due righe collegate allo stesso corso, con ruoli diversi, non un'eccezione da
+gestire a parte.
+
+**"Classe" resta, ma come unità amministrativa separata dai corsi.** Un
+coordinatore ha bisogno di una vista d'insieme sugli studenti di una classe,
+trasversale alle materie — cosa che il solo concetto di "corso" non copre.
+`CLASSE` esiste quindi come entità a sé, con una propria iscrizione
+(`ISCRIZIONE_CLASSE`) distinta da quella al singolo corso (`ISCRIZIONE_CORSO`):
+uno studente può essere ufficialmente in una classe senza essersi ancora
+iscritto a tutti i corsi delle materie che la compongono (es. un docente che
+non ha ancora attivato isaquiz).
+
+**Nota GDPR — vista coordinatore prevista by design, non implementata prima
+della Fase 4/5.** Lo schema supporta fin da subito la relazione
+docente-coordinatore-classe, ma nessuna vista aggregata cross-materia va
+costruita prima di aver passato dalla DPIA (vedi analisi GDPR, sezione 6):
+un cruscotto che mostra a un coordinatore i dati di più materie insieme è
+esattamente il tipo di funzionalità di sorveglianza che l'analisi raccomanda
+di valutare con attenzione prima di costruirla, non dopo.
+
+**Nessuna migrazione dati tra anni scolastici.** Cambio anno, promozione,
+bocciatura: si creano nuove righe (`CLASSE`, `CORSO`, iscrizioni), le vecchie
+restano intatte per sempre. Un valore singolo in `CONFIG` (l'anno scolastico
+corrente) invalida automaticamente i codici delle annate precedenti, senza
+bisogno di far scadere ogni codice singolarmente.
+
+**Utente: tabella unica per persona, ruolo sempre contestuale al corso.**
+Non esistono tabelle separate `STUDENTE` e `DOCENTE`: un'unica `UTENTE`
+(email, nome, cognome, ruolo, classeId) rappresenta la persona. Il campo
+`ruolo` su `UTENTE` è solo una cache di comodo — decide quale dashboard
+mostrare di default al login — mai la fonte di verità su cosa quella persona
+fosse in un corso specifico in un dato momento. La fonte di verità è sempre
+la riga di collegamento pertinente: `ISCRIZIONE_CORSO` (studente in quel
+corso), `DOCENTE_CORSO` con `ruolo: titolare` o `assistente` (docente in quel
+corso), `DOCENTE_CLASSE` con `ruolo: coordinatore`. Questo è ciò che permette,
+senza alcuna struttura ad hoc, il caso di uno studente che l'anno successivo
+torna come docente: stesso account, ruolo attuale aggiornato in `UTENTE`,
+storico di iscrizioni passate come studente intatto e mai in conflitto con le
+nuove righe da docente.
+
+**Ruolo docente: assegnato per appartenenza a una lista, non per
+autoregistrazione.** Al login (dominio istituzionale via `hd`), il sistema
+verifica se l'email è tra i `docentiAutorizzati` in `CONFIG`. Se sì, ruolo
+docente da quel momento; se no, resta studente (ruolo di default, dashboard
+vuota finché non arrivano iscrizioni). Il controllo avviene a ogni login, non
+solo al primo: aggiungere un'email alla lista mentre l'utente è già loggato
+ha effetto dal login successivo, non richiede nessuna azione da parte sua.
+Nessun flusso di autoregistrazione a ruolo docente dentro l'app: è un
+possibile buco di sicurezza da evitare esplicitamente.
+
+**Amministratore: cruscotto minimale, non workflow di approvazione.** Un
+ruolo `admin`, assegnato scrivendo direttamente su Firestore (mai tramite
+un flusso nell'app), dà accesso a una pagina protetta con: lista email
+autorizzate come docente (editabile), tabella dei corsi esistenti (per
+individuare doppioni), bottone di disattivazione corso per casi eccezionali.
+Deliberatamente non un sistema con notifiche e coda di richieste in attesa:
+sovradimensionato per un progetto con un amministratore e pochi docenti
+pilota.
+
 ## Flusso quiz studente
 
 - **Solo avanti, niente tasto indietro.** Coerente con "verifica immediata", non
