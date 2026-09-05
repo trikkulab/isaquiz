@@ -6,6 +6,6 @@
 // TODO Fase 1.
 
 export async function calcolaPunteggio(event) {
-  // TODO: leggere la risposta scritta, la domanda corrispondente,
+  // TODO: leggere la risposta scritta, il quesito corrispondente,
   // confrontare, scrivere risposta.corretta.
 }

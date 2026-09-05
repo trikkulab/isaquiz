@@ -1,5 +1,5 @@
-// Contenuto "puro" della correzione: elenco domande con risposta data,
-// corretta, e spiegazione completa (DomandaCard in modalita="correzione").
+// Contenuto "puro" della correzione: elenco quesiti con risposta data,
+// corretta, e spiegazione completa (QuesitoCard in modalita="correzione").
 //
 // Importante: questo componente non deve sapere DOVE viene mostrato. Verrà
 // montato in tre contesti diversi, tutti con lo stesso contenuto:
@@ -20,7 +20,7 @@
 
 import { useLocation } from "react-router-dom";
 
-import DomandaCard from "../components/DomandaCard.jsx";
+import QuesitoCard from "../components/QuesitoCard.jsx";
 
 export default function QuizRisultati() {
   const { state } = useLocation();
@@ -36,8 +36,8 @@ export default function QuizRisultati() {
   }
 
   const { quiz, risposte } = state;
-  const risposteCorrette = quiz.domande.filter(
-    (domanda) => risposte[domanda.id] === domanda.indiceCorretto
+  const risposteCorrette = quiz.quesiti.filter(
+    (quesito) => risposte[quesito.id] === quesito.indiceCorretto
   ).length;
 
   return (
@@ -48,21 +48,21 @@ export default function QuizRisultati() {
         </p>
         <h1 className="mt-1 font-titoli text-xl font-bold">{quiz.titolo}</h1>
         <p className="mt-3 font-titoli text-3xl font-extrabold">
-          {risposteCorrette} / {quiz.domande.length}
+          {risposteCorrette} / {quiz.quesiti.length}
         </p>
         <p className="text-[13px] opacity-85">risposte corrette</p>
       </header>
 
       <div className="flex flex-col gap-4">
-        {quiz.domande.map((domanda) => (
-          <DomandaCard
-            key={domanda.id}
+        {quiz.quesiti.map((quesito) => (
+          <QuesitoCard
+            key={quesito.id}
             modalita="correzione"
-            domanda={domanda}
-            indiceSelezionato={risposte[domanda.id] ?? null}
-            indiceCorretto={domanda.indiceCorretto}
-            spiegazione={domanda.spiegazione}
-            argomento={domanda.argomento}
+            quesito={quesito}
+            indiceSelezionato={risposte[quesito.id] ?? null}
+            indiceCorretto={quesito.indiceCorretto}
+            spiegazione={quesito.spiegazione}
+            argomento={quesito.argomento}
           />
         ))}
       </div>

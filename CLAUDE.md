@@ -42,7 +42,7 @@ studente — l'estetica di default è più "pannello" che "giocosa").
 riparla quando si arriva alla pagina statistiche (accordion, modale, tabs), per
 ora si lavora con Tailwind puro.
 
-- **Schermate studente (`QuizStudente`, `BarraQuiz`, `DomandaCard`)**: qui c'è
+- **Schermate studente (`QuizStudente`, `BarraQuiz`, `QuesitoCard`)**: qui c'è
   libertà di giudizio estetico — target sono studenti giovani, quindi
   l'interfaccia deve risultare moderna, accattivante, viva (non uno stile
   "form aziendale"), pur restando pulita e velocissima da usare. Va bene
@@ -91,7 +91,7 @@ ora si lavora con Tailwind puro.
 ## Regole architetturali fisse — non violarle senza discuterne esplicitamente
 
 - **Nessun componente in `ui/` accede a Firestore direttamente.** Sempre tramite
-  i moduli in `data/` (`quizRepository.js`, `domandeRepository.js`,
+  i moduli in `data/` (`quizRepository.js`, `quesitiRepository.js`,
   `risposteRepository.js`). Se un componente ha bisogno di un nuovo modo di
   leggere/scrivere dati, si aggiunge una funzione al repository giusto, non una
   chiamata Firestore inline.
@@ -107,12 +107,16 @@ ora si lavora con Tailwind puro.
   montato come pagina intera, dentro un modale, o inline in un pannello — chi
   lo monta decide il contenitore. Non aggiungerci logica di navigazione o
   layout specifica di un contesto.
-- **Niente JOIN mentali col vecchio schema relazionale.** `quiz.domande` è un
+- **Niente JOIN mentali col vecchio schema relazionale.** `quiz.quesiti` è un
   array di ID dentro il documento quiz. `risposte` è una collezione top-level
-  (non sotto-collezione di quiz) con `quizId`/`studenteId`/`domandaId` come
+  (non sotto-collezione di quiz) con `quizId`/`studenteId`/`quesitoId` come
   campi, proprio per poter interrogare "tutte le risposte di uno studente nel
   tempo" trasversalmente ai quiz. Query composte su più entità = letture
   separate assemblate nel codice del repository, non una query sola.
+- **"Quesito" (non "domanda"), "opzioni" (non "risposte") per le sue
+  alternative.** "Risposta" è già l'entità distinta di cosa lo studente ha
+  scelto — vedi `DECISIONI_DESIGN.md`, "Terminologia", prima di introdurre
+  nuovi nomi in quest'area.
 - **Punteggio nelle liste è sempre contestuale, mai il totale del quiz** (es.
   "3/4 su questo argomento"). Il totale del quiz si vede solo aprendo la
   correzione completa.
@@ -124,8 +128,8 @@ ora si lavora con Tailwind puro.
 - **Generazione IA (Fase 3): mai testo con dati di studenti specifici** nel
   prompt inviato al provider — solo appunti/argomenti del docente. La chiave
   API del provider vive solo in `functions/aiProvider.js` lato server, mai nel
-  client. Ogni domanda generata resta in stato di bozza finché il docente non
-  la valida esplicitamente ("human in the loop": mai pubblicare domande IA
+  client. Ogni quesito generato resta in stato di bozza finché il docente non
+  lo valida esplicitamente ("human in the loop": mai pubblicare quesiti IA
   senza revisione).
 
 ## Stato attuale del progetto
@@ -140,17 +144,17 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 
 **Fase 1 (somministrazione quiz), lato studente in buono stato:**
 
-- [x] `ui/src/pages/QuizStudente.jsx` — svolgimento quiz, una domanda alla
+- [x] `ui/src/pages/QuizStudente.jsx` — svolgimento quiz, un quesito alla
       volta, feedback immediato ✓/✗, nessun tasto indietro
 - [x] `ui/src/components/BarraQuiz.jsx` — header con identità studente, quiz,
       livello (solo display), barra di avanzamento a segmenti
-- [x] `ui/src/components/DomandaCard.jsx` — riusato in due modalità
+- [x] `ui/src/components/QuesitoCard.jsx` — riusato in due modalità
       (`"quiz"` e `"correzione"`)
 - [x] `ui/src/pages/QuizRisultati.jsx` — correzione completa con punteggio
-      totale, spiegazione e tag argomento per domanda
+      totale, spiegazione e tag argomento per quesito
 - [ ] Tutto quanto sopra gira ancora su un quiz mock hardcoded in
       `QuizStudente.jsx` (`QUIZ_MOCK`), non su Firestore — `quizRepository.js` /
-      `domandeRepository.js` / `risposteRepository.js` restano stub
+      `quesitiRepository.js` / `risposteRepository.js` restano stub
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")

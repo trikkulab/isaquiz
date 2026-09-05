@@ -8,8 +8,8 @@
 //
 // TODO Fase 3.
 
-export async function generaDomande(request) {
+export async function generaQuesiti(request) {
   // TODO: request.data.testo -> chiamata al provider -> risposta con
-  // domande proposte, che il docente dovrà sempre rivedere prima di pubblicarle
+  // quesiti proposti, che il docente dovrà sempre rivedere prima di pubblicarli
   // (human in the loop).
 }

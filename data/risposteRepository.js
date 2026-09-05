@@ -1,5 +1,5 @@
 // Unico punto di accesso alla collezione "risposte" — collezione top-level
-// (non sotto-collezione di quiz), con quizId/studenteId/domandaId come campi.
+// (non sotto-collezione di quiz), con quizId/studenteId/quesitoId come campi.
 // Scelta deliberata: serve interrogare "tutte le risposte di uno studente nel
 // tempo" trasversalmente ai quiz, per le statistiche e i progressi — il caso
 // d'uso centrale del progetto, non "le risposte di UN quiz" (che sarebbe stato
@@ -11,7 +11,7 @@
 
 // import { db } from "./firebaseClient.js";
 
-export async function saveAnswer(quizId, studenteId, domandaId, rispostaData) {
+export async function saveAnswer(quizId, studenteId, quesitoId, rispostaData) {
   // TODO Fase 1: scrive solo il dato grezzo, mai "corretta".
 }
 
@@ -21,8 +21,8 @@ export async function getRisposteQuiz(quizId, studenteId) {
 }
 
 export async function getStatistichePerArgomento(studenteId, materia) {
-  // Aggrega le risposte dello studente per argomento della domanda collegata.
-  // Percorso: risposte dello studente -> domandaId -> domanda.argomento -> raggruppa.
+  // Aggrega le risposte dello studente per argomento del quesito collegato.
+  // Percorso: risposte dello studente -> quesitoId -> quesito.argomento -> raggruppa.
   // Un quiz "misto" (più argomenti) contribuisce a più gruppi: è corretto, non un bug.
   // TODO Fase 4/5.
 }

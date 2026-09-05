@@ -5,6 +5,22 @@ motivazione. Non è un verbale della discussione: solo le decisioni finali,
 utile a chi riprende il progetto (anche lo stesso autore, fra qualche settimana)
 senza dover ricostruire il ragionamento da capo.
 
+## Terminologia
+
+**"Quesito" (non "domanda") per l'item del quiz; "opzioni" (non "risposte")
+per le sue alternative di scelta multipla.** Un quesito è composto da una
+domanda (il testo) e da opzioni tra cui scegliere — "quesito" è il termine
+corretto per l'intero item, coerente con l'uso scolastico italiano (es.
+INVALSI). Deliberatamente NON si usa "risposte" per le opzioni di un quesito,
+perché "risposta/`RISPOSTA`" è già un'entità distinta e consolidata nel
+dominio: quello che lo studente ha effettivamente scelto (`risposteRepository.js`,
+collezione Firestore `risposte`, con `corretta`/`timestamp`/`studenteId`).
+Usare la stessa parola per due concetti diversi (le 4 alternative tra cui
+scegliere vs. la scelta effettiva dello studente) avrebbe reintrodotto
+un'ambiguità che il resto della documentazione si sforza di evitare. Quindi:
+`QuesitoCard`, `quesitiRepository.js`, `quiz.quesiti`, campo `quesitoId` su
+`RISPOSTA` — ma `quesito.opzioni` resta `opzioni`, mai `risposte`.
+
 ## Sviluppo
 
 **Mock auth prima, login vero solo per i ragazzi.** Si sviluppa con un'autenticazione
@@ -87,17 +103,17 @@ pilota.
   infrastruttura realtime tipo Kahoot — chi finisce prima non aspetta gli altri.
 - **Feedback immediato solo ✓/✗, spiegazione completa differita al riepilogo
   finale.** Evita che uno studente veloce dica ad alta voce la spiegazione a un
-  compagno ancora sulla stessa domanda.
+  compagno ancora sullo stesso quesito.
 - **Durante il quiz non si mostra nemmeno QUALE fosse la risposta corretta**
   (non solo la spiegazione) — non è un'incoerenza rispetto al caso "risposta
   giusta" (dove lo studente la conosce già, è quella che ha scelto): è
   l'informazione più facile da suggerire a voce a un compagno, quindi la prima
-  da proteggere. La prop che rivela la risposta corretta su `DomandaCard`
+  da proteggere. La prop che rivela la risposta corretta su `QuesitoCard`
   esiste solo nel contesto `QuizRisultati`, mai durante lo svolgimento.
 - **Il calcolo di giusto/sbagliato resta lato client (per ora), rischio noto e
   accettato.** La UI non mostra mai la risposta corretta durante il quiz (vedi
-  sopra), ma il dato `indiceCorretto` arriva comunque al client insieme alla
-  domanda — chi ispeziona il codice o lo stato React vede in anticipo tutte le
+  sopra), ma il dato `indiceCorretto` arriva comunque al client insieme al
+  quesito — chi ispeziona il codice o lo stato React vede in anticipo tutte le
   risposte corrette del quiz. La correzione "vera" (validare ogni risposta
   server-side, rivelare l'esito solo dopo, tramite `calcolaPunteggio.js`
   triggerato dalla scrittura Firestore, già previsto per il campo `corretta`
@@ -112,7 +128,7 @@ pilota.
 
 - **Componente "contenuto puro"**: non sa se viene mostrato come pagina intera,
   dentro un modale, o inline in un pannello. Chi lo monta decide il contenitore.
-- **Tag di argomento sempre visibile su ogni domanda**, anche in un quiz misto
+- **Tag di argomento sempre visibile su ogni quesito**, anche in un quiz misto
   (es. un ripasso con più argomenti) — così il quiz è identico ovunque lo apri,
   nessuna versione "filtrata" a seconda del punto di ingresso.
 
@@ -124,7 +140,7 @@ pilota.
 - **Drill-down come accordion** (non nuova route): click su un argomento espande
   la lista dei quiz che lo contengono, senza perdere il contesto dei filtri.
 - **Punteggio mostrato nella lista è quello CONTESTUALE** ("3/4 su questo
-  argomento"), non il totale del quiz — risponde insieme a "quante domande di
+  argomento"), non il totale del quiz — risponde insieme a "quanti quesiti di
   questo argomento c'erano" e "quante ne ho azzeccate". Il punteggio totale del
   quiz si vede solo aprendo la correzione completa.
 - **Correzione: modale con bottone esplicito "Apri come pagina".** Niente

@@ -60,10 +60,13 @@ erDiagram
         string docentiAutorizzati
     }
 
-    DOMANDA {
+    QUESITO {
         string id
         string autoreId
         string testo
+        string opzioni
+        number indiceCorretto
+        string spiegazione
         string materia
         string argomento
         string difficolta
@@ -76,14 +79,14 @@ erDiagram
         string corsoId
         string titolo
         string stato
-        string domande
+        string quesiti
     }
 
     RISPOSTA {
         string id
         string quizId
         string studenteId
-        string domandaId
+        string quesitoId
         string rispostaData
         boolean corretta
         string timestamp
@@ -107,10 +110,10 @@ erDiagram
     CORSO ||--o{ ISCRIZIONE_CORSO : "ha iscritti"
     CORSO ||--o{ DOCENTE_CORSO : "ha docenti"
     CORSO ||--o{ QUIZ : "contiene"
-    UTENTE ||--o{ DOMANDA : "autore di"
+    UTENTE ||--o{ QUESITO : "autore di"
     QUIZ ||--o{ RISPOSTA : "raccoglie"
     UTENTE ||--o{ RISPOSTA : "risponde come studente"
-    DOMANDA ||--o{ RISPOSTA : "risposta a"
+    QUESITO ||--o{ RISPOSTA : "risposta a"
     UTENTE ||--o{ BADGE : "riceve"
 ```
 
@@ -132,3 +135,9 @@ erDiagram
   docente): si aggiungono righe, non si modificano quelle esistenti.
   `CONFIG.annoScolasticoCorrente` è il singolo valore che rende i codici delle
   annate precedenti non più validi.
+- **`QUESITO.opzioni` e `QUIZ.quesiti` sono array**, non stringhe singole —
+  mermaid non ha un tipo array nativo per gli ER diagram, quindi qui compaiono
+  come `string` per limite di notazione, non perché lo siano davvero.
+  `opzioni` è l'elenco delle alternative di scelta multipla; `indiceCorretto`
+  è la posizione (0-based) di quella giusta dentro `opzioni`. Vedi
+  `DECISIONI_DESIGN.md`, "Terminologia", sul perché non si chiamano "risposte".

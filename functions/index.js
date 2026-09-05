@@ -3,4 +3,4 @@
 // riscrivere la logica, solo il "collante" di deploy.
 
 export { calcolaPunteggio } from "./calcolaPunteggio.js";
-export { generaDomande } from "./aiProvider.js";
+export { generaQuesiti } from "./aiProvider.js";

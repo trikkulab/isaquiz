@@ -1,16 +1,16 @@
-// Una singola domanda a risposta multipla. Riusata in due modalità:
+// Un singolo quesito a risposta multipla. Riusato in due modalità:
 //
 // - "quiz" (default), durante lo svolgimento: cliccabile, feedback solo ✓/✗
 //   sulla scelta fatta. Se lo studente sbaglia, l'opzione corretta NON viene
 //   mai rivelata — è l'informazione più facile da suggerire a voce a un
-//   compagno ancora sulla stessa domanda (vedi DECISIONI_DESIGN.md, "Flusso
+//   compagno ancora sullo stesso quesito (vedi DECISIONI_DESIGN.md, "Flusso
 //   quiz studente").
 // - "correzione", in QuizRisultati: sola lettura, mostra sempre la risposta
 //   corretta (anche quando lo studente ha sbagliato) e l'eventuale
 //   spiegazione completa.
 //
 // Props comuni:
-//   - domanda: { testo, opzioni: string[] }
+//   - quesito: { testo, opzioni: string[] }
 //   - indiceSelezionato: number | null
 //
 // Props modalità "quiz":
@@ -21,14 +21,14 @@
 //   - indiceCorretto: number
 //   - spiegazione?: string
 //   - argomento?: string — sempre visibile se presente, anche in un quiz misto
-//     (più argomenti): aiuta a riconoscere le domande "fuori tema" (vedi
+//     (più argomenti): aiuta a riconoscere i quesiti "fuori tema" (vedi
 //     DECISIONI_DESIGN.md, "Correzione").
 
 const BASE_OPZIONE =
   "flex w-full items-center justify-between gap-2.5 rounded-[14px] border-2 px-4 py-3.5 text-left text-[15px] font-medium transition-colors duration-150 [&:not(:disabled)]:cursor-pointer [&:not(:disabled)]:hover:border-primario [&:not(:disabled)]:active:scale-[0.98] disabled:cursor-default";
 
-export default function DomandaCard({
-  domanda,
+export default function QuesitoCard({
+  quesito,
   indiceSelezionato,
   corretta = null,
   indiceCorretto = null,
@@ -79,10 +79,10 @@ export default function DomandaCard({
           {argomento}
         </span>
       )}
-      <h2 className="mb-5 text-xl leading-snug">{domanda.testo}</h2>
+      <h2 className="mb-5 text-xl leading-snug">{quesito.testo}</h2>
 
       <div className="flex flex-col gap-3">
-        {domanda.opzioni.map((opzione, indice) => {
+        {quesito.opzioni.map((opzione, indice) => {
           const segno = esito(indice);
           return (
             <button

@@ -1,5 +1,5 @@
 // Pagina che lo studente apre via QR/link. La più semplice e leggera di tutte:
-// nessun layout condiviso, una domanda alla volta, solo avanti (niente tasto
+// nessun layout condiviso, un quesito alla volta, solo avanti (niente tasto
 // indietro), feedback immediato giusto/sbagliato ma senza spiegazione (la
 // spiegazione completa si vede dopo, in QuizRisultati).
 
@@ -7,15 +7,15 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import BarraQuiz from "../components/BarraQuiz.jsx";
-import DomandaCard from "../components/DomandaCard.jsx";
+import QuesitoCard from "../components/QuesitoCard.jsx";
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import { saveAnswer } from "../../../data/risposteRepository.js";
 
-// TODO Fase 1 (seguito): sostituire con getQuizConDomande(quizId) non appena
+// TODO Fase 1 (seguito): sostituire con getQuizConQuesiti(quizId) non appena
 // Firestore ha dati di prova. Stessa forma dati, così il cambio è isolato qui.
 //
 // Rischio noto e accettato (vedi DECISIONI_DESIGN.md, "Flusso quiz studente"):
-// indiceCorretto arriva al client insieme al resto della domanda, per poter
+// indiceCorretto arriva al client insieme al resto del quesito, per poter
 // calcolare l'esito SUBITO senza andata/ritorno dal server — quindi uno
 // studente che ispeziona il codice/stato React può vedere in anticipo tutte
 // le risposte corrette del quiz. Scelta deliberata per evitare il costo (in
@@ -27,7 +27,7 @@ const QUIZ_MOCK = {
   titolo: "Verifica: il Rinascimento",
   materia: "Storia",
   docente: "Prof. Rossi",
-  domande: [
+  quesiti: [
     {
       id: "d1",
       testo: "In quale città nasce il Rinascimento italiano?",
@@ -78,25 +78,25 @@ export default function QuizStudente() {
   const studente = getUtenteCorrente("studente");
   const quiz = QUIZ_MOCK;
 
-  const [indiceDomanda, setIndiceDomanda] = useState(0);
+  const [indiceQuesito, setIndiceQuesito] = useState(0);
   const [indiceSelezionato, setIndiceSelezionato] = useState(null);
-  const [risposte, setRisposte] = useState({}); // { [domandaId]: indiceSelezionato }
+  const [risposte, setRisposte] = useState({}); // { [quesitoId]: indiceSelezionato }
 
-  const domandaCorrente = quiz.domande[indiceDomanda];
-  const ultimaDomanda = indiceDomanda === quiz.domande.length - 1;
+  const quesitoCorrente = quiz.quesiti[indiceQuesito];
+  const ultimoQuesito = indiceQuesito === quiz.quesiti.length - 1;
 
   function handleSeleziona(indice) {
     if (indiceSelezionato !== null) return;
 
     setIndiceSelezionato(indice);
-    setRisposte((precedenti) => ({ ...precedenti, [domandaCorrente.id]: indice }));
-    saveAnswer(quiz.id ?? quizId, studente.id, domandaCorrente.id, {
+    setRisposte((precedenti) => ({ ...precedenti, [quesitoCorrente.id]: indice }));
+    saveAnswer(quiz.id ?? quizId, studente.id, quesitoCorrente.id, {
       opzioneScelta: indice,
     });
   }
 
   function handleAvanti() {
-    if (ultimaDomanda) {
+    if (ultimoQuesito) {
       // Lo studente ha appena finito: passiamo quiz + risposte già in memoria,
       // così QuizRisultati non deve rileggere nulla (vedi commento nello stub
       // originale). Se la pagina viene aperta senza questo state (refresh,
@@ -104,7 +104,7 @@ export default function QuizStudente() {
       navigate(`/quiz/${quiz.id ?? quizId}/risultati`, { state: { quiz, risposte } });
       return;
     }
-    setIndiceDomanda((i) => i + 1);
+    setIndiceQuesito((i) => i + 1);
     setIndiceSelezionato(null);
   }
 
@@ -113,15 +113,15 @@ export default function QuizStudente() {
       <BarraQuiz
         studente={studente}
         quiz={quiz}
-        corrente={indiceDomanda + 1}
-        totale={quiz.domande.length}
+        corrente={indiceQuesito + 1}
+        totale={quiz.quesiti.length}
       />
 
       <main className="mx-auto w-full max-w-[560px] flex-1 px-4 pt-5">
-        <DomandaCard
-          domanda={domandaCorrente}
+        <QuesitoCard
+          quesito={quesitoCorrente}
           indiceSelezionato={indiceSelezionato}
-          corretta={indiceSelezionato !== null ? indiceSelezionato === domandaCorrente.indiceCorretto : null}
+          corretta={indiceSelezionato !== null ? indiceSelezionato === quesitoCorrente.indiceCorretto : null}
           onSeleziona={handleSeleziona}
         />
       </main>
@@ -133,7 +133,7 @@ export default function QuizStudente() {
             className="w-full max-w-[560px] animate-comparsa rounded-full bg-gradient-to-br from-accento to-primario p-4 font-titoli text-base font-bold text-white shadow-bottone active:scale-[0.98]"
             onClick={handleAvanti}
           >
-            {ultimaDomanda ? "Vedi risultati" : "Avanti"} →
+            {ultimoQuesito ? "Vedi risultati" : "Avanti"} →
           </button>
         </div>
       )}

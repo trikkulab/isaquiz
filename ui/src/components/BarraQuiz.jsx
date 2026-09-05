@@ -1,10 +1,10 @@
 // Header minimale per QuizStudente: identifica a colpo d'occhio CHI sta facendo
 // il quiz (avatar, nickname, classe) e QUALE quiz sta facendo (titolo, materia,
 // docente), più un accenno al livello (solo display, nessuna logica di
-// gamification: quella è Fase 4) e l'avanzamento tra le domande.
+// gamification: quella è Fase 4) e l'avanzamento tra i quesiti.
 //
 // La barra di avanzamento è a segmenti (stile "storie"): un segmento per
-// domanda, pieno = già risposta, evidenziato = quella corrente.
+// quesito, pieno = già risposto, evidenziato = quello corrente.
 
 export default function BarraQuiz({ studente, quiz, corrente, totale }) {
   const iniziali = (studente.nickname || studente.nome || "?")
