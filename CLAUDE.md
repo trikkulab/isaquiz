@@ -14,6 +14,7 @@ ogni sessione, solo quando il compito lo richiede davvero:
 - `docs/documenti-sperimentazione.md` — informative e consensi per la Fase 5
 - `docs/piano-sviluppo.md` — versione estesa delle fasi (qui sotto solo lo
   stato corrente)
+- `docs/isaquiz_ERD.md` - struttura del detabase
 
 ## Cos'è isaquiz
 

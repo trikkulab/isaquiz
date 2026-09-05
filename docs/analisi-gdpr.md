@@ -83,6 +83,7 @@ Da definire esplicitamente, in coerenza con i tempi già usati per il registro e
 - Controllo accessi granulare: docente vede solo la propria classe, salvo ruoli specifici.
 - Log degli accessi ai dati sensibili (risultati, badge), come già richiesto per il registro elettronico.
 - Minimizzazione nella banca dati condivisa: nessun riferimento a studenti specifici nelle domande condivise.
+- Accesso amministrativo ampio (l'amministratore tecnico della piattaforma) è compatibile con il GDPR solo se minimizzato nell'uso quotidiano: l'accesso tecnico a tutti i dati è inevitabile per chi amministra l'infrastruttura, ma va limitato operativamente a interventi di manutenzione specifici (es. correggere un doppione di corso), non usato come vista abituale sui dati dei singoli studenti; è opportuno che tali accessi restino tracciati nei log, e che il ruolo sia assegnato a una persona identificata con una responsabilità istituzionale chiara, non a un account anonimo.
 
 ## 9. Diritti degli interessati
 
