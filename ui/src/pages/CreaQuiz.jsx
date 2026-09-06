@@ -19,6 +19,10 @@ const BOTTONE_PRIMARIO =
   "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
 const BOTTONE_SECONDARIO =
   "rounded-lg border border-bordo bg-white px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario disabled:cursor-not-allowed disabled:opacity-40";
+const FILTRO =
+  "rounded-lg border border-bordo bg-white px-2.5 py-1.5 text-xs outline-none focus:border-primario disabled:opacity-40";
+
+const FILTRI_VUOTI = { materia: "", argomento: "", cerca: "" };
 
 const OPZIONI_MIN = 2;
 const OPZIONI_MAX = 6;
@@ -48,6 +52,8 @@ export default function CreaQuiz() {
   const [salvandoBozza, setSalvandoBozza] = useState(false);
   const [quizSalvato, setQuizSalvato] = useState(null);
   const [errore, setErrore] = useState(null);
+
+  const [filtri, setFiltri] = useState(FILTRI_VUOTI);
 
   useEffect(() => {
     let attivo = true;
@@ -81,7 +87,45 @@ export default function CreaQuiz() {
     [selezionati, banca],
   );
 
-  const bancaDisponibile = banca.filter((q) => !selezionati.includes(q.id));
+  // Quesiti non ancora nel quiz — base per i filtri della banca.
+  const nonSelezionati = useMemo(
+    () => banca.filter((q) => !selezionati.includes(q.id)),
+    [banca, selezionati],
+  );
+
+  const materieDisponibili = useMemo(
+    () => [...new Set(nonSelezionati.map((q) => q.materia).filter(Boolean))].sort(),
+    [nonSelezionati],
+  );
+
+  const argomentiDisponibili = useMemo(
+    () =>
+      [
+        ...new Set(
+          nonSelezionati
+            .filter((q) => !filtri.materia || q.materia === filtri.materia)
+            .map((q) => q.argomento)
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [nonSelezionati, filtri.materia],
+  );
+
+  const bancaDisponibile = useMemo(() => {
+    const cerca = filtri.cerca.trim().toLowerCase();
+    return nonSelezionati.filter((q) => {
+      if (filtri.materia && q.materia !== filtri.materia) return false;
+      if (filtri.argomento && q.argomento !== filtri.argomento) return false;
+      if (cerca) {
+        const inTesto = q.testo?.toLowerCase().includes(cerca);
+        const inOpzioni = q.opzioni?.some((o) => o.toLowerCase().includes(cerca));
+        if (!inTesto && !inOpzioni) return false;
+      }
+      return true;
+    });
+  }, [nonSelezionati, filtri]);
+
+  const filtriAttivi = Boolean(filtri.materia || filtri.argomento || filtri.cerca.trim());
 
   function aggiungiAlQuiz(id) {
     setSelezionati((prec) => (prec.includes(id) ? prec : [...prec, id]));
@@ -248,35 +292,92 @@ export default function CreaQuiz() {
           <section className="rounded-xl border border-bordo bg-white p-4">
             <h2 className="mb-3 text-sm font-semibold">
               Banca quesiti{" "}
-              <span className="font-normal text-[#1e1b2e]/50">({bancaDisponibile.length})</span>
+              <span className="font-normal text-[#1e1b2e]/50">
+                ({filtriAttivi
+                  ? `${bancaDisponibile.length} di ${nonSelezionati.length}`
+                  : bancaDisponibile.length})
+              </span>
             </h2>
-            {bancaDisponibile.length === 0 ? (
+
+            {/* Filtri della banca. "Per docente" arriverà con la banca condivisa
+                (Fase 4): oggi la banca contiene solo i quesiti di chi è loggato. */}
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <input
+                className={`${FILTRO} min-w-[140px] flex-1`}
+                placeholder="Cerca nel testo o nelle opzioni…"
+                value={filtri.cerca}
+                onChange={(e) => setFiltri((f) => ({ ...f, cerca: e.target.value }))}
+              />
+              <select
+                className={FILTRO}
+                value={filtri.materia}
+                onChange={(e) => setFiltri((f) => ({ ...f, materia: e.target.value, argomento: "" }))}
+              >
+                <option value="">Tutte le materie</option>
+                {materieDisponibili.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={FILTRO}
+                value={filtri.argomento}
+                onChange={(e) => setFiltri((f) => ({ ...f, argomento: e.target.value }))}
+                disabled={argomentiDisponibili.length === 0}
+              >
+                <option value="">Tutti gli argomenti</option>
+                {argomentiDisponibili.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+              {filtriAttivi && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primario"
+                  onClick={() => setFiltri(FILTRI_VUOTI)}
+                >
+                  Azzera
+                </button>
+              )}
+            </div>
+
+            {nonSelezionati.length === 0 ? (
               <p className="text-sm text-[#1e1b2e]/50">
                 Nessun quesito disponibile. Creane uno qui sotto.
               </p>
+            ) : bancaDisponibile.length === 0 ? (
+              <p className="text-sm text-[#1e1b2e]/50">Nessun quesito corrisponde ai filtri.</p>
             ) : (
-              <ul className="flex flex-col gap-2">
-                {bancaDisponibile.map((q) => (
-                  <li
-                    key={q.id}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-bordo px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm">{q.testo}</p>
-                      <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
-                        {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className={BOTTONE_SECONDARIO}
-                      onClick={() => aggiungiAlQuiz(q.id)}
+              <div className="h-[420px] min-h-[160px] max-h-[75vh] resize-y overflow-auto pr-1">
+                {/* Altezza regolabile dall'utente (maniglia di resize nativa,
+                    solo desktop): la banca puo' essere lunga e ci si sfoglia
+                    mentre si compone il quiz. Non persistita tra i reload. */}
+                <ul className="flex flex-col gap-2">
+                  {bancaDisponibile.map((q) => (
+                    <li
+                      key={q.id}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-bordo px-3 py-2"
                     >
-                      Aggiungi
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      <div className="min-w-0">
+                        <p className="text-sm">{q.testo}</p>
+                        <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
+                          {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={BOTTONE_SECONDARIO}
+                        onClick={() => aggiungiAlQuiz(q.id)}
+                      >
+                        Aggiungi
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </section>
 
@@ -385,7 +486,7 @@ export default function CreaQuiz() {
               Aggiungi quesiti dalla banca o creane di nuovi.
             </p>
           ) : (
-            <ol className="flex flex-col gap-2">
+            <ol className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
               {quesitiNelQuiz.map((q, i) => (
                 <li
                   key={q.id}
