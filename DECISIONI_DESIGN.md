@@ -163,6 +163,38 @@ contenitore che lo monta. Stesso principio vale per eventuali grafici futuri
 (non ancora implementati): i dati aggregati vivono nel repository, la UI decide
 solo come disporli in base allo spazio disponibile.
 
+## Internazionalizzazione
+
+**Nessuna i18n prevista, deliberatamente.** Il progetto resta interamente in
+italiano — non solo l'interfaccia, ma anche il modello dati e la
+terminologia nel codice (`quesito`, `opzioni`, `quesitiRepository.js`, ecc.).
+Non è un limite temporaneo da colmare più avanti con `react-i18next` o
+simili: è la stessa scelta di terminologia già motivata sopra ("Quesito" non
+"domanda", coerente con l'uso scolastico italiano/INVALSI), estesa a tutto
+il progetto.
+
+Motivazioni:
+
+- **Pubblico e contesto fissi.** La piattaforma serve un istituto scolastico
+  italiano, con SSO Google istituzionale e conformità pensata sul Garante
+  Privacy italiano — non c'è un caso d'uso reale multi-lingua all'orizzonte.
+- **Valore didattico del codice in italiano.** Se il codice viene mostrato
+  agli studenti (è già capitato che lo chiedessero: "prof, come l'ha fatto
+  questo sito?"), nomi e struttura in italiano sono più immediati da leggere
+  per loro rispetto a un codebase con terminologia inglese e stringhe
+  esternalizzate in file di traduzione.
+- **I quesiti non sono testo di interfaccia.** Sono contenuti didattici
+  creati dai docenti (o generati dall'IA a partire da appunti in italiano):
+  tradurli cambierebbe il significato, altererebbe la correttezza delle
+  opzioni, e non ha comunque senso farlo automaticamente. Un'eventuale i18n
+  dell'interfaccia non risolverebbe comunque questo, quindi non vale il
+  costo di introdurla solo per le label statiche.
+
+Se in futuro dovesse emergere un bisogno reale (es. un istituto con studenti
+non italofoni), va trattato come una decisione nuova da riprendere da capo,
+non come "attivare" un'infrastruttura i18n lasciata pronta in previsione:
+nessuna struttura di questo tipo va predisposta preventivamente nel codice.
+
 ## Non ancora deciso
 
 - Strategia branch Git (`main` / `dev` / `rel`) — da chiarire cosa rappresenta
