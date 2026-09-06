@@ -95,6 +95,36 @@ Deliberatamente non un sistema con notifiche e coda di richieste in attesa:
 sovradimensionato per un progetto con un amministratore e pochi docenti
 pilota.
 
+## Multi-istituto
+
+**Un istituto per installazione, non multi-tenant.** Non esiste (né è
+previsto) un campo di scoping per istituto su `UTENTE`, `CORSO`, `CLASSE` o
+altre entità: l'auth è pensata per un solo dominio Google Workspace (`hd`), e
+`CONFIG.docentiAutorizzati` è una lista piatta unica, non divisa per scuola.
+
+**`CONFIG.nomeIstituto` e `CONFIG.codiceMeccanografico`** identificano quale
+istituto sta usando questa installazione — servono per coerenza interna
+(footer, informative) e amministrativa, NON per isolare i dati di più
+istituti nella stessa base dati: quello resta fuori scope.
+
+**Perché non semplicemente "aggiungere un filtro per istituto" più avanti.**
+L'analisi GDPR (`docs/analisi-gdpr.md`) segnala che una banca dati condivisa
+tra istituti autonomi è un caso di **contitolarità** (art. 26 GDPR): ogni
+istituto è un titolare del trattamento distinto, e condividere dati tra
+titolari diversi richiede un accordo dedicato che regoli responsabilità,
+informative e consensi — non è un dettaglio implementativo rimandabile a
+quando servisse, cambia l'architettura di consensi fin dall'inizio di quella
+funzionalità. Per questo "multi-istituto" non è modellato nemmeno
+parzialmente ora: aggiungere un `istitutoId` "per sicurezza" darebbe la falsa
+impressione che l'isolamento dati sia già gestito, quando in realtà mancano
+ancora le basi legali (contitolarità) per farlo bene.
+
+**Percorso pratico se servisse un secondo istituto prima di un eventuale
+redesign multi-tenant**: una seconda installazione separata (proprio progetto
+Firebase, proprio `CONFIG`, proprio dominio Google) — zero dati condivisi tra
+le due, zero problemi di contitolarità, perché restano titolari del tutto
+indipendenti.
+
 ## Flusso quiz studente
 
 - **Solo avanti, niente tasto indietro.** Coerente con "verifica immediata", non

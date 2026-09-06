@@ -87,6 +87,13 @@ ora si lavora con Tailwind puro.
   bocciatura: si creano nuove righe, quelle vecchie non si toccano mai.
   `CONFIG` contiene l'anno scolastico corrente, usato per invalidare i codici
   di accesso delle annate precedenti.
+- **Un istituto per installazione, non multi-tenant.** `CONFIG.nomeIstituto` /
+  `CONFIG.codiceMeccanografico` identificano quale istituto sta usando questa
+  istanza — non esiste (né è previsto) un campo di scoping per istituto sulle
+  altre entità. Un secondo istituto = una seconda installazione separata
+  (proprio progetto Firebase, proprio `CONFIG`, proprio dominio Google), non
+  una funzionalità multi-tenant nella stessa istanza. Vedi
+  `DECISIONI_DESIGN.md`, "Multi-istituto".
 
 ## Regole architetturali fisse — non violarle senza discuterne esplicitamente
 
@@ -142,16 +149,21 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       ancora popolato nemmeno in emulatore)
 - [ ] Hosting statico configurato (GitHub Pages o Cloudflare Pages)
 
-**Fase 1 (somministrazione quiz), lato studente in buono stato:**
+**Fase 1 (somministrazione quiz), lato studente completo su dati mock:**
 
 - [x] `ui/src/pages/QuizStudente.jsx` — svolgimento quiz, un quesito alla
-      volta, feedback immediato ✓/✗, nessun tasto indietro
+      volta, feedback immediato ✓/✗, nessun tasto indietro, avanzamento
+      automatico configurabile (`config/impostazioniQuiz.js`) con riempimento
+      progressivo e interruzione al tap (`components/BottoneAvanti.jsx`)
 - [x] `ui/src/components/BarraQuiz.jsx` — header con identità studente, quiz,
       livello (solo display), barra di avanzamento a segmenti
 - [x] `ui/src/components/QuesitoCard.jsx` — riusato in due modalità
       (`"quiz"` e `"correzione"`)
 - [x] `ui/src/pages/QuizRisultati.jsx` — correzione completa con punteggio
-      totale, spiegazione e tag argomento per quesito
+      totale, spiegazione e tag argomento per quesito ("contenuto puro")
+- [x] `ui/src/pages/QuizRisultatiPagina.jsx` — contenitore "pagina intera" per
+      `QuizRisultati` (route `/quiz/:quizId/risultati`), unico punto che monta
+      `components/CreditoTecnico.jsx` (testo da `config/testi.js`)
 - [ ] Tutto quanto sopra gira ancora su un quiz mock hardcoded in
       `QuizStudente.jsx` (`QUIZ_MOCK`), non su Firestore — `quizRepository.js` /
       `quesitiRepository.js` / `risposteRepository.js` restano stub
@@ -160,9 +172,12 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
 - [ ] Interfaccia docente non iniziata: `DocenteHome.jsx`, `CreaQuiz.jsx`
 
-Prossimo passo naturale: lato docente (per uscire dai dati mock), oppure
-chiudere la coda della Fase 0 (Firestore popolato, hosting) — non ancora
-deciso quale per primo.
+Prossimo passo naturale: **lato docente**, partendo da `CreaQuiz.jsx` — è il
+pezzo che sblocca l'uscita dai dati mock (serve comunque un quiz vero da
+creare per smettere di usare `QUIZ_MOCK`), e può essere sviluppato e provato
+da solo navigando a `/docente/crea-quiz` direttamente, senza aspettare
+`DocenteHome.jsx`. In alternativa, chiudere prima la coda della Fase 0
+(Firestore popolato, hosting) — non ancora deciso quale per primo.
 
 ## Cosa NON fare in questa fase
 

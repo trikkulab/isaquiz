@@ -58,6 +58,8 @@ erDiagram
     CONFIG {
         string annoScolasticoCorrente
         string docentiAutorizzati
+        string nomeIstituto
+        string codiceMeccanografico
     }
 
     QUESITO {
@@ -135,6 +137,12 @@ erDiagram
   docente): si aggiungono righe, non si modificano quelle esistenti.
   `CONFIG.annoScolasticoCorrente` è il singolo valore che rende i codici delle
   annate precedenti non più validi.
+- **`CONFIG.nomeIstituto` e `CONFIG.codiceMeccanografico`** identificano quale
+  istituto sta "facendo girare" questa installazione — la piattaforma è
+  pensata per un istituto alla volta (vedi `DECISIONI_DESIGN.md`,
+  "Internazionalizzazione", "Pubblico e contesto fissi"); un secondo istituto
+  significa una seconda installazione con il proprio `CONFIG`, non un campo
+  di scoping sparso su tutte le altre entità.
 - **`QUESITO.opzioni` e `QUIZ.quesiti` sono array**, non stringhe singole —
   mermaid non ha un tipo array nativo per gli ER diagram, quindi qui compaiono
   come `string` per limite di notazione, non perché lo siano davvero.
