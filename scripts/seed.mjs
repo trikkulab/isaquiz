@@ -73,19 +73,33 @@ const docentiCorso = corsi.map((c) => ({
   data: { docenteId: DOCENTE_ID, corsoId: c.id, ruolo: "titolare" },
 }));
 
-// Quiz di prova già "attivo": /quiz/quiz-prova-rinascimento è navigabile
-// subito, senza doverlo comporre da CreaQuiz ogni volta. `quesiti` referenzia
-// versioni specifiche (i seed sono tutti a -v0).
-const quizProva = {
-  id: "quiz-prova-rinascimento",
-  data: {
-    titolo: "Verifica: il Rinascimento",
-    corsoId: "storia-3a-2526",
-    autoreId: DOCENTE_ID,
-    quesiti: ["seed-storia-1-v0", "seed-storia-2-v0", "seed-storia-3-v0", "seed-storia-4-v0"],
-    stato: "attivo",
+// Quiz di prova. `quesiti` referenzia versioni specifiche (i seed sono a -v0).
+//  - quiz-prova-rinascimento: già "attivo" -> /quiz/quiz-prova-rinascimento è
+//    navigabile subito, senza doverlo comporre da CreaQuiz.
+//  - quiz-bozza-informatica: "bozza" -> serve a verificare il gate lato
+//    studente (un quiz non avviato non è apribile).
+const quizzes = [
+  {
+    id: "quiz-prova-rinascimento",
+    data: {
+      titolo: "Verifica: il Rinascimento",
+      corsoId: "storia-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-storia-1-v0", "seed-storia-2-v0", "seed-storia-3-v0", "seed-storia-4-v0"],
+      stato: "attivo",
+    },
   },
-};
+  {
+    id: "quiz-bozza-informatica",
+    data: {
+      titolo: "Bozza: basi di informatica",
+      corsoId: "informatica-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
+      stato: "bozza",
+    },
+  },
+];
 
 // --- quesiti di prova --------------------------------------------------------
 // Nota: i quesiti hanno id fisso qui sotto solo per rendere il seed idempotente.
@@ -191,10 +205,9 @@ async function main() {
     });
   }
 
-  batch.set(db.doc(`quiz/${quizProva.id}`), {
-    ...quizProva.data,
-    creato: FieldValue.serverTimestamp(),
-  });
+  for (const q of quizzes) {
+    batch.set(db.doc(`quiz/${q.id}`), { ...q.data, creato: FieldValue.serverTimestamp() });
+  }
 
   await batch.commit();
 
@@ -202,7 +215,7 @@ async function main() {
   console.log(`  config/current, utenti/${DOCENTE_ID}, classi/3A`);
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
   console.log(`  quesiti: ${quesiti.length}`);
-  console.log(`  quiz: ${quizProva.id} (stato ${quizProva.data.stato}) — /quiz/${quizProva.id}`);
+  for (const q of quizzes) console.log(`  quiz: ${q.id} (${q.data.stato}) — /quiz/${q.id}`);
 }
 
 main().catch((err) => {

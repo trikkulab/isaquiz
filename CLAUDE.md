@@ -201,12 +201,14 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `QuizRisultati` (route `/quiz/:quizId/risultati`), unico punto che monta
       `components/CreditoTecnico.jsx` (testo da `config/testi.js`)
 - [x] `QuizStudente.jsx` cablato su Firestore (`getQuizConQuesiti(quizId)`),
-      niente più `QUIZ_MOCK`. Stati loading / "quiz non trovato" / "senza
-      quesiti". `BarraQuiz` e `QuizRisultati` mostrano `materia · docente`
-      solo se presenti. Nessun gate su `stato` (arriva con `avviaQuiz`).
-- [x] `data/quizRepository.js` (`getQuiz`, `getQuizConQuesiti` — risolve i
-      quesiti in ordine + materia dal corso + docente dall'autore, "niente
-      JOIN"; `creaQuiz` → `stato: "bozza"`), `data/quesitiRepository.js`,
+      niente più `QUIZ_MOCK`. Stati loading / "non trovato" / "non ancora
+      avviato" (`stato: bozza`) / "non più disponibile" (`archiviato`) /
+      "senza quesiti". `BarraQuiz` e `QuizRisultati` mostrano `materia ·
+      docente` solo se presenti.
+- [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
+      ordine + materia dal corso + docente dall'autore, "niente JOIN";
+      `creaQuiz` → `stato: "bozza"`; `avviaQuiz` — `bozza → attivo`, a senso
+      unico, scrive `avviato`), `data/quesitiRepository.js`,
       `data/corsiRepository.js` (`getCorso`, `getCorsiDocente`), nuovo
       `data/utentiRepository.js` (`getUtente`, `nomeVisibile`).
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
@@ -214,33 +216,34 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       versione; `getQuesito(id)` risolve qualsiasi versione esatta;
       `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
       +1), `forkQuesito` (baseId nuovo, autore corrente); `idProssimaVersione`
-      (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `avviaQuiz`,
-      `archiviaQuiz`, tutto `risposteRepository.js`. Seed: quiz di prova
-      `quiz-prova-rinascimento` (`stato: attivo`) → `/quiz/quiz-prova-rinascimento`.
+      (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `archiviaQuiz`,
+      tutto `risposteRepository.js`. Seed: `quiz-prova-rinascimento`
+      (`attivo`) e `quiz-bozza-informatica` (`bozza`, per testare il gate).
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
-- [x] `CreaQuiz.jsx` — fetta "componi quiz": selettore corso, banca quesiti
-      con ricerca/filtro (materia, argomento) e contenitore ridimensionabile,
-      form quesito, aggiungi/rimuovi dal quiz, "Salva bozza" (`creaQuiz` →
-      `stato: "bozza"`). Click sulla card di un quesito → lo carica nel form
-      (contenuto editabile, materia/versione/autore in sola lettura); i
-      bottoni diventano "Salva nuova versione" + "Duplica come nuovo quesito"
-      (autore = utente) o "Duplica come mio quesito" (autore diverso — branch
-      per ora irraggiungibile: la banca contiene solo i quesiti dell'utente
-      finché non c'è `getQuesitiCondivisi`, Fase 4). **Fuori scope**: avvio
-      quiz (`stato: "attivo"`), QR/link per gli studenti.
+- [x] `CreaQuiz.jsx` — comporre un quiz: selettore corso, banca quesiti con
+      ricerca/filtro (materia, argomento) e contenitore ridimensionabile, form
+      quesito, aggiungi/rimuovi dal quiz. Click sulla card di un quesito → lo
+      carica nel form (contenuto editabile, materia/versione/autore in sola
+      lettura); i bottoni diventano "Salva nuova versione" + "Duplica come
+      nuovo quesito" (autore = utente) o "Duplica come mio quesito" (autore
+      diverso — branch per ora irraggiungibile finché non c'è
+      `getQuesitiCondivisi`, Fase 4). "Salva bozza" → pannello con "Pubblica e
+      avvia il quiz" (conferma inline → `avviaQuiz`) → QR (`qrcode.react`) +
+      link `/quiz/{id}`.
 - [ ] `DocenteHome.jsx` non iniziata (elenco quiz/bozze, ingresso a CreaQuiz,
-      risultati). Dopo il salvataggio, `CreaQuiz` mostra solo un pannello di
-      conferma inline, non naviga.
+      risultati). Dopo il salvataggio/avvio, `CreaQuiz` mostra solo un
+      pannello inline, non naviga. Manca anche: cancellare una bozza,
+      duplicare un quiz, codice breve digitabile al posto del link lungo.
 
-Prossimo passo naturale: **fetta successiva di `CreaQuiz` — `avviaQuiz`**
-(`stato: bozza → attivo`, immutabile da lì) + generazione QR/link per gli
-studenti, così il giro docente→studente si chiude. Poi `DocenteHome.jsx`
-(elenco quiz/bozze, ingresso a CreaQuiz, accesso ai risultati). In
-alternativa chiudere la coda della Fase 0 (hosting statico). Il fallback di
-`QuizRisultati` su accesso diretto (senza `state` da `QuizStudente`) resta da
-fare quando `risposteRepository` sarà reale.
+Prossimo passo naturale: **`DocenteHome.jsx`** — elenco dei quiz del docente
+(bozze e attivi), ingresso a `CreaQuiz`, accesso ai risultati; da lì anche
+cancellazione bozza e duplicazione quiz. In alternativa chiudere la coda della
+Fase 0 (hosting statico) — serve anche perché il link/QR di `avviaQuiz` punta
+a `window.location.origin`, inutile finché gira solo su `localhost`. Il
+fallback di `QuizRisultati` su accesso diretto (senza `state`) resta da fare
+quando `risposteRepository` sarà reale.
 
 ## Cosa NON fare in questa fase
 

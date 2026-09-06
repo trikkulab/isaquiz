@@ -31,13 +31,15 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   con versionamento (`baseId`/`versione`) e fork
 - Interfaccia docente: comporre un quiz da un elenco di quesiti e salvarlo
   come bozza — fatto
-- Pubblicazione quiz (`stato: attivo`) + generazione QR code/link per studenti — da fare
+- Pubblicazione quiz (`stato: bozza → attivo`) + QR/link per studenti — fatto
+  in `CreaQuiz` (`avviaQuiz`, `qrcode.react`); manca un codice breve
+  digitabile in alternativa al link
 - Interfaccia studente: aprire il quiz e rispondere — fatto, su Firestore
-  (`getQuizConQuesiti`)
+  (`getQuizConQuesiti`), solo quiz `attivo`
 - Cloud Function: calcolo del punteggio lato server — stub, calcolo ancora client
 - Interfaccia docente: risultati in tempo reale — da fare
-- Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, creaQuiz),
-  `quesitiRepository` (getBancaDocente, getQuesito, creaQuesito,
+- Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, creaQuiz,
+  avviaQuiz), `quesitiRepository` (getBancaDocente, getQuesito, creaQuesito,
   salvaNuovaVersione, forkQuesito), `corsiRepository` (getCorso,
   getCorsiDocente), `utentiRepository` (getUtente), `risposteRepository`
   (saveAnswer — stub)

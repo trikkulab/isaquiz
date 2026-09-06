@@ -15,6 +15,7 @@ import {
   doc,
   getDoc,
   addDoc,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -68,9 +69,16 @@ export async function creaQuiz({ titolo, corsoId, docenteId, quesiti }) {
 }
 
 export async function avviaQuiz(quizId) {
-  // TODO fetta successiva: stato "bozza" -> "attivo", coincide con la
-  // pubblicazione (generazione del QR). Da quel momento il quiz è immutabile
-  // e permanente. Vedi DECISIONI_DESIGN.md, "Stati del quiz".
+  // "bozza" -> "attivo": è la pubblicazione, coincide con la generazione del
+  // QR. Da qui il quiz è immutabile e permanente (vedi DECISIONI_DESIGN.md,
+  // "Stati del quiz"). Passaggio a senso unico: se il quiz non è più in
+  // bozza non si fa nulla.
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Quiz non trovato.");
+  if (snap.data().stato !== "bozza") return snap.data().stato;
+  await updateDoc(ref, { stato: "attivo", avviato: serverTimestamp() });
+  return "attivo";
 }
 
 export async function archiviaQuiz(quizId) {

@@ -331,10 +331,14 @@ la provenienza del fork né per altro finché non c'è una decisione esplicita �
 quando la Fase 3 introdurrà i quesiti generati dall'IA servirà probabilmente un
 valore tipo `"ia"`, ma è quella la sede per deciderlo.
 
-**Non ancora implementato**: bottoni di pubblicazione/cancellazione/
-duplicazione in UI — aspettano il flusso di gestione quiz lato docente
-(`CreaQuiz.jsx` oggi ha solo "Salva bozza"). Questa sezione fissa la regola
-per quando si arriva a costruirla.
+**Stato dell'implementazione**: in `CreaQuiz.jsx`, dopo "Salva bozza", il
+pannello di conferma offre "Pubblica e avvia il quiz" (con conferma inline,
+data l'irreversibilità) → `avviaQuiz` porta `stato` ad `attivo` e mostra QR
+(`qrcode.react`) + link `/quiz/{id}` da copiare. Lo studente può aprire solo
+quiz `attivo` (`QuizStudente` blocca `bozza`/`archiviato`). Non ancora fatti:
+cancellazione della bozza, duplicazione di un quiz, un codice breve
+digitabile in alternativa al link lungo, `archiviaQuiz` — aspettano il flusso
+di gestione quiz lato docente (`DocenteHome`).
 
 
 ## Non ancora deciso

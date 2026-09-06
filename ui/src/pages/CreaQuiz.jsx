@@ -7,6 +7,7 @@
 // Firestore: tutto passa dai repository in /data.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
@@ -16,7 +17,7 @@ import {
   salvaNuovaVersione,
   forkQuesito,
 } from "../../../data/quesitiRepository.js";
-import { creaQuiz } from "../../../data/quizRepository.js";
+import { creaQuiz, avviaQuiz } from "../../../data/quizRepository.js";
 
 const CAMPO =
   "w-full rounded-lg border border-bordo bg-white px-3 py-2 text-sm outline-none focus:border-primario";
@@ -59,7 +60,12 @@ export default function CreaQuiz() {
   const formRef = useRef(null);
 
   const [salvandoBozza, setSalvandoBozza] = useState(false);
+  // Dopo "Salva bozza": { id, stato, titolo, numQuesiti }. `stato` passa da
+  // "bozza" ad "attivo" quando il docente pubblica.
   const [quizSalvato, setQuizSalvato] = useState(null);
+  const [confermaAvvio, setConfermaAvvio] = useState(false);
+  const [avviando, setAvviando] = useState(false);
+  const [linkCopiato, setLinkCopiato] = useState(false);
   const [errore, setErrore] = useState(null);
 
   const [filtri, setFiltri] = useState(FILTRI_VUOTI);
@@ -269,7 +275,12 @@ export default function CreaQuiz() {
         docenteId: utente.id,
         quesiti: selezionati,
       });
-      setQuizSalvato({ id });
+      setQuizSalvato({
+        id,
+        stato: "bozza",
+        titolo: titolo.trim(),
+        numQuesiti: selezionati.length,
+      });
     } catch (err) {
       setErrore("Salvataggio della bozza non riuscito.");
       console.error(err);
@@ -278,8 +289,36 @@ export default function CreaQuiz() {
     }
   }
 
+  async function avvia() {
+    if (avviando || quizSalvato?.stato !== "bozza") return;
+    setAvviando(true);
+    setErrore(null);
+    try {
+      const stato = await avviaQuiz(quizSalvato.id);
+      setQuizSalvato((s) => ({ ...s, stato }));
+      setConfermaAvvio(false);
+    } catch (err) {
+      setErrore("Avvio del quiz non riuscito.");
+      console.error(err);
+    } finally {
+      setAvviando(false);
+    }
+  }
+
+  async function copiaLink(link) {
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopiato(true);
+      setTimeout(() => setLinkCopiato(false), 2000);
+    } catch {
+      /* clipboard non disponibile: l'utente può selezionare il testo a mano */
+    }
+  }
+
   function creaAltro() {
     setQuizSalvato(null);
+    setConfermaAvvio(false);
+    setLinkCopiato(false);
     setTitolo("");
     setSelezionati([]);
     nuovoQuesitoDaZero();
@@ -292,22 +331,95 @@ export default function CreaQuiz() {
   }
 
   if (quizSalvato) {
+    const linkQuiz = `${window.location.origin}/quiz/${quizSalvato.id}`;
+    const attivo = quizSalvato.stato === "attivo";
+
     return (
       <div className="mx-auto max-w-xl px-4 py-10">
+        {errore && (
+          <div className="mb-4 rounded-lg border border-errore bg-errore-sfondo px-3 py-2 text-sm text-errore">
+            {errore}
+          </div>
+        )}
+
         <div className="rounded-xl border border-bordo bg-white p-6">
-          <h1 className="mb-2 text-lg font-semibold">Bozza salvata</h1>
+          <h1 className="mb-2 text-lg font-semibold">
+            {attivo ? "Quiz avviato" : "Bozza salvata"}
+          </h1>
           <p className="mb-1 text-sm text-[#1e1b2e]/70">
-            Il quiz «{titolo.trim()}» è stato salvato come bozza con {selezionati.length}{" "}
-            {selezionati.length === 1 ? "quesito" : "quesiti"}.
+            «{quizSalvato.titolo}» — {quizSalvato.numQuesiti}{" "}
+            {quizSalvato.numQuesiti === 1 ? "quesito" : "quesiti"}
           </p>
           <p className="mb-5 text-xs text-[#1e1b2e]/50">ID: {quizSalvato.id}</p>
-          <button type="button" className={BOTTONE_PRIMARIO} onClick={creaAltro}>
+
+          {attivo ? (
+            <div className="mb-5 flex flex-col items-center gap-3 rounded-lg border border-bordo bg-sfondo p-4">
+              <p className="text-sm font-medium">Gli studenti accedono da qui:</p>
+              <div className="rounded-lg bg-white p-3">
+                <QRCodeSVG value={linkQuiz} size={180} />
+              </div>
+              <div className="flex w-full items-center gap-2">
+                <input
+                  className={`${CAMPO} bg-white text-xs`}
+                  value={linkQuiz}
+                  readOnly
+                  onFocus={(e) => e.target.select()}
+                />
+                <button
+                  type="button"
+                  className={BOTTONE_SECONDARIO}
+                  onClick={() => copiaLink(linkQuiz)}
+                >
+                  {linkCopiato ? "Copiato" : "Copia"}
+                </button>
+              </div>
+            </div>
+          ) : confermaAvvio ? (
+            <div className="mb-5 rounded-lg border border-bordo bg-sfondo p-4">
+              <p className="mb-3 text-sm">
+                Una volta avviato, il quiz <strong>non è più modificabile</strong> e non
+                si può cancellare. Procedo?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={BOTTONE_PRIMARIO}
+                  onClick={avvia}
+                  disabled={avviando}
+                >
+                  {avviando ? "Avvio…" : "Sì, avvia il quiz"}
+                </button>
+                <button
+                  type="button"
+                  className={BOTTONE_SECONDARIO}
+                  onClick={() => setConfermaAvvio(false)}
+                  disabled={avviando}
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={`${BOTTONE_PRIMARIO} mb-3 block`}
+              onClick={() => setConfermaAvvio(true)}
+            >
+              Pubblica e avvia il quiz
+            </button>
+          )}
+
+          <button type="button" className={BOTTONE_SECONDARIO} onClick={creaAltro}>
             Crea un altro quiz
           </button>
         </div>
-        <p className="mt-4 text-xs text-[#1e1b2e]/50">
-          Avvio del quiz e QR per gli studenti: in arrivo nella prossima fase.
-        </p>
+
+        {!attivo && (
+          <p className="mt-4 text-xs text-[#1e1b2e]/50">
+            La bozza resta modificabile finché non la avvii. Elenco e gestione delle
+            bozze: in arrivo con <code>DocenteHome</code>.
+          </p>
+        )}
       </div>
     );
   }
