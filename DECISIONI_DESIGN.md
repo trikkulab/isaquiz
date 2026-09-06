@@ -107,6 +107,17 @@ istituto sta usando questa installazione — servono per coerenza interna
 (footer, informative) e amministrativa, NON per isolare i dati di più
 istituti nella stessa base dati: quello resta fuori scope.
 
+**In UI: nel footer delle pagine "contenitore" (accanto a `CreditoTecnico`),
+mai nell'header di `QuizStudente`.** Stesso ragionamento già fatto per il
+credito tecnico: la schermata di svolgimento del quiz resta minimale per
+vincolo di semplicità/immediatezza, il nome dell'istituto è contesto
+amministrativo/legale, non informazione che serve allo studente in quel
+momento. A differenza del credito tecnico però `nomeIstituto` non è testo
+statico compilato nel codice — vive su Firestore, quindi mostrarlo per
+davvero richiede un `data/configRepository.js` (non ancora creato) e
+`CONFIG` popolato per davvero, non un mock. Rimandato apposta: niente dato
+finto che sembra reale nel frattempo.
+
 **Perché non semplicemente "aggiungere un filtro per istituto" più avanti.**
 L'analisi GDPR (`docs/analisi-gdpr.md`) segnala che una banca dati condivisa
 tra istituti autonomi è un caso di **contitolarità** (art. 26 GDPR): ogni
