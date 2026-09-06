@@ -1,0 +1,16 @@
+{
+  "name": "isaquiz",
+  "private": true,
+  "description": "Tooling di sviluppo (emulatore Firestore, seed). ui/, data/ e functions/ hanno i propri package.json.",
+  "type": "module",
+  "scripts": {
+    "emu": "firebase emulators:start --only firestore --import=./.emulator-data --export-on-exit",
+    "seed": "node scripts/seed.mjs"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.29.0"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

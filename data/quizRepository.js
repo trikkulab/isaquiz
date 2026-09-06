@@ -5,28 +5,50 @@
 // né una tabella di giunzione) — evita una lettura extra ad ogni apertura del
 // quiz, al costo di dover assemblare il testo dei quesiti con letture separate
 // (vedi getQuizConQuesiti).
+//
+// Un quiz appartiene a un CORSO (corsoId), non a una classe — vedi
+// docs/isaquiz_ERD.md e CLAUDE.md ("CORSO, non CLASSE, è il contenitore dei quiz").
 
-// import { db } from "./firebaseClient.js";
-// import { collection, doc, getDoc, addDoc, updateDoc } from "firebase/firestore";
+import { db } from "./firebaseClient.js";
+import {
+  collection,
+  doc,
+  getDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+
+const quizCol = collection(db, "quiz");
 
 export async function getQuiz(quizId) {
-  // TODO Fase 1: legge quiz/{quizId}
+  const snap = await getDoc(doc(db, "quiz", quizId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
 export async function getQuizConQuesiti(quizId) {
-  // TODO Fase 1: getQuiz(quizId) + risoluzione degli ID in quesiti.
+  // TODO Fase 1 (seguito): getQuiz(quizId) + risoluzione degli ID in quesiti.
   // Qui vive esplicitamente il "niente JOIN": due letture assemblate nel codice,
   // non una query sola.
 }
 
-export async function creaQuiz({ titolo, classeId, docenteId, quesiti }) {
-  // TODO Fase 1
+export async function creaQuiz({ titolo, corsoId, docenteId, quesiti }) {
+  // Salva un quiz in stato "bozza". L'avvio (stato -> "attivo") e il QR sono
+  // una fetta successiva: qui ci si ferma alla composizione.
+  const ref = await addDoc(quizCol, {
+    titolo,
+    corsoId,
+    autoreId: docenteId,
+    quesiti, // array di ID quesito
+    stato: "bozza",
+    creato: serverTimestamp(),
+  });
+  return ref.id;
 }
 
 export async function avviaQuiz(quizId) {
-  // TODO Fase 1: stato -> "attivo"
+  // TODO fetta successiva: stato -> "attivo" + generazione codice/QR per gli studenti
 }
 
 export async function chiudiQuiz(quizId) {
-  // TODO Fase 1: stato -> "chiuso"
+  // TODO fetta successiva: stato -> "chiuso"
 }

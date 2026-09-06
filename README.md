@@ -32,10 +32,24 @@ stesso contenuto (`QuizRisultati`), contenitore diverso a seconda dello spazio d
 ## Setup iniziale
 
 ```bash
-cd ui && npm install && npm run dev
+npm install            # radice: tooling (emulatore Firestore, seed)
+cd data && npm install # SDK Firebase (consumato da ui/)
+cd ../ui && npm install
 ```
 
-Le variabili d'ambiente vanno copiate da `.env.example` a `.env` (mai versionato).
+Copiare `.env.example` in `ui/.env` (mai versionato). Per lo sviluppo locale
+bastano `VITE_FIREBASE_PROJECT_ID=demo-isaquiz` e `VITE_USE_FIRESTORE_EMULATOR=true`.
+
+Sviluppo con l'emulatore Firestore (tre terminali):
+
+```bash
+npm run emu     # radice: avvia l'emulatore Firestore (+ Emulator UI su :4000)
+npm run seed    # radice: popola l'emulatore con dati di prova
+cd ui && npm run dev
+```
+
+`functions/` ha un proprio `package.json` (`cd functions && npm install`) —
+serve solo quando si lavora sulle Cloud Functions.
 
 ## Stato del progetto
 

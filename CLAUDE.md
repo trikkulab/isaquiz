@@ -145,8 +145,13 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 
 - [x] Struttura cartelle `/ui`, `/data`, `/functions`
 - [x] Mock auth (stub funzionante in `data/mockAuth.js`)
-- [ ] Collezioni Firestore create con dati di prova (lo schema è disegnato, non
-      ancora popolato nemmeno in emulatore)
+- [x] Collezioni Firestore create con dati di prova — **in emulatore**:
+      `npm run emu` (radice) avvia l'emulatore Firestore, `npm run seed` lo
+      popola (`scripts/seed.mjs`: `config`, `utenti`, `classi`, `corsi`,
+      `docenti_corso`, `quesiti`). Client puntato all'emulatore con
+      `VITE_USE_FIRESTORE_EMULATOR=true` in `ui/.env`. Progetto ancora
+      `demo-*` (nessun progetto Firebase reale), `firestore.rules` è un
+      placeholder aperto valido solo in locale.
 - [ ] Hosting statico configurato (GitHub Pages o Cloudflare Pages)
 
 **Fase 1 (somministrazione quiz), lato studente completo su dati mock:**
@@ -164,20 +169,30 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 - [x] `ui/src/pages/QuizRisultatiPagina.jsx` — contenitore "pagina intera" per
       `QuizRisultati` (route `/quiz/:quizId/risultati`), unico punto che monta
       `components/CreditoTecnico.jsx` (testo da `config/testi.js`)
-- [ ] Tutto quanto sopra gira ancora su un quiz mock hardcoded in
-      `QuizStudente.jsx` (`QUIZ_MOCK`), non su Firestore — `quizRepository.js` /
-      `quesitiRepository.js` / `risposteRepository.js` restano stub
+- [ ] `QuizStudente.jsx` gira ancora su `QUIZ_MOCK` hardcoded, non su Firestore
+      — va cablato su `getQuizConQuesiti(quizId)` (ancora stub in
+      `quizRepository.js`). È il prossimo passo naturale ora che esistono quiz
+      veri creabili da `CreaQuiz`.
+- [x] `data/quizRepository.js` (`getQuiz`, `creaQuiz` → stato `"bozza"`),
+      `data/quesitiRepository.js` (`getQuesitiDocente`, `getQuesito`,
+      `creaQuesito`) e nuovo `data/corsiRepository.js` (`getCorsiDocente`,
+      due letture assemblate) implementati su Firestore. Restano stub:
+      `getQuizConQuesiti`, `avviaQuiz`, `chiudiQuiz`, tutto `risposteRepository.js`.
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
-- [ ] Interfaccia docente non iniziata: `DocenteHome.jsx`, `CreaQuiz.jsx`
+- [x] `CreaQuiz.jsx` — fetta "componi quiz": selettore corso, crea quesiti
+      manuali, aggiungi/rimuovi quesiti dalla banca, "Salva bozza"
+      (`creaQuiz` → `stato: "bozza"`). **Fuori scope in questa fetta**: avvio
+      quiz (`stato: "attivo"`), generazione QR/link per gli studenti.
+- [ ] `DocenteHome.jsx` non iniziata (elenco quiz/bozze, ingresso a CreaQuiz,
+      risultati). Dopo il salvataggio, `CreaQuiz` mostra solo un pannello di
+      conferma inline, non naviga.
 
-Prossimo passo naturale: **lato docente**, partendo da `CreaQuiz.jsx` — è il
-pezzo che sblocca l'uscita dai dati mock (serve comunque un quiz vero da
-creare per smettere di usare `QUIZ_MOCK`), e può essere sviluppato e provato
-da solo navigando a `/docente/crea-quiz` direttamente, senza aspettare
-`DocenteHome.jsx`. In alternativa, chiudere prima la coda della Fase 0
-(Firestore popolato, hosting) — non ancora deciso quale per primo.
+Prossimo passo naturale: **cablare `QuizStudente.jsx` su Firestore**
+(`getQuizConQuesiti`) per uscire da `QUIZ_MOCK`, oppure la fetta successiva di
+`CreaQuiz` (avvio quiz + QR). In alternativa chiudere la coda della Fase 0
+(hosting statico).
 
 ## Cosa NON fare in questa fase
 
