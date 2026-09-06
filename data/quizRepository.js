@@ -91,6 +91,31 @@ export async function creaQuiz({ titolo, corsoId, docenteId, quesiti }) {
   return ref.id;
 }
 
+export async function aggiornaQuizBozza(quizId, { titolo, corsoId, quesiti }) {
+  // Salva le modifiche a una bozza. Consentito SOLO finché stato === "bozza"
+  // (un quiz avviato è immutabile — vedi DECISIONI_DESIGN.md, "Stati del quiz").
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Quiz non trovato.");
+  if (snap.data().stato !== "bozza") throw new Error("Il quiz non è più in bozza.");
+  await updateDoc(ref, { titolo, corsoId, quesiti, modificato: serverTimestamp() });
+}
+
+export async function duplicaQuiz(quizId, docenteId) {
+  // Copia indipendente: nuovo documento in "bozza", quesiti copiati come array
+  // di riferimenti (gli stessi id, non i quesiti). Nessun legame con
+  // l'originale (vedi DECISIONI_DESIGN.md, "Stati del quiz" — duplicazione,
+  // non modifica).
+  const src = await getQuiz(quizId);
+  if (!src) throw new Error("Quiz non trovato.");
+  return creaQuiz({
+    titolo: `Copia di ${src.titolo}`,
+    corsoId: src.corsoId,
+    docenteId,
+    quesiti: [...(src.quesiti ?? [])],
+  });
+}
+
 export async function avviaQuiz(quizId) {
   // "bozza" -> "attivo": è la pubblicazione, coincide con la generazione del
   // QR. Da qui il quiz è immutabile e permanente (vedi DECISIONI_DESIGN.md,

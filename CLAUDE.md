@@ -208,8 +208,10 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
       `getQuizDocente` — meta + materia, ordinati per data; `creaQuiz` →
-      `stato: "bozza"`; `avviaQuiz` — `bozza → attivo`, a senso unico, scrive
-      `avviato`; `eliminaQuiz` — delete fisico, solo in bozza),
+      `stato: "bozza"`; `aggiornaQuizBozza` / `eliminaQuiz` — consentite SOLO
+      se `stato: bozza`; `duplicaQuiz` — da qualsiasi quiz crea una nuova
+      bozza (id quesiti copiati, nessun legame con l'originale); `avviaQuiz` —
+      `bozza → attivo`, a senso unico, scrive `avviato`),
       `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
       `getCorsiDocente`), nuovo `data/utentiRepository.js` (`getUtente`,
       `nomeVisibile`).
@@ -235,21 +237,27 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       avvia il quiz" (conferma inline → `avviaQuiz`) → `components/AccessoQuiz.jsx`
       (QR `qrcode.react` + link `/quiz/{id}` con "Copia"), riusato in
       DocenteHome. Dopo salva/avvia: link "I miei quiz".
+- [x] `CreaQuiz.jsx` modifica bozza: route `/docente/crea-quiz/:quizId`
+      (opzionale) carica titolo/corso/quesiti di una bozza esistente; al
+      salvataggio `aggiornaQuizBozza` invece di `creaQuiz`. I quesiti del quiz
+      vengono "aggiornati" all'ultima versione del loro `baseId` al caricamento
+      (con avviso), coerente con "una bozza si compone dalla banca corrente".
+      Blocca se il quiz non è più in bozza o è di un altro docente.
 - [x] `DocenteHome.jsx` (route `/docente`) — elenco dei propri quiz
       (`getQuizDocente`) con badge di stato, "Crea nuovo quiz", e per riga:
-      bozza → "Pubblica e avvia" (conferma inline) / "Elimina" (conferma
-      inline, `eliminaQuiz`); attivo → toggle "Link e QR" (`AccessoQuiz`).
-- [ ] Ancora da fare lato docente: **modificare una bozza** (serve caricare un
-      quiz esistente in `CreaQuiz`), **duplicare** un quiz, i **risultati**
-      (serve `risposteRepository` reale + fallback di `QuizRisultati` su
-      accesso diretto), un **codice breve** digitabile al posto del link lungo.
+      bozza → "Pubblica e avvia" / "Modifica" (→ `crea-quiz/:id`) / "Elimina"
+      (conferme inline); attivo → toggle "Link e QR" (`AccessoQuiz`);
+      attivo/archiviato → "Duplica" (→ modifica subito la copia).
+- [ ] Ancora da fare lato docente: i **risultati** (serve `risposteRepository`
+      reale + fallback di `QuizRisultati` su accesso diretto), un **codice
+      breve** digitabile al posto del link lungo, `archiviaQuiz`.
 
-Prossimo passo naturale: **modificare una bozza** — dare a `CreaQuiz` un
-parametro `:quizId` opzionale che carica titolo/corso/quesiti di un quiz
-esistente e, al salvataggio, fa `update` invece di `create` (solo se ancora in
-bozza). Sblocca anche la duplica utile (duplica → modifica la copia). In
-alternativa chiudere la coda della Fase 0 (hosting statico) — serve comunque
-perché il link/QR punta a `window.location.origin`, inutile su `localhost`.
+Prossimo passo naturale: **i risultati lato docente** — `risposteRepository`
+reale (`saveAnswer` scrive davvero; `getRisposteQuiz`), fallback di
+`QuizRisultati` quando è aperto senza `state` (link diretto / da DocenteHome),
+e una vista aggregata "chi ha risposto e come" per il docente. In alternativa
+chiudere la coda della Fase 0 (hosting statico) — serve comunque perché il
+link/QR punta a `window.location.origin`, inutile su `localhost`.
 
 ## Cosa NON fare in questa fase
 

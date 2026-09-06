@@ -13,7 +13,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
-import { getQuizDocente, avviaQuiz, eliminaQuiz } from "../../../data/quizRepository.js";
+import {
+  getQuizDocente,
+  avviaQuiz,
+  eliminaQuiz,
+  duplicaQuiz,
+} from "../../../data/quizRepository.js";
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 
 const BOTTONE_PRIMARIO =
@@ -133,6 +138,13 @@ export default function DocenteHome() {
                       <button
                         type="button"
                         className={BOTTONE_SECONDARIO}
+                        onClick={() => navigate(`/docente/crea-quiz/${q.id}`)}
+                      >
+                        Modifica
+                      </button>
+                      <button
+                        type="button"
+                        className={BOTTONE_SECONDARIO}
                         onClick={() => setConferma({ tipo: "elimina", id: q.id })}
                       >
                         Elimina
@@ -147,6 +159,28 @@ export default function DocenteHome() {
                       onClick={() => setLinkAperto((v) => (v === q.id ? null : q.id))}
                     >
                       {linkAperto === q.id ? "Nascondi link" : "Link e QR per gli studenti"}
+                    </button>
+                  )}
+
+                  {q.stato !== "bozza" && (
+                    <button
+                      type="button"
+                      className={BOTTONE_SECONDARIO}
+                      disabled={azioneInCorso}
+                      onClick={async () => {
+                        if (azioneInCorso) return;
+                        setAzioneInCorso(true);
+                        setErrore(null);
+                        try {
+                          const nuovoId = await duplicaQuiz(q.id, utente.id);
+                          navigate(`/docente/crea-quiz/${nuovoId}`);
+                        } catch (err) {
+                          setErrore(err.message || "Duplicazione non riuscita.");
+                          setAzioneInCorso(false);
+                        }
+                      }}
+                    >
+                      Duplica
                     </button>
                   )}
                 </div>

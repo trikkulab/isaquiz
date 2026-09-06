@@ -15,6 +15,7 @@ export default function App() {
     <Routes>
       <Route path="/docente" element={<DocenteHome />} />
       <Route path="/docente/crea-quiz" element={<CreaQuiz />} />
+      <Route path="/docente/crea-quiz/:quizId" element={<CreaQuiz />} />
 
       <Route path="/quiz/:quizId" element={<QuizStudente />} />
       <Route path="/quiz/:quizId/risultati" element={<QuizRisultatiPagina />} />

@@ -334,11 +334,16 @@ valore tipo `"ia"`, ma è quella la sede per deciderlo.
 **Stato dell'implementazione**: `CreaQuiz.jsx`, dopo "Salva bozza", offre
 "Pubblica e avvia il quiz" (conferma inline, data l'irreversibilità) →
 `avviaQuiz` (`bozza → attivo`, a senso unico) → `components/AccessoQuiz.jsx`
-mostra QR + link `/quiz/{id}`. `DocenteHome.jsx` elenca i quiz del docente e
-per riga: bozza → pubblica / elimina (`eliminaQuiz`, delete fisico consentito
-SOLO in bozza); attivo → link/QR. Lo studente apre solo quiz `attivo`
-(`QuizStudente` blocca `bozza`/`archiviato`). Non ancora fatti: modificare
-una bozza, duplicare un quiz, un codice breve digitabile, `archiviaQuiz`.
+mostra QR + link `/quiz/{id}`. `DocenteHome.jsx` (route `/docente`) elenca i
+quiz del docente; per riga: bozza → pubblica / **modifica**
+(`/docente/crea-quiz/:quizId` → `aggiornaQuizBozza`) / elimina (`eliminaQuiz`,
+delete fisico); attivo → link/QR / **duplica** (`duplicaQuiz` → nuova bozza,
+si apre subito in modifica). `aggiornaQuizBozza`, `eliminaQuiz` sono
+consentite SOLO finché `stato: bozza`. In modifica, i quesiti del quiz sono
+"aggiornati" all'ultima versione del loro `baseId` (una bozza si compone
+sempre dalla banca corrente). Lo studente apre solo quiz `attivo`
+(`QuizStudente` blocca `bozza`/`archiviato`). Non ancora fatti: `archiviaQuiz`,
+un codice breve digitabile in alternativa al link, la vista risultati.
 
 
 ## Non ancora deciso

@@ -7,7 +7,7 @@
 // Firestore: tutto passa dai repository in /data.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
@@ -18,7 +18,12 @@ import {
   salvaNuovaVersione,
   forkQuesito,
 } from "../../../data/quesitiRepository.js";
-import { creaQuiz, avviaQuiz } from "../../../data/quizRepository.js";
+import {
+  creaQuiz,
+  avviaQuiz,
+  getQuizConQuesiti,
+  aggiornaQuizBozza,
+} from "../../../data/quizRepository.js";
 
 const CAMPO =
   "w-full rounded-lg border border-bordo bg-white px-3 py-2 text-sm outline-none focus:border-primario";
@@ -45,14 +50,20 @@ const FORM_VUOTO = {
 export default function CreaQuiz() {
   const utente = getUtenteCorrente();
   const navigate = useNavigate();
+  const { quizId } = useParams(); // presente = si modifica una bozza esistente
 
   const [corsi, setCorsi] = useState([]);
   const [corsoId, setCorsoId] = useState("");
   const [banca, setBanca] = useState([]);
   const [caricamento, setCaricamento] = useState(true);
+  const [bloccato, setBloccato] = useState(null); // messaggio se la bozza non è modificabile
 
   const [titolo, setTitolo] = useState("");
   const [selezionati, setSelezionati] = useState([]); // array ordinato di quesitoId
+  // Quesiti del quiz caricato che potrebbero non essere nella banca (versioni
+  // non più "ultime"): pool di fallback per risolverli in "Quesiti nel quiz".
+  const [quesitiCaricati, setQuesitiCaricati] = useState([]);
+  const [avviso, setAvviso] = useState(null);
 
   const [form, setForm] = useState(FORM_VUOTO);
   // Quesito caricato nel form dalla banca (per nuova versione / duplica).
@@ -74,6 +85,18 @@ export default function CreaQuiz() {
   useEffect(() => {
     let attivo = true;
     (async () => {
+      // Re-init completo a ogni cambio di rotta (nuovo / modifica / altra bozza).
+      setCaricamento(true);
+      setBloccato(null);
+      setErrore(null);
+      setAvviso(null);
+      setQuizSalvato(null);
+      setTitolo("");
+      setSelezionati([]);
+      setQuesitiCaricati([]);
+      setForm(FORM_VUOTO);
+      setQuesitoBase(null);
+
       try {
         const [corsiDocente, quesitiDocente] = await Promise.all([
           getCorsiDocente(utente.id),
@@ -81,10 +104,37 @@ export default function CreaQuiz() {
         ]);
         if (!attivo) return;
         setCorsi(corsiDocente);
-        setCorsoId(corsiDocente[0]?.id ?? "");
         setBanca(quesitiDocente);
+
+        if (!quizId) {
+          setCorsoId(corsiDocente[0]?.id ?? "");
+          return;
+        }
+
+        // --- modifica di una bozza esistente ---
+        const q = await getQuizConQuesiti(quizId);
+        if (!attivo) return;
+        if (!q) return setBloccato("Quiz non trovato.");
+        if (q.autoreId !== utente.id) return setBloccato("Non puoi modificare un quiz di un altro docente.");
+        if (q.stato !== "bozza")
+          return setBloccato("Questo quiz è già stato avviato: non è più modificabile.");
+
+        // I quesiti del quiz vengono "aggiornati" all'ultima versione del loro
+        // baseId (una bozza si compone sempre dalla banca corrente).
+        const ultimaPerBase = new Map(quesitiDocente.map((b) => [b.baseId, b]));
+        const ids = q.quesiti.map((qq) => ultimaPerBase.get(qq.baseId)?.id ?? qq.id);
+        const nAggiornati = ids.filter((id, i) => id !== q.quesiti[i].id).length;
+
+        setTitolo(q.titolo ?? "");
+        setCorsoId(q.corsoId ?? corsiDocente[0]?.id ?? "");
+        setSelezionati(ids);
+        setQuesitiCaricati(q.quesiti);
+        if (nAggiornati > 0)
+          setAvviso(
+            `${nAggiornati} ${nAggiornati === 1 ? "quesito aggiornato" : "quesiti aggiornati"} all'ultima versione.`,
+          );
       } catch (err) {
-        if (attivo) setErrore("Impossibile caricare corsi e quesiti. L'emulatore Firestore è avviato?");
+        if (attivo) setErrore("Impossibile caricare i dati. L'emulatore Firestore è avviato?");
         console.error(err);
       } finally {
         if (attivo) setCaricamento(false);
@@ -93,14 +143,21 @@ export default function CreaQuiz() {
     return () => {
       attivo = false;
     };
-  }, [utente.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [utente.id, quizId]);
 
   const corsoScelto = corsi.find((c) => c.id === corsoId) ?? null;
   const materiaCorso = corsoScelto?.materia ?? "";
 
   const quesitiNelQuiz = useMemo(
-    () => selezionati.map((id) => banca.find((q) => q.id === id)).filter(Boolean),
-    [selezionati, banca],
+    () =>
+      selezionati
+        .map(
+          (id) =>
+            banca.find((q) => q.id === id) || quesitiCaricati.find((q) => q.id === id),
+        )
+        .filter(Boolean),
+    [selezionati, banca, quesitiCaricati],
   );
 
   // Quesiti non ancora nel quiz — base per i filtri della banca.
@@ -270,20 +327,22 @@ export default function CreaQuiz() {
     setSalvandoBozza(true);
     setErrore(null);
     try {
-      const id = await creaQuiz({
-        titolo: titolo.trim(),
-        corsoId,
-        docenteId: utente.id,
-        quesiti: selezionati,
-      });
+      const datiQuiz = { titolo: titolo.trim(), corsoId, quesiti: selezionati };
+      let id = quizId;
+      if (quizId) {
+        await aggiornaQuizBozza(quizId, datiQuiz);
+      } else {
+        id = await creaQuiz({ ...datiQuiz, docenteId: utente.id });
+      }
       setQuizSalvato({
         id,
         stato: "bozza",
         titolo: titolo.trim(),
         numQuesiti: selezionati.length,
+        modificata: Boolean(quizId),
       });
     } catch (err) {
-      setErrore("Salvataggio della bozza non riuscito.");
+      setErrore(err.message || "Salvataggio della bozza non riuscito.");
       console.error(err);
     } finally {
       setSalvandoBozza(false);
@@ -307,6 +366,12 @@ export default function CreaQuiz() {
   }
 
   function creaAltro() {
+    // Se si stava modificando una bozza, la rotta ha :quizId — si va sul path
+    // "nuovo" e l'effect ri-inizializza tutto.
+    if (quizId) {
+      navigate("/docente/crea-quiz");
+      return;
+    }
     setQuizSalvato(null);
     setConfermaAvvio(false);
     setTitolo("");
@@ -318,6 +383,23 @@ export default function CreaQuiz() {
 
   if (caricamento) {
     return <div className="mx-auto max-w-5xl px-4 py-10 text-sm text-[#1e1b2e]/60">Caricamento…</div>;
+  }
+
+  if (bloccato) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-10">
+        <div className="rounded-xl border border-bordo bg-white p-6">
+          <p className="mb-4 text-sm text-[#1e1b2e]/70">{bloccato}</p>
+          <button
+            type="button"
+            className={BOTTONE_SECONDARIO}
+            onClick={() => navigate("/docente")}
+          >
+            I miei quiz
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (quizSalvato) {
@@ -333,7 +415,7 @@ export default function CreaQuiz() {
 
         <div className="rounded-xl border border-bordo bg-white p-6">
           <h1 className="mb-2 text-lg font-semibold">
-            {attivo ? "Quiz avviato" : "Bozza salvata"}
+            {attivo ? "Quiz avviato" : quizSalvato.modificata ? "Bozza aggiornata" : "Bozza salvata"}
           </h1>
           <p className="mb-1 text-sm text-[#1e1b2e]/70">
             «{quizSalvato.titolo}» — {quizSalvato.numQuesiti}{" "}
@@ -405,11 +487,17 @@ export default function CreaQuiz() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-semibold">Crea quiz</h1>
+      <h1 className="mb-6 text-xl font-semibold">{quizId ? "Modifica quiz" : "Crea quiz"}</h1>
 
       {errore && (
         <div className="mb-4 rounded-lg border border-errore bg-errore-sfondo px-3 py-2 text-sm text-errore">
           {errore}
+        </div>
+      )}
+
+      {avviso && (
+        <div className="mb-4 rounded-lg border border-bordo bg-sfondo px-3 py-2 text-xs text-[#1e1b2e]/70">
+          {avviso}
         </div>
       )}
 
@@ -743,7 +831,7 @@ export default function CreaQuiz() {
               onClick={salvaBozza}
               disabled={!bozzaValida || salvandoBozza}
             >
-              {salvandoBozza ? "Salvataggio…" : "Salva bozza"}
+              {salvandoBozza ? "Salvataggio…" : quizId ? "Salva modifiche" : "Salva bozza"}
             </button>
             {!bozzaValida && (
               <p className="mt-2 text-xs text-[#1e1b2e]/50">
