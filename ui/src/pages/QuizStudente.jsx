@@ -8,6 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import BarraQuiz from "../components/BarraQuiz.jsx";
 import QuesitoCard from "../components/QuesitoCard.jsx";
+import BottoneAvanti from "../components/BottoneAvanti.jsx";
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import { saveAnswer } from "../../../data/risposteRepository.js";
 
@@ -128,13 +129,7 @@ export default function QuizStudente() {
 
       {indiceSelezionato !== null && (
         <div className="fixed inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-sfondo to-transparent p-4">
-          <button
-            type="button"
-            className="w-full max-w-[560px] animate-comparsa rounded-full bg-gradient-to-br from-accento to-primario p-4 font-titoli text-base font-bold text-white shadow-bottone active:scale-[0.98]"
-            onClick={handleAvanti}
-          >
-            {ultimoQuesito ? "Vedi risultati" : "Avanti"} →
-          </button>
+          <BottoneAvanti onAvanti={handleAvanti} etichetta={`${ultimoQuesito ? "Vedi risultati" : "Avanti"} →`} />
         </div>
       )}
     </div>
