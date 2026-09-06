@@ -129,10 +129,32 @@ export async function avviaQuiz(quizId) {
   return "attivo";
 }
 
+export async function chiudiQuiz(quizId) {
+  // "attivo" -> "chiuso": gli studenti non possono più aprire il quiz (fine
+  // della somministrazione in classe). Reversibile con riapriQuiz. Il
+  // contenuto resta immutabile. Vedi DECISIONI_DESIGN.md, "Stati del quiz".
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Quiz non trovato.");
+  if (snap.data().stato !== "attivo") return snap.data().stato;
+  await updateDoc(ref, { stato: "chiuso", chiuso: serverTimestamp() });
+  return "chiuso";
+}
+
+export async function riapriQuiz(quizId) {
+  // "chiuso" -> "attivo": riapre alle risposte (es. per i ritardatari).
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Quiz non trovato.");
+  if (snap.data().stato !== "chiuso") return snap.data().stato;
+  await updateDoc(ref, { stato: "attivo", riaperto: serverTimestamp() });
+  return "attivo";
+}
+
 export async function eliminaQuiz(quizId) {
   // Delete FISICO — consentito SOLO in bozza: un quiz mai avviato non è
-  // esistito per nessuno studente. Un quiz attivo/archiviato non si cancella
-  // mai (vedi DECISIONI_DESIGN.md, "Stati del quiz").
+  // esistito per nessuno studente. Un quiz attivo/chiuso/archiviato non si
+  // cancella mai (vedi DECISIONI_DESIGN.md, "Stati del quiz").
   const ref = doc(db, "quiz", quizId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;

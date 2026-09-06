@@ -160,15 +160,15 @@ ora si lavora con Tailwind puro.
   `quiz.quesiti` che le referenzia — mai in banca, mai in ricerca. Regola
   completa e motivazione in `DECISIONI_DESIGN.md`, "Versionamento dei
   quesiti".
-- **Un quiz è modificabile e cancellabile solo finché `stato: bozza`.** La
-  pubblicazione (`stato: attivo`, generazione del QR) è un trigger unico e
-  immediato: da quel momento il quiz è immutabile e permanente, niente edit
-  né delete fisico — coerente con "nessuna riga storica si sovrascrive" già
-  in vigore per classi/corsi/iscrizioni. Per riusare un quiz attivo (altra
-  classe, variante) si duplica in un nuovo quiz indipendente (`stato:
-  bozza`), mai si modifica l'originale. Non ancora implementato in UI
-  (nessun bottone di pubblicazione/duplicazione esiste); regola completa in
-  `DECISIONI_DESIGN.md`, "Stati del quiz".
+- **`QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**
+  `bozza` è modificabile e cancellabile (delete fisico). Dalla pubblicazione
+  (`bozza → attivo`, generazione del QR) in poi il **contenuto è immutabile e
+  permanente** — coerente con "nessuna riga storica si sovrascrive". `attivo`
+  accetta risposte; `chiuso` no ma è **reversibile** (`riapriQuiz`, per i
+  ritardatari) — è l'unica differenza tra i due, il contenuto resta bloccato.
+  Lo studente apre solo quiz `attivo`. Per riusare un quiz (altra classe,
+  variante) si **duplica** in una nuova bozza, mai si modifica l'originale.
+  Regola completa in `DECISIONI_DESIGN.md`, "Stati del quiz".
 
 ## Stato attuale del progetto
 
@@ -202,16 +202,17 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `components/CreditoTecnico.jsx` (testo da `config/testi.js`)
 - [x] `QuizStudente.jsx` cablato su Firestore (`getQuizConQuesiti(quizId)`),
       niente più `QUIZ_MOCK`. Stati loading / "non trovato" / "non ancora
-      avviato" (`stato: bozza`) / "non più disponibile" (`archiviato`) /
-      "senza quesiti". `BarraQuiz` e `QuizRisultati` mostrano `materia ·
-      docente` solo se presenti.
+      avviato" (`bozza`) / "chiuso" (`chiuso`) / "non più disponibile"
+      (`archiviato`) / "senza quesiti". `BarraQuiz` e `QuizRisultati` mostrano
+      `materia · docente` solo se presenti.
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
       `getQuizDocente` — meta + materia, ordinati per data; `creaQuiz` →
       `stato: "bozza"`; `aggiornaQuizBozza` / `eliminaQuiz` — consentite SOLO
       se `stato: bozza`; `duplicaQuiz` — da qualsiasi quiz crea una nuova
-      bozza (id quesiti copiati, nessun legame con l'originale); `avviaQuiz` —
-      `bozza → attivo`, a senso unico, scrive `avviato`),
+      bozza (id quesiti copiati, nessun legame con l'originale); `avviaQuiz`
+      (`bozza → attivo`), `chiudiQuiz` (`attivo → chiuso`), `riapriQuiz`
+      (`chiuso → attivo`) — tutte a senso obbligato),
       `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
       `getCorsiDocente`), nuovo `data/utentiRepository.js` (`getUtente`,
       `nomeVisibile`).
@@ -221,8 +222,9 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
       +1), `forkQuesito` (baseId nuovo, autore corrente); `idProssimaVersione`
       (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `archiviaQuiz`,
-      tutto `risposteRepository.js`. Seed: `quiz-prova-rinascimento`
-      (`attivo`) e `quiz-bozza-informatica` (`bozza`, per testare il gate).
+      tutto `risposteRepository.js`. Seed: un quiz per stato —
+      `quiz-prova-rinascimento` (`attivo`), `quiz-bozza-informatica`
+      (`bozza`), `quiz-chiuso-informatica` (`chiuso`).
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
@@ -246,11 +248,13 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 - [x] `DocenteHome.jsx` (route `/docente`) — elenco dei propri quiz
       (`getQuizDocente`) con badge di stato, "Crea nuovo quiz", e per riga:
       bozza → "Pubblica e avvia" / "Modifica" (→ `crea-quiz/:id`) / "Elimina"
-      (conferme inline); attivo → toggle "Link e QR" (`AccessoQuiz`);
-      attivo/archiviato → "Duplica" (→ modifica subito la copia).
+      (conferme inline); attivo → "Link e QR" (`AccessoQuiz`) / "Chiudi";
+      chiuso → "Link e QR" / "Riapri"; attivo/chiuso → "Duplica" (→ modifica
+      subito la copia).
 - [ ] Ancora da fare lato docente: i **risultati** (serve `risposteRepository`
       reale + fallback di `QuizRisultati` su accesso diretto), un **codice
-      breve** digitabile al posto del link lungo, `archiviaQuiz`.
+      breve** digitabile al posto del link lungo, chiusura automatica a tempo,
+      `archiviaQuiz`.
 
 Prossimo passo naturale: **i risultati lato docente** — `risposteRepository`
 reale (`saveAnswer` scrive davvero; `getRisposteQuiz`), fallback di

@@ -168,7 +168,7 @@ erDiagram
 - **`QUESITO.fonte`** è nello schema ma il suo significato non è ancora
   fissato: tutte le scritture attuali lo lasciano a `"manuale"`. Vedi
   `DECISIONI_DESIGN.md`, "Stati del quiz".
-- **`QUIZ.stato`** è un enum: `bozza` → `attivo` → (eventuale) `archiviato`.
-  `bozza` è modificabile e cancellabile; `attivo` (dalla pubblicazione /
-  generazione QR) è immutabile e permanente. Dettaglio in
-  `DECISIONI_DESIGN.md`, "Stati del quiz".
+- **`QUIZ.stato`** è un enum: `bozza` → `attivo` ⇄ `chiuso` → (eventuale)
+  `archiviato`. `bozza` è modificabile e cancellabile; da `attivo` in poi il
+  contenuto è immutabile. `attivo` accetta risposte; `chiuso` no (reversibile
+  con `riapriQuiz`). Dettaglio in `DECISIONI_DESIGN.md`, "Stati del quiz".

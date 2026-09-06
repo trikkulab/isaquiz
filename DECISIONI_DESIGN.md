@@ -296,7 +296,7 @@ attuale; un eventuale cleanup è un job separato, non da gestire nel flusso di
 
 ## Stati del quiz
 
-**Enum `QUIZ.stato`: `bozza` → `attivo` → (eventuale) `archiviato`.**
+**Enum `QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**
 
 - **`bozza`**: modificabile liberamente (aggiungere/togliere quesiti, cambiare
   titolo/corso) e cancellabile per davvero (delete fisico) — non è mai
@@ -306,10 +306,20 @@ attuale; un eventuale cleanup è un job separato, non da gestire nel flusso di
   "pubblicato ma non ancora somministrato": per il principio guida "pochi
   passaggi dal contenuto della lezione al quiz" non c'è un caso d'uso reale
   in cui un docente pubblica e aspetta prima di dare il via. Da questo
-  momento il quiz è **immutabile e permanente**: niente edit, niente delete
-  fisico — coerente con il resto del progetto (nessuna riga storica si
-  sovrascrive o si cancella, vedi "Nessuna migrazione dati tra anni
-  scolastici" sopra; `corretta` su `RISPOSTA` scrivibile solo server-side).
+  momento il **contenuto è immutabile e permanente**: niente edit, niente
+  delete fisico — coerente con il resto del progetto (nessuna riga storica si
+  sovrascrive o si cancella; `corretta` su `RISPOSTA` scrivibile solo
+  server-side). `attivo` = accetta risposte.
+- **`chiuso`**: finita la somministrazione in classe, il docente chiude il
+  quiz (`chiudiQuiz`): gli studenti non possono più **aprirlo**
+  (`QuizStudente` blocca all'apertura). **Reversibile**: `riapriQuiz` riporta
+  ad `attivo`, es. per i ritardatari. Contenuto immutabile come in `attivo`
+  — l'unica cosa che cambia tra `attivo` e `chiuso` è se accetta risposte.
+  Niente realtime: uno studente già dentro il quiz quando viene chiuso può
+  finire; il blocco è all'apertura. Quando `risposteRepository`/functions
+  saranno reali, il server rifiuterà le scritture su un quiz non `attivo`.
+  Chiusura automatica a tempo: possibile in futuro (un `chiudeAlle`), non
+  ancora.
 - **`archiviato`** (eventuale, non necessario per l'MVP): non toglie il quiz
   dal database, lo toglie solo dalle liste attive del docente. Il riferimento
   resta intatto per `RISPOSTA` e `QuizRisultati`.
@@ -337,13 +347,15 @@ valore tipo `"ia"`, ma è quella la sede per deciderlo.
 mostra QR + link `/quiz/{id}`. `DocenteHome.jsx` (route `/docente`) elenca i
 quiz del docente; per riga: bozza → pubblica / **modifica**
 (`/docente/crea-quiz/:quizId` → `aggiornaQuizBozza`) / elimina (`eliminaQuiz`,
-delete fisico); attivo → link/QR / **duplica** (`duplicaQuiz` → nuova bozza,
-si apre subito in modifica). `aggiornaQuizBozza`, `eliminaQuiz` sono
-consentite SOLO finché `stato: bozza`. In modifica, i quesiti del quiz sono
-"aggiornati" all'ultima versione del loro `baseId` (una bozza si compone
+delete fisico); attivo → link/QR / **chiudi** (`chiudiQuiz`); chiuso → link/QR
+/ **riapri** (`riapriQuiz`); attivo/chiuso → **duplica** (`duplicaQuiz` →
+nuova bozza, si apre subito in modifica). `aggiornaQuizBozza`, `eliminaQuiz`
+sono consentite SOLO finché `stato: bozza`. In modifica, i quesiti del quiz
+sono "aggiornati" all'ultima versione del loro `baseId` (una bozza si compone
 sempre dalla banca corrente). Lo studente apre solo quiz `attivo`
-(`QuizStudente` blocca `bozza`/`archiviato`). Non ancora fatti: `archiviaQuiz`,
-un codice breve digitabile in alternativa al link, la vista risultati.
+(`QuizStudente` blocca `bozza`/`chiuso`/`archiviato`). Non ancora fatti:
+`archiviaQuiz`, chiusura automatica a tempo, un codice breve digitabile in
+alternativa al link, la vista risultati.
 
 
 ## Non ancora deciso

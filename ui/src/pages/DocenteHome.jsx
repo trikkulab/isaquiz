@@ -1,13 +1,11 @@
-// Home del docente: elenco dei propri quiz (bozze e attivi), ingresso a
-// CreaQuiz, e le azioni per quiz — avviare una bozza, eliminarla, rivedere il
-// link/QR di un quiz attivo.
+// Home del docente: elenco dei propri quiz, ingresso a CreaQuiz, e le azioni
+// per quiz — pubblicare/modificare/eliminare una bozza, chiudere/riaprire un
+// quiz attivo, duplicare, rivedere il link/QR.
 //
 // Stile "docente": sobrio e funzionale (vedi CLAUDE.md, "Schermate docente").
 // Niente accesso diretto a Firestore: tutto dai repository in /data.
 //
-// Non ancora qui: modificare una bozza (serve il caricamento di un quiz
-// esistente in CreaQuiz), duplicare un quiz, i risultati (serve
-// risposteRepository reale).
+// Non ancora qui: i risultati (serve risposteRepository reale).
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +14,8 @@ import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import {
   getQuizDocente,
   avviaQuiz,
+  chiudiQuiz,
+  riapriQuiz,
   eliminaQuiz,
   duplicaQuiz,
 } from "../../../data/quizRepository.js";
@@ -29,7 +29,29 @@ const BOTTONE_SECONDARIO =
 const BADGE = {
   bozza: "bg-sfondo text-primario",
   attivo: "bg-corretto-sfondo text-corretto",
+  chiuso: "bg-[#1e1b2e]/10 text-[#1e1b2e]/60",
   archiviato: "bg-[#1e1b2e]/10 text-[#1e1b2e]/55",
+};
+
+// Azioni che passano da una conferma inline. `fn(quizId)` ritorna una Promise.
+const AZIONI_CONFERMA = {
+  avvio: {
+    testo:
+      "Una volta avviato, il quiz non è più modificabile né eliminabile. Procedo?",
+    conferma: "Sì, avvia",
+    fn: avviaQuiz,
+  },
+  chiudi: {
+    testo:
+      "Gli studenti non potranno più aprire il quiz. Potrai riaprirlo in seguito (es. per i ritardatari).",
+    conferma: "Sì, chiudi",
+    fn: chiudiQuiz,
+  },
+  elimina: {
+    testo: "Eliminare definitivamente questa bozza?",
+    conferma: "Sì, elimina",
+    fn: eliminaQuiz,
+  },
 };
 
 export default function DocenteHome() {
@@ -104,6 +126,8 @@ export default function DocenteHome() {
         <ul className="flex flex-col gap-3">
           {quiz.map((q) => {
             const nQuesiti = q.quesiti?.length ?? 0;
+            const cfgConferma =
+              conferma?.id === q.id ? AZIONI_CONFERMA[conferma.tipo] : null;
             return (
               <li key={q.id} className="rounded-xl border border-bordo bg-white p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -152,13 +176,34 @@ export default function DocenteHome() {
                     </>
                   )}
 
-                  {q.stato === "attivo" && (
+                  {(q.stato === "attivo" || q.stato === "chiuso") && (
                     <button
                       type="button"
                       className={BOTTONE_SECONDARIO}
                       onClick={() => setLinkAperto((v) => (v === q.id ? null : q.id))}
                     >
                       {linkAperto === q.id ? "Nascondi link" : "Link e QR per gli studenti"}
+                    </button>
+                  )}
+
+                  {q.stato === "attivo" && (
+                    <button
+                      type="button"
+                      className={BOTTONE_SECONDARIO}
+                      onClick={() => setConferma({ tipo: "chiudi", id: q.id })}
+                    >
+                      Chiudi
+                    </button>
+                  )}
+
+                  {q.stato === "chiuso" && (
+                    <button
+                      type="button"
+                      className={BOTTONE_PRIMARIO}
+                      disabled={azioneInCorso}
+                      onClick={() => esegui(() => riapriQuiz(q.id))}
+                    >
+                      Riapri
                     </button>
                   )}
 
@@ -186,32 +231,17 @@ export default function DocenteHome() {
                 </div>
 
                 {/* Conferma azione */}
-                {conferma?.id === q.id && (
+                {cfgConferma && (
                   <div className="mt-3 rounded-lg border border-bordo bg-sfondo p-3 text-sm">
-                    {conferma.tipo === "avvio" ? (
-                      <p className="mb-2">
-                        Una volta avviato, il quiz <strong>non è più modificabile</strong> né
-                        eliminabile. Procedo?
-                      </p>
-                    ) : (
-                      <p className="mb-2">Eliminare definitivamente questa bozza?</p>
-                    )}
+                    <p className="mb-2">{cfgConferma.testo}</p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         className={BOTTONE_PRIMARIO}
                         disabled={azioneInCorso}
-                        onClick={() =>
-                          esegui(() =>
-                            conferma.tipo === "avvio" ? avviaQuiz(q.id) : eliminaQuiz(q.id),
-                          )
-                        }
+                        onClick={() => esegui(() => cfgConferma.fn(q.id))}
                       >
-                        {azioneInCorso
-                          ? "Attendi…"
-                          : conferma.tipo === "avvio"
-                          ? "Sì, avvia"
-                          : "Sì, elimina"}
+                        {azioneInCorso ? "Attendi…" : cfgConferma.conferma}
                       </button>
                       <button
                         type="button"
@@ -225,8 +255,13 @@ export default function DocenteHome() {
                   </div>
                 )}
 
-                {linkAperto === q.id && q.stato === "attivo" && (
+                {linkAperto === q.id && (q.stato === "attivo" || q.stato === "chiuso") && (
                   <div className="mt-3">
+                    {q.stato === "chiuso" && (
+                      <p className="mb-2 text-xs text-[#1e1b2e]/55">
+                        Il quiz è chiuso: il link funziona solo dopo "Riapri".
+                      </p>
+                    )}
                     <AccessoQuiz quizId={q.id} dimensioneQr={148} />
                   </div>
                 )}

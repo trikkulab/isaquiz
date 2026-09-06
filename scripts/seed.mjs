@@ -73,11 +73,8 @@ const docentiCorso = corsi.map((c) => ({
   data: { docenteId: DOCENTE_ID, corsoId: c.id, ruolo: "titolare" },
 }));
 
-// Quiz di prova. `quesiti` referenzia versioni specifiche (i seed sono a -v0).
-//  - quiz-prova-rinascimento: già "attivo" -> /quiz/quiz-prova-rinascimento è
-//    navigabile subito, senza doverlo comporre da CreaQuiz.
-//  - quiz-bozza-informatica: "bozza" -> serve a verificare il gate lato
-//    studente (un quiz non avviato non è apribile).
+// Quiz di prova, uno per stato (per provare i gate lato studente e le azioni
+// in DocenteHome). `quesiti` referenzia versioni specifiche (i seed sono a -v0).
 const quizzes = [
   {
     id: "quiz-prova-rinascimento",
@@ -97,6 +94,16 @@ const quizzes = [
       autoreId: DOCENTE_ID,
       quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
       stato: "bozza",
+    },
+  },
+  {
+    id: "quiz-chiuso-informatica",
+    data: {
+      titolo: "Chiuso: array e byte",
+      corsoId: "informatica-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
+      stato: "chiuso",
     },
   },
 ];

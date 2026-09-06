@@ -44,6 +44,7 @@ export default function QuizStudente() {
         if (!attivo) return;
         if (!q) setErrore("Quiz non trovato.");
         else if (q.stato === "bozza") setErrore("Questo quiz non è ancora stato avviato dal docente.");
+        else if (q.stato === "chiuso") setErrore("Questo quiz è chiuso: non accetta più risposte.");
         else if (q.stato === "archiviato") setErrore("Questo quiz non è più disponibile.");
         else if (!q.quesiti?.length) setErrore("Questo quiz non ha ancora quesiti.");
         else setQuiz(q);
