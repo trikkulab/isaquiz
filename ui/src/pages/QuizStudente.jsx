@@ -2,18 +2,6 @@
 // nessun layout condiviso, un quesito alla volta, solo avanti (niente tasto
 // indietro), feedback immediato giusto/sbagliato ma senza spiegazione (la
 // spiegazione completa si vede dopo, in QuizRisultati).
-
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-
-import BarraQuiz from "../components/BarraQuiz.jsx";
-import QuesitoCard from "../components/QuesitoCard.jsx";
-import BottoneAvanti from "../components/BottoneAvanti.jsx";
-import { getUtenteCorrente } from "../../../data/mockAuth.js";
-import { saveAnswer } from "../../../data/risposteRepository.js";
-
-// TODO Fase 1 (seguito): sostituire con getQuizConQuesiti(quizId) non appena
-// Firestore ha dati di prova. Stessa forma dati, così il cambio è isolato qui.
 //
 // Rischio noto e accettato (vedi DECISIONI_DESIGN.md, "Flusso quiz studente"):
 // indiceCorretto arriva al client insieme al resto del quesito, per poter
@@ -23,65 +11,67 @@ import { saveAnswer } from "../../../data/risposteRepository.js";
 // Cloud Function invocate, una per risposta) e la complessità di validare
 // ogni risposta lato server. Da rivedere SOLO se il problema si presenta
 // concretamente, non preventivamente.
-const QUIZ_MOCK = {
-  id: "demo",
-  titolo: "Verifica: il Rinascimento",
-  materia: "Storia",
-  docente: "Prof. Rossi",
-  quesiti: [
-    {
-      id: "d1",
-      testo: "In quale città nasce il Rinascimento italiano?",
-      opzioni: ["Venezia", "Firenze", "Roma", "Milano"],
-      indiceCorretto: 1,
-      argomento: "Contesto storico",
-      spiegazione:
-        "Firenze, grazie al mecenatismo di famiglie come i Medici, fu il centro propulsore del Rinascimento tra '400 e '500.",
-    },
-    {
-      id: "d2",
-      testo: "Chi ha dipinto la Gioconda?",
-      opzioni: ["Michelangelo", "Raffaello", "Leonardo da Vinci", "Botticelli"],
-      indiceCorretto: 2,
-      argomento: "Arte",
-      spiegazione: "La Gioconda (Monna Lisa) è un dipinto di Leonardo da Vinci, realizzato tra il 1503 e il 1519.",
-    },
-    {
-      id: "d3",
-      testo: "Quale famiglia fiorentina finanziò molti artisti del Rinascimento?",
-      opzioni: ["I Borgia", "I Medici", "I Visconti", "Gli Sforza"],
-      indiceCorretto: 1,
-      argomento: "Mecenatismo",
-      spiegazione:
-        "I Medici, potente famiglia di banchieri fiorentini, finanziarono artisti come Botticelli e Michelangelo.",
-    },
-    {
-      id: "d4",
-      testo: "Cosa si intende per 'prospettiva' in pittura?",
-      opzioni: [
-        "Una tecnica per mescolare i colori",
-        "Un modo di rappresentare la profondità sulla tela",
-        "Il contorno scuro delle figure",
-        "Un tipo di pennello",
-      ],
-      indiceCorretto: 1,
-      argomento: "Tecniche pittoriche",
-      spiegazione:
-        "La prospettiva è la tecnica geometrica che permette di rappresentare la profondità e lo spazio tridimensionale su una superficie piana.",
-    },
-  ],
-};
+
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import BarraQuiz from "../components/BarraQuiz.jsx";
+import QuesitoCard from "../components/QuesitoCard.jsx";
+import BottoneAvanti from "../components/BottoneAvanti.jsx";
+import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { getQuizConQuesiti } from "../../../data/quizRepository.js";
+import { saveAnswer } from "../../../data/risposteRepository.js";
 
 export default function QuizStudente() {
   const { quizId } = useParams();
   const navigate = useNavigate();
 
   const studente = getUtenteCorrente("studente");
-  const quiz = QUIZ_MOCK;
+
+  const [quiz, setQuiz] = useState(null);
+  const [caricamento, setCaricamento] = useState(true);
+  const [errore, setErrore] = useState(null);
 
   const [indiceQuesito, setIndiceQuesito] = useState(0);
   const [indiceSelezionato, setIndiceSelezionato] = useState(null);
   const [risposte, setRisposte] = useState({}); // { [quesitoId]: indiceSelezionato }
+
+  useEffect(() => {
+    let attivo = true;
+    (async () => {
+      try {
+        const q = await getQuizConQuesiti(quizId);
+        if (!attivo) return;
+        if (!q) setErrore("Quiz non trovato.");
+        else if (!q.quesiti?.length) setErrore("Questo quiz non ha ancora quesiti.");
+        else setQuiz(q);
+      } catch (err) {
+        if (attivo) setErrore("Impossibile caricare il quiz.");
+        console.error(err);
+      } finally {
+        if (attivo) setCaricamento(false);
+      }
+    })();
+    return () => {
+      attivo = false;
+    };
+  }, [quizId]);
+
+  if (caricamento) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 text-[#1e1b2e]/60">
+        Caricamento del quiz…
+      </div>
+    );
+  }
+
+  if (errore) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-[560px] items-center px-4 text-center">
+        <p className="text-[#1e1b2e]/70">{errore}</p>
+      </div>
+    );
+  }
 
   const quesitoCorrente = quiz.quesiti[indiceQuesito];
   const ultimoQuesito = indiceQuesito === quiz.quesiti.length - 1;
@@ -91,7 +81,7 @@ export default function QuizStudente() {
 
     setIndiceSelezionato(indice);
     setRisposte((precedenti) => ({ ...precedenti, [quesitoCorrente.id]: indice }));
-    saveAnswer(quiz.id ?? quizId, studente.id, quesitoCorrente.id, {
+    saveAnswer(quiz.id, studente.id, quesitoCorrente.id, {
       opzioneScelta: indice,
     });
   }
@@ -99,10 +89,10 @@ export default function QuizStudente() {
   function handleAvanti() {
     if (ultimoQuesito) {
       // Lo studente ha appena finito: passiamo quiz + risposte già in memoria,
-      // così QuizRisultati non deve rileggere nulla (vedi commento nello stub
-      // originale). Se la pagina viene aperta senza questo state (refresh,
-      // link diretto), QuizRisultati lo gestisce con un fallback proprio.
-      navigate(`/quiz/${quiz.id ?? quizId}/risultati`, { state: { quiz, risposte } });
+      // così QuizRisultati non deve rileggere nulla. Se la pagina viene aperta
+      // senza questo state (refresh, link diretto), QuizRisultati lo gestisce
+      // con un fallback proprio.
+      navigate(`/quiz/${quiz.id}/risultati`, { state: { quiz, risposte } });
       return;
     }
     setIndiceQuesito((i) => i + 1);

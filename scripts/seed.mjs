@@ -73,6 +73,20 @@ const docentiCorso = corsi.map((c) => ({
   data: { docenteId: DOCENTE_ID, corsoId: c.id, ruolo: "titolare" },
 }));
 
+// Quiz di prova già "attivo": /quiz/quiz-prova-rinascimento è navigabile
+// subito, senza doverlo comporre da CreaQuiz ogni volta. `quesiti` referenzia
+// versioni specifiche (i seed sono tutti a -v0).
+const quizProva = {
+  id: "quiz-prova-rinascimento",
+  data: {
+    titolo: "Verifica: il Rinascimento",
+    corsoId: "storia-3a-2526",
+    autoreId: DOCENTE_ID,
+    quesiti: ["seed-storia-1-v0", "seed-storia-2-v0", "seed-storia-3-v0", "seed-storia-4-v0"],
+    stato: "attivo",
+  },
+};
+
 // --- quesiti di prova --------------------------------------------------------
 // Nota: i quesiti hanno id fisso qui sotto solo per rendere il seed idempotente.
 // Nell'app i quesiti creati dal docente useranno addDoc (id auto).
@@ -177,12 +191,18 @@ async function main() {
     });
   }
 
+  batch.set(db.doc(`quiz/${quizProva.id}`), {
+    ...quizProva.data,
+    creato: FieldValue.serverTimestamp(),
+  });
+
   await batch.commit();
 
   console.log(`Seed completato su ${process.env.FIRESTORE_EMULATOR_HOST} (progetto ${PROJECT_ID}).`);
   console.log(`  config/current, utenti/${DOCENTE_ID}, classi/3A`);
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
   console.log(`  quesiti: ${quesiti.length}`);
+  console.log(`  quiz: ${quizProva.id} (stato ${quizProva.data.stato}) — /quiz/${quizProva.id}`);
 }
 
 main().catch((err) => {

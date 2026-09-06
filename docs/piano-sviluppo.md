@@ -32,13 +32,15 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
 - Interfaccia docente: comporre un quiz da un elenco di quesiti e salvarlo
   come bozza — fatto
 - Pubblicazione quiz (`stato: attivo`) + generazione QR code/link per studenti — da fare
-- Interfaccia studente: aprire il quiz e rispondere — fatto su dati mock,
-  da cablare su Firestore (`getQuizConQuesiti`)
+- Interfaccia studente: aprire il quiz e rispondere — fatto, su Firestore
+  (`getQuizConQuesiti`)
 - Cloud Function: calcolo del punteggio lato server — stub, calcolo ancora client
 - Interfaccia docente: risultati in tempo reale — da fare
-- Repository /data: `quizRepository` (getQuiz, creaQuiz), `quesitiRepository`
-  (getBancaDocente, getQuesito, creaQuesito, salvaNuovaVersione, forkQuesito),
-  `corsiRepository` (getCorsiDocente), `risposteRepository` (saveAnswer — stub)
+- Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, creaQuiz),
+  `quesitiRepository` (getBancaDocente, getQuesito, creaQuesito,
+  salvaNuovaVersione, forkQuesito), `corsiRepository` (getCorso,
+  getCorsiDocente), `utentiRepository` (getUtente), `risposteRepository`
+  (saveAnswer — stub)
 
 ### Fase 2 — Login vero
 - Firebase Auth con provider Google

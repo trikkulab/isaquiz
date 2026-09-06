@@ -106,7 +106,9 @@ ora si lavora con Tailwind puro.
 
 - **Nessun componente in `ui/` accede a Firestore direttamente.** Sempre tramite
   i moduli in `data/` (`quizRepository.js`, `quesitiRepository.js`,
-  `corsiRepository.js`, `risposteRepository.js`). Se un componente ha bisogno
+  `corsiRepository.js`, `utentiRepository.js`, `risposteRepository.js`). I
+  repository possono chiamarsi tra loro per assemblare (es. `getQuizConQuesiti`
+  legge quiz + quesiti + corso + utente). Se un componente ha bisogno
   di un nuovo modo di leggere/scrivere dati, si aggiunge una funzione al
   repository giusto, non una chiamata Firestore inline. L'SDK Firebase è
   dipendenza di `data/package.json` (non di `ui/`); `data/firebaseClient.js` è
@@ -198,20 +200,23 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 - [x] `ui/src/pages/QuizRisultatiPagina.jsx` — contenitore "pagina intera" per
       `QuizRisultati` (route `/quiz/:quizId/risultati`), unico punto che monta
       `components/CreditoTecnico.jsx` (testo da `config/testi.js`)
-- [ ] `QuizStudente.jsx` gira ancora su `QUIZ_MOCK` hardcoded, non su Firestore
-      — va cablato su `getQuizConQuesiti(quizId)` (ancora stub in
-      `quizRepository.js`). È il prossimo passo naturale ora che esistono quiz
-      veri creabili da `CreaQuiz`.
-- [x] `data/quizRepository.js` (`getQuiz`, `creaQuiz` → stato `"bozza"`),
-      `data/quesitiRepository.js` e nuovo `data/corsiRepository.js`
-      (`getCorsiDocente`, due letture assemblate) implementati su Firestore.
+- [x] `QuizStudente.jsx` cablato su Firestore (`getQuizConQuesiti(quizId)`),
+      niente più `QUIZ_MOCK`. Stati loading / "quiz non trovato" / "senza
+      quesiti". `BarraQuiz` e `QuizRisultati` mostrano `materia · docente`
+      solo se presenti. Nessun gate su `stato` (arriva con `avviaQuiz`).
+- [x] `data/quizRepository.js` (`getQuiz`, `getQuizConQuesiti` — risolve i
+      quesiti in ordine + materia dal corso + docente dall'autore, "niente
+      JOIN"; `creaQuiz` → `stato: "bozza"`), `data/quesitiRepository.js`,
+      `data/corsiRepository.js` (`getCorso`, `getCorsiDocente`), nuovo
+      `data/utentiRepository.js` (`getUtente`, `nomeVisibile`).
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
       (ex `getQuesitiDocente`) raggruppa per `baseId` e ritorna solo l'ultima
       versione; `getQuesito(id)` risolve qualsiasi versione esatta;
       `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
       +1), `forkQuesito` (baseId nuovo, autore corrente); `idProssimaVersione`
-      (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `getQuizConQuesiti`,
-      `avviaQuiz`, `archiviaQuiz`, tutto `risposteRepository.js`.
+      (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `avviaQuiz`,
+      `archiviaQuiz`, tutto `risposteRepository.js`. Seed: quiz di prova
+      `quiz-prova-rinascimento` (`stato: attivo`) → `/quiz/quiz-prova-rinascimento`.
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
@@ -229,10 +234,13 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       risultati). Dopo il salvataggio, `CreaQuiz` mostra solo un pannello di
       conferma inline, non naviga.
 
-Prossimo passo naturale: **cablare `QuizStudente.jsx` su Firestore**
-(`getQuizConQuesiti`) per uscire da `QUIZ_MOCK`, oppure la fetta successiva di
-`CreaQuiz` (avvio quiz + QR). In alternativa chiudere la coda della Fase 0
-(hosting statico).
+Prossimo passo naturale: **fetta successiva di `CreaQuiz` — `avviaQuiz`**
+(`stato: bozza → attivo`, immutabile da lì) + generazione QR/link per gli
+studenti, così il giro docente→studente si chiude. Poi `DocenteHome.jsx`
+(elenco quiz/bozze, ingresso a CreaQuiz, accesso ai risultati). In
+alternativa chiudere la coda della Fase 0 (hosting statico). Il fallback di
+`QuizRisultati` su accesso diretto (senza `state` da `QuizStudente`) resta da
+fare quando `risposteRepository` sarà reale.
 
 ## Cosa NON fare in questa fase
 

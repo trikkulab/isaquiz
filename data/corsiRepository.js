@@ -9,6 +9,12 @@
 import { db } from "./firebaseClient.js";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 
+export async function getCorso(corsoId) {
+  if (!corsoId) return null;
+  const snap = await getDoc(doc(db, "corsi", corsoId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
 export async function getCorsiDocente(docenteId) {
   // "Niente JOIN": prima le righe di collegamento, poi i corsi, assemblati qui.
   const legami = await getDocs(

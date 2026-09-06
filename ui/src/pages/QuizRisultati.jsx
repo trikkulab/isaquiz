@@ -43,9 +43,11 @@ export default function QuizRisultati() {
   return (
     <div className="mx-auto max-w-[560px] px-4 py-6">
       <header className="mb-6 rounded-[22px] bg-gradient-to-br from-primario to-primario-scuro px-5 py-6 text-white shadow-morbida">
-        <p className="text-[13px] opacity-85">
-          {quiz.materia} · {quiz.docente}
-        </p>
+        {[quiz.materia, quiz.docente].some(Boolean) && (
+          <p className="text-[13px] opacity-85">
+            {[quiz.materia, quiz.docente].filter(Boolean).join(" · ")}
+          </p>
+        )}
         <h1 className="mt-1 font-titoli text-xl font-bold">{quiz.titolo}</h1>
         <p className="mt-3 font-titoli text-3xl font-extrabold">
           {risposteCorrette} / {quiz.quesiti.length}

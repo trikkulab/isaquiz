@@ -42,9 +42,11 @@ export default function BarraQuiz({ studente, quiz, corrente, totale }) {
 
       <div className="mt-3 flex flex-col items-start gap-0.5">
         <span className="font-titoli text-[17px] font-bold">{quiz.titolo}</span>
-        <span className="text-[13px] opacity-85">
-          {quiz.materia} · {quiz.docente}
-        </span>
+        {[quiz.materia, quiz.docente].some(Boolean) && (
+          <span className="text-[13px] opacity-85">
+            {[quiz.materia, quiz.docente].filter(Boolean).join(" · ")}
+          </span>
+        )}
       </div>
 
       <div
