@@ -18,19 +18,27 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
 ## Dettaglio per fase
 
 ### Fase 0 — Setup iniziale
-- Repository con cartelle /ui, /data, /functions
-- Collezioni Firestore definite (quiz, domande, risposte, classi, badge), senza popolarle
+- Repository con cartelle /ui, /data, /functions (+ /scripts e package.json radice per il tooling)
+- Schema Firestore definito (`quesiti`, `quiz`, `risposte`, `corsi`, `classi`,
+  `utenti`, `config`, `docenti_corso`, `badge`) — vedi `isaquiz_ERD.md`
+- Emulatore Firestore + dati di prova idempotenti (`scripts/seed.mjs`,
+  `npm run emu` / `npm run seed`), niente progetto Firebase reale
 - Modulo mock auth (costante docente/studente)
-- Hosting statico del frontend (GitHub Pages o Cloudflare Pages)
+- Hosting statico del frontend (GitHub Pages o Cloudflare Pages) — ancora da fare
 
 ### Fase 1 — Somministrazione quiz (MVP)
-- Interfaccia docente: creare domande manualmente
-- Interfaccia docente: comporre un quiz da un elenco di domande
-- Generazione QR code/link per accesso studenti
-- Interfaccia studente: aprire il quiz e rispondere
-- Cloud Function: calcolo del punteggio lato server
-- Interfaccia docente: risultati in tempo reale
-- Repository /data: getQuiz, saveAnswer, getResults
+- Interfaccia docente: creare quesiti manualmente — fatto (`CreaQuiz.jsx`),
+  con versionamento (`baseId`/`versione`) e fork
+- Interfaccia docente: comporre un quiz da un elenco di quesiti e salvarlo
+  come bozza — fatto
+- Pubblicazione quiz (`stato: attivo`) + generazione QR code/link per studenti — da fare
+- Interfaccia studente: aprire il quiz e rispondere — fatto su dati mock,
+  da cablare su Firestore (`getQuizConQuesiti`)
+- Cloud Function: calcolo del punteggio lato server — stub, calcolo ancora client
+- Interfaccia docente: risultati in tempo reale — da fare
+- Repository /data: `quizRepository` (getQuiz, creaQuiz), `quesitiRepository`
+  (getBancaDocente, getQuesito, creaQuesito, salvaNuovaVersione, forkQuesito),
+  `corsiRepository` (getCorsiDocente), `risposteRepository` (saveAnswer — stub)
 
 ### Fase 2 — Login vero
 - Firebase Auth con provider Google

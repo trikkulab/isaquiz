@@ -35,6 +35,13 @@ o file `.css` per componente. shadcn/ui (o altre librerie di componenti) non anc
 quando si affronta la pagina statistiche (probabile lato docente, non
 studente — l'estetica di default è più "pannello" che "giocosa").
 
+**Sviluppo locale**: quattro `package.json` — radice (tooling: `firebase-tools`,
+`firebase-admin`; script `npm run emu` / `npm run seed`), `data/` (SDK
+Firebase), `ui/` (React/Vite), `functions/`. Si lavora sull'**emulatore
+Firestore** (progetto `demo-isaquiz`, nessun progetto Firebase reale): `npm run
+emu` avvia emulatore + Emulator UI (:4000), `npm run seed` (`scripts/seed.mjs`)
+popola i dati di prova, `cd ui && npm run dev`. Dettagli in `README.md`.
+
 ## Styling
 
 **Tailwind CSS**, classi di utilità direttamente nei componenti — niente file
@@ -99,9 +106,12 @@ ora si lavora con Tailwind puro.
 
 - **Nessun componente in `ui/` accede a Firestore direttamente.** Sempre tramite
   i moduli in `data/` (`quizRepository.js`, `quesitiRepository.js`,
-  `risposteRepository.js`). Se un componente ha bisogno di un nuovo modo di
-  leggere/scrivere dati, si aggiunge una funzione al repository giusto, non una
-  chiamata Firestore inline.
+  `corsiRepository.js`, `risposteRepository.js`). Se un componente ha bisogno
+  di un nuovo modo di leggere/scrivere dati, si aggiunge una funzione al
+  repository giusto, non una chiamata Firestore inline. L'SDK Firebase è
+  dipendenza di `data/package.json` (non di `ui/`); `data/firebaseClient.js` è
+  l'unico `initializeApp()` e si collega all'emulatore quando
+  `VITE_USE_FIRESTORE_EMULATOR === "true"`.
 - **Mock auth attiva** (`data/mockAuth.js`, funzione `getUtenteCorrente()`).
   NON collegare Firebase Auth reale finché non richiesto esplicitamente — è un
   task pianificato per la Fase 2, non da anticipare. Nessuno studente deve
@@ -138,6 +148,25 @@ ora si lavora con Tailwind puro.
   client. Ogni quesito generato resta in stato di bozza finché il docente non
   lo valida esplicitamente ("human in the loop": mai pubblicare quesiti IA
   senza revisione).
+- **Un quesito non si modifica mai in place.** L'id è `baseId-vN` (N intero,
+  senza padding); modificare crea sempre la versione successiva. Se l'utente
+  corrente è l'autore, la nuova versione resta sotto lo stesso `baseId`; se
+  non lo è (quesito preso dalla banca condivisa), la modifica crea un
+  `baseId` nuovo con l'utente corrente come autore (fork). La banca quesiti
+  in UI mostra e permette di modificare solo l'ultima versione per `baseId`;
+  le versioni precedenti restano raggiungibili solo per id esatto, da un
+  `quiz.quesiti` che le referenzia — mai in banca, mai in ricerca. Regola
+  completa e motivazione in `DECISIONI_DESIGN.md`, "Versionamento dei
+  quesiti".
+- **Un quiz è modificabile e cancellabile solo finché `stato: bozza`.** La
+  pubblicazione (`stato: attivo`, generazione del QR) è un trigger unico e
+  immediato: da quel momento il quiz è immutabile e permanente, niente edit
+  né delete fisico — coerente con "nessuna riga storica si sovrascrive" già
+  in vigore per classi/corsi/iscrizioni. Per riusare un quiz attivo (altra
+  classe, variante) si duplica in un nuovo quiz indipendente (`stato:
+  bozza`), mai si modifica l'originale. Non ancora implementato in UI
+  (nessun bottone di pubblicazione/duplicazione esiste); regola completa in
+  `DECISIONI_DESIGN.md`, "Stati del quiz".
 
 ## Stato attuale del progetto
 
@@ -174,17 +203,28 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `quizRepository.js`). È il prossimo passo naturale ora che esistono quiz
       veri creabili da `CreaQuiz`.
 - [x] `data/quizRepository.js` (`getQuiz`, `creaQuiz` → stato `"bozza"`),
-      `data/quesitiRepository.js` (`getQuesitiDocente`, `getQuesito`,
-      `creaQuesito`) e nuovo `data/corsiRepository.js` (`getCorsiDocente`,
-      due letture assemblate) implementati su Firestore. Restano stub:
-      `getQuizConQuesiti`, `avviaQuiz`, `chiudiQuiz`, tutto `risposteRepository.js`.
+      `data/quesitiRepository.js` e nuovo `data/corsiRepository.js`
+      (`getCorsiDocente`, due letture assemblate) implementati su Firestore.
+      Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
+      (ex `getQuesitiDocente`) raggruppa per `baseId` e ritorna solo l'ultima
+      versione; `getQuesito(id)` risolve qualsiasi versione esatta;
+      `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
+      +1), `forkQuesito` (baseId nuovo, autore corrente); `idProssimaVersione`
+      (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `getQuizConQuesiti`,
+      `avviaQuiz`, `archiviaQuiz`, tutto `risposteRepository.js`.
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
-- [x] `CreaQuiz.jsx` — fetta "componi quiz": selettore corso, crea quesiti
-      manuali, aggiungi/rimuovi quesiti dalla banca, "Salva bozza"
-      (`creaQuiz` → `stato: "bozza"`). **Fuori scope in questa fetta**: avvio
-      quiz (`stato: "attivo"`), generazione QR/link per gli studenti.
+- [x] `CreaQuiz.jsx` — fetta "componi quiz": selettore corso, banca quesiti
+      con ricerca/filtro (materia, argomento) e contenitore ridimensionabile,
+      form quesito, aggiungi/rimuovi dal quiz, "Salva bozza" (`creaQuiz` →
+      `stato: "bozza"`). Click sulla card di un quesito → lo carica nel form
+      (contenuto editabile, materia/versione/autore in sola lettura); i
+      bottoni diventano "Salva nuova versione" + "Duplica come nuovo quesito"
+      (autore = utente) o "Duplica come mio quesito" (autore diverso — branch
+      per ora irraggiungibile: la banca contiene solo i quesiti dell'utente
+      finché non c'è `getQuesitiCondivisi`, Fase 4). **Fuori scope**: avvio
+      quiz (`stato: "attivo"`), QR/link per gli studenti.
 - [ ] `DocenteHome.jsx` non iniziata (elenco quiz/bozze, ingresso a CreaQuiz,
       risultati). Dopo il salvataggio, `CreaQuiz` mostra solo un pannello di
       conferma inline, non naviga.

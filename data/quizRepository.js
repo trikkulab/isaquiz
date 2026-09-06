@@ -46,9 +46,13 @@ export async function creaQuiz({ titolo, corsoId, docenteId, quesiti }) {
 }
 
 export async function avviaQuiz(quizId) {
-  // TODO fetta successiva: stato -> "attivo" + generazione codice/QR per gli studenti
+  // TODO fetta successiva: stato "bozza" -> "attivo", coincide con la
+  // pubblicazione (generazione del QR). Da quel momento il quiz è immutabile
+  // e permanente. Vedi DECISIONI_DESIGN.md, "Stati del quiz".
 }
 
-export async function chiudiQuiz(quizId) {
-  // TODO fetta successiva: stato -> "chiuso"
+export async function archiviaQuiz(quizId) {
+  // TODO fetta successiva (opzionale, non MVP): stato "attivo" -> "archiviato".
+  // Non cancella nulla: toglie solo il quiz dalle liste attive del docente,
+  // il riferimento resta intatto per RISPOSTA/QuizRisultati.
 }

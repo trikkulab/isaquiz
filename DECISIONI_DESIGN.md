@@ -29,6 +29,17 @@ con Google si collega solo alla fine (Fase 2 del piano di sviluppo). Nessuno
 studente deve usare la piattaforma prima che il login vero sia attivo — è una
 scelta didattica, non solo tecnica: i ragazzi vedono solo il prodotto finito.
 
+**Emulatore Firestore, non un progetto Firebase reale, finché non serve.** Lo
+sviluppo gira sull'emulatore (`firebase-tools`, progetto `demo-isaquiz` — il
+prefisso `demo-` fa sì che l'emulatore non chieda credenziali né contatti
+servizi reali). `scripts/seed.mjs` (usa `firebase-admin`) popola dati di prova
+in modo idempotente. Il tooling vive in un `package.json` alla radice
+(`npm run emu`, `npm run seed`); l'SDK Firebase client è dipendenza di
+`data/package.json`, non di `ui/`, perché solo `data/` parla con Firestore.
+`firestore.rules` è un placeholder aperto (`allow read, write: if true`): valido
+SOLO in locale, le regole vere legate a `request.auth` arrivano in Fase 2 —
+niente deploy su un progetto reale con quel blocco attivo.
+
 ## Modello dati: classi, corsi, iscrizioni (multi-anno)
 
 **Corso, non classe, come contenitore dei quiz.** Sul modello di Google
@@ -236,8 +247,99 @@ non italofoni), va trattato come una decisione nuova da riprendere da capo,
 non come "attivare" un'infrastruttura i18n lasciata pronta in previsione:
 nessuna struttura di questo tipo va predisposta preventivamente nel codice.
 
+## Versionamento dei quesiti
+
+**Un quesito non si modifica mai in place: modificarlo crea sempre la
+versione successiva.** L'id di un quesito è `baseId` + `-v` + numero di
+versione, senza padding (es. `fgkskbf8jbwekfijasd-v0`, poi `-v1`, `-v2`, ...,
+`-v10`...). Il campo `versione` (numero intero) è duplicato sul documento
+stesso, non ricavato via parsing dell'id — è la fonte di verità per
+ordinamento e confronto; il suffisso nell'id serve solo a leggibilità/debug e
+a costruire l'id per concatenazione (`` `${baseId}-v${versione}` ``), non è
+mai usato per ordinare o confrontare versioni.
+
+Perché: `quiz.quesiti` contiene id di quesiti specifici (vedi
+`isaquiz_ERD.md`), quindi un quiz già somministrato deve continuare a
+mostrare esattamente il testo/opzioni visti dallo studente in quel momento,
+per sempre. Un edit in place lo romperebbe silenziosamente — sia per i propri
+quiz passati, sia per quelli di un collega che avesse preso lo stesso quesito
+dalla banca condivisa.
+
+**Chi può creare una nuova versione, e sotto quale `baseId`:**
+
+- **Autore originale** (`quesito.autoreId === utenteCorrente.id`): la
+  modifica crea la versione successiva sotto lo **stesso** `baseId`.
+- **Non autore** (quesito preso dalla banca condivisa, `condivisa: true`):
+  la modifica crea un **nuovo `baseId`**, con l'utente corrente come
+  `autoreId` — di fatto un fork/copia propria. Non si tocca mai la lineage
+  di un quesito altrui.
+
+**Banca quesiti (elenco in `CreaQuiz`): mostra solo l'ultima versione per
+`baseId`.** Le versioni precedenti restano su Firestore ma non compaiono
+nella lista né sono ricercabili — sono raggiungibili solo per id esatto, da
+un `quiz.quesiti` che le referenzia. `quesitiRepository.js` continua a dover
+risolvere qualsiasi id di qualsiasi versione (serve a `QuizRisultati`), ma la
+funzione di listing per la banca filtra/raggruppa per `baseId` tenendo solo
+la `versione` massima. Alla scala attuale, filtro lato client dopo fetch
+completo — niente indice composto Firestore per ora.
+
+**Modificabile solo l'ultima versione**: coerente per definizione, dato che
+"modificare" *è* creare la versione successiva a partire dall'ultima. Se un
+vecchio quesito viene raggiunto da dentro un quiz passato, è sempre in sola
+lettura (`QuizRisultati` resta "contenuto puro", nessuna azione di editing).
+
+**Versioni orfane**: se un quesito viene modificato senza essere mai stato
+usato in un quiz, la versione precedente resta su Firestore inutilizzata (non
+in banca, non referenziata). Non è un bug, è spazio trascurabile alla scala
+attuale; un eventuale cleanup è un job separato, non da gestire nel flusso di
+`CreaQuiz`.
+
+## Stati del quiz
+
+**Enum `QUIZ.stato`: `bozza` → `attivo` → (eventuale) `archiviato`.**
+
+- **`bozza`**: modificabile liberamente (aggiungere/togliere quesiti, cambiare
+  titolo/corso) e cancellabile per davvero (delete fisico) — non è mai
+  esistito per nessuno studente, nessun problema di coerenza storica.
+- **`attivo`**: il trigger è unico e coincide con la pubblicazione — il
+  momento in cui viene generato il QR code. Non esiste uno stato intermedio
+  "pubblicato ma non ancora somministrato": per il principio guida "pochi
+  passaggi dal contenuto della lezione al quiz" non c'è un caso d'uso reale
+  in cui un docente pubblica e aspetta prima di dare il via. Da questo
+  momento il quiz è **immutabile e permanente**: niente edit, niente delete
+  fisico — coerente con il resto del progetto (nessuna riga storica si
+  sovrascrive o si cancella, vedi "Nessuna migrazione dati tra anni
+  scolastici" sopra; `corretta` su `RISPOSTA` scrivibile solo server-side).
+- **`archiviato`** (eventuale, non necessario per l'MVP): non toglie il quiz
+  dal database, lo toglie solo dalle liste attive del docente. Il riferimento
+  resta intatto per `RISPOSTA` e `QuizRisultati`.
+
+**Duplicazione, non modifica, per riusare un quiz attivo.** Per somministrare
+lo stesso quiz a un'altra classe, o una variante leggermente diversa, si
+duplica: nuovo documento `QUIZ` (nuovo id, `stato: bozza`), `corsoId` anche
+diverso, `quesiti` copiato come array di riferimenti (si copiano gli id, non
+i quesiti stessi). Da lì è un quiz indipendente, segue il proprio ciclo
+bozza→attivo. Nessun legame dati con l'originale dopo la duplicazione — non
+serve tracciare "duplicato da". Lo stesso vale per il fork di un quesito
+(`forkQuesito`: nuovo `baseId`, autore = utente corrente): non si registra da
+quale quesito derivi.
+
+**`QUESITO.fonte`: campo presente nello schema, significato non ancora
+fissato.** Oggi ogni scrittura da `CreaQuiz` (`creaQuesito`,
+`salvaNuovaVersione`, `forkQuesito`) lo lascia a `"manuale"`. Non va usato per
+la provenienza del fork né per altro finché non c'è una decisione esplicita —
+quando la Fase 3 introdurrà i quesiti generati dall'IA servirà probabilmente un
+valore tipo `"ia"`, ma è quella la sede per deciderlo.
+
+**Non ancora implementato**: bottoni di pubblicazione/cancellazione/
+duplicazione in UI — aspettano il flusso di gestione quiz lato docente
+(`CreaQuiz.jsx` oggi ha solo "Salva bozza"). Questa sezione fissa la regola
+per quando si arriva a costruirla.
+
+
 ## Non ancora deciso
 
 - Strategia branch Git (`main` / `dev` / `rel`) — da chiarire cosa rappresenta
   `rel` prima di iniziare a usarlo attivamente.
 - Libreria di grafici per le statistiche (candidato: `recharts`, già nello stack).
+

@@ -9,9 +9,12 @@ Vedi il Project Charter e il Piano di sviluppo (documenti separati) per la visio
 ```
 isaquiz/
 ├── ui/            Frontend (SPA). Non sa nulla di Firestore: parla solo con /data.
-├── data/          Unico punto di accesso al database. Se cambia il DB, cambia solo qui.
-└── functions/     Cloud Functions — solo per ciò che richiede un segreto o fiducia
-                   (proxy verso il provider IA, calcolo del punteggio lato server).
+├── data/          Unico punto di accesso al database (SDK Firebase qui, non in ui/).
+│                  Se cambia il DB, cambia solo qui. Ha un proprio package.json.
+├── functions/     Cloud Functions — solo per ciò che richiede un segreto o fiducia
+│                  (proxy verso il provider IA, calcolo del punteggio lato server).
+├── scripts/       seed.mjs — popola l'emulatore Firestore con dati di prova.
+└── package.json   Tooling di sviluppo (emulatore, seed): npm run emu / npm run seed.
 ```
 
 ## Principio guida per lo sviluppo

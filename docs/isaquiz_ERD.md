@@ -1,6 +1,6 @@
 # Diagramma ERD — isaquiz
 
-*Ultimo aggiornamento: 27 agosto 2026.*
+*Ultimo aggiornamento: 6 settembre 2026.*
 
 Diagramma concettuale (mermaid) dello schema dati, versione con corsi per
 materia, classi come unità amministrativa, e utente unico multi-ruolo.
@@ -61,9 +61,11 @@ erDiagram
         string nomeIstituto
         string codiceMeccanografico
     }
-
+        
     QUESITO {
         string id
+        string baseId
+        number versione
         string autoreId
         string testo
         string opzioni
@@ -121,6 +123,12 @@ erDiagram
 
 ## Note di lettura
 
+- **Nomi delle collezioni Firestore**: minuscolo, plurale dove naturale. Già
+  create (in emulatore): `utenti`, `classi`, `corsi`, `docenti_corso`,
+  `quesiti`, `quiz`, `config` (documento unico `current`). Da creare con la
+  stessa convenzione: `risposte`, `badge`, `docenti_classe`,
+  `iscrizioni_corso`, `iscrizioni_classe`. Il diagramma qui sopra usa i nomi
+  in maiuscolo solo come notazione ER.
 - **`UTENTE` è una tabella sola** per studenti, docenti e amministratore. Il
   campo `ruolo` è solo la cache per la dashboard di default al login — la
   fonte di verità per un contesto specifico (un corso, una classe) è sempre
@@ -149,3 +157,18 @@ erDiagram
   `opzioni` è l'elenco delle alternative di scelta multipla; `indiceCorretto`
   è la posizione (0-based) di quella giusta dentro `opzioni`. Vedi
   `DECISIONI_DESIGN.md`, "Terminologia", sul perché non si chiamano "risposte".
+- **`QUESITO.id` è `baseId` + `-v` + numero di versione**, senza padding
+  (es. `xxxx-v0`, `xxxx-v1`...); `versione` è duplicato come campo numerico,
+  fonte di verità per ordinamento/confronto — il suffisso nell'id è solo
+  leggibilità e concatenazione, mai usato per ordinare. Un quesito non si
+  modifica mai in place: la banca mostra solo l'ultima versione per
+  `baseId`, i quiz esistenti referenziano l'id completo di versione
+  specifica. Motivazione completa in `DECISIONI_DESIGN.md`, "Versionamento
+  dei quesiti".
+- **`QUESITO.fonte`** è nello schema ma il suo significato non è ancora
+  fissato: tutte le scritture attuali lo lasciano a `"manuale"`. Vedi
+  `DECISIONI_DESIGN.md`, "Stati del quiz".
+- **`QUIZ.stato`** è un enum: `bozza` → `attivo` → (eventuale) `archiviato`.
+  `bozza` è modificabile e cancellabile; `attivo` (dalla pubblicazione /
+  generazione QR) è immutabile e permanente. Dettaglio in
+  `DECISIONI_DESIGN.md`, "Stati del quiz".

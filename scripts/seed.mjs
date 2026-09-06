@@ -162,11 +162,15 @@ async function main() {
   for (const c of corsi) batch.set(db.doc(`corsi/${c.id}`), c.data);
   for (const dc of docentiCorso) batch.set(db.doc(`docenti_corso/${dc.id}`), dc.data);
 
+  // Versionamento (vedi DECISIONI_DESIGN.md): l'id documento è `${baseId}-v${versione}`.
+  // I quesiti seed partono tutti a versione 0; l'`id` qui sopra fa da baseId.
   for (const q of quesiti) {
-    const { id, ...dati } = q;
-    batch.set(db.doc(`quesiti/${id}`), {
+    const { id: baseId, ...dati } = q;
+    batch.set(db.doc(`quesiti/${baseId}-v0`), {
       ...dati,
       autoreId: DOCENTE_ID,
+      baseId,
+      versione: 0,
       condivisa: false,
       fonte: "manuale",
       creato: FieldValue.serverTimestamp(),

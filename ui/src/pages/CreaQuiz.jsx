@@ -6,11 +6,16 @@
 // informazione (vedi CLAUDE.md, "Schermate docente"). Niente accesso diretto a
 // Firestore: tutto passa dai repository in /data.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
-import { getQuesitiDocente, creaQuesito } from "../../../data/quesitiRepository.js";
+import {
+  getBancaDocente,
+  creaQuesito,
+  salvaNuovaVersione,
+  forkQuesito,
+} from "../../../data/quesitiRepository.js";
 import { creaQuiz } from "../../../data/quizRepository.js";
 
 const CAMPO =
@@ -47,7 +52,11 @@ export default function CreaQuiz() {
   const [selezionati, setSelezionati] = useState([]); // array ordinato di quesitoId
 
   const [form, setForm] = useState(FORM_VUOTO);
+  // Quesito caricato nel form dalla banca (per nuova versione / duplica).
+  // null = si sta scrivendo un quesito nuovo da zero.
+  const [quesitoBase, setQuesitoBase] = useState(null);
   const [salvandoQuesito, setSalvandoQuesito] = useState(false);
+  const formRef = useRef(null);
 
   const [salvandoBozza, setSalvandoBozza] = useState(false);
   const [quizSalvato, setQuizSalvato] = useState(null);
@@ -61,7 +70,7 @@ export default function CreaQuiz() {
       try {
         const [corsiDocente, quesitiDocente] = await Promise.all([
           getCorsiDocente(utente.id),
-          getQuesitiDocente(utente.id),
+          getBancaDocente(utente.id),
         ]);
         if (!attivo) return;
         setCorsi(corsiDocente);
@@ -135,7 +144,31 @@ export default function CreaQuiz() {
     setSelezionati((prec) => prec.filter((x) => x !== id));
   }
 
-  // --- form nuovo quesito ---------------------------------------------------
+  // --- form quesito (nuovo / nuova versione / duplica) ---------------------
+
+  // Materia mostrata nel form: per un quesito caricato dalla banca è la sua
+  // (anche se diversa dal corso corrente); per un quesito nuovo è quella del
+  // corso selezionato. Sempre in sola lettura.
+  const materiaForm = quesitoBase ? quesitoBase.materia ?? "" : materiaCorso;
+  const autoreDiverso = Boolean(quesitoBase && quesitoBase.autoreId !== utente.id);
+
+  function caricaNelForm(q) {
+    setQuesitoBase(q);
+    setForm({
+      testo: q.testo ?? "",
+      opzioni: q.opzioni?.length ? [...q.opzioni] : ["", ""],
+      indiceCorretto: q.indiceCorretto ?? 0,
+      argomento: q.argomento ?? "",
+      spiegazione: q.spiegazione ?? "",
+    });
+    setErrore(null);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function nuovoQuesitoDaZero() {
+    setQuesitoBase(null);
+    setForm(FORM_VUOTO);
+  }
 
   function setOpzione(indice, valore) {
     setForm((f) => ({
@@ -166,26 +199,53 @@ export default function CreaQuiz() {
     form.opzioni.filter((o) => o.trim() !== "").length >= OPZIONI_MIN &&
     form.opzioni[form.indiceCorretto]?.trim() !== "";
 
-  async function salvaNuovoQuesito(e) {
-    e.preventDefault();
+  // Campi di contenuto dal form: scarta le opzioni vuote riallineando l'indice
+  // della corretta.
+  function contenutoDalForm() {
+    const coppie = form.opzioni
+      .map((o, i) => ({ testo: o.trim(), corretta: i === form.indiceCorretto }))
+      .filter((c) => c.testo !== "");
+    return {
+      testo: form.testo.trim(),
+      opzioni: coppie.map((c) => c.testo),
+      indiceCorretto: Math.max(0, coppie.findIndex((c) => c.corretta)),
+      materia: materiaForm || null,
+      argomento: form.argomento.trim() || null,
+      spiegazione: form.spiegazione.trim() || null,
+    };
+  }
+
+  // Azione "primaria" del form (Invio / bottone principale):
+  //   nessun quesito caricato -> crea nuovo   |  autore diverso -> duplica
+  //   autore = utente corrente               -> nuova versione
+  function azionePrimaria() {
+    if (!quesitoBase) return "nuovo";
+    return autoreDiverso ? "fork" : "versione";
+  }
+
+  async function eseguiSalvataggioQuesito(azione) {
     if (!formValido || salvandoQuesito) return;
     setSalvandoQuesito(true);
     setErrore(null);
     try {
-      const opzioni = form.opzioni.map((o) => o.trim()).filter((o) => o !== "");
-      const quesito = {
-        testo: form.testo.trim(),
-        opzioni,
-        indiceCorretto: form.indiceCorretto,
-        materia: materiaCorso || null,
-        argomento: form.argomento.trim() || null,
-        spiegazione: form.spiegazione.trim() || null,
-        autoreId: utente.id,
-      };
-      const id = await creaQuesito(quesito);
-      setBanca((prec) => [{ id, condivisa: false, fonte: "manuale", ...quesito }, ...prec]);
-      aggiungiAlQuiz(id);
-      setForm(FORM_VUOTO);
+      const contenuto = contenutoDalForm();
+
+      if (azione === "versione") {
+        const nuovoId = await salvaNuovaVersione(quesitoBase, contenuto);
+        // Se la versione precedente era già nel quiz, il quiz punta alla nuova.
+        setSelezionati((prec) => prec.map((id) => (id === quesitoBase.id ? nuovoId : id)));
+      } else if (azione === "fork") {
+        const nuovoId = await forkQuesito(quesitoBase, contenuto, utente.id);
+        aggiungiAlQuiz(nuovoId);
+      } else {
+        const nuovoId = await creaQuesito({ ...contenuto, autoreId: utente.id });
+        aggiungiAlQuiz(nuovoId);
+      }
+
+      // Banca riletta dalla fonte di verità (raggruppata per baseId): evita
+      // ogni ricostruzione ottimistica di baseId/versione lato client.
+      setBanca(await getBancaDocente(utente.id));
+      nuovoQuesitoDaZero();
     } catch (err) {
       setErrore("Salvataggio del quesito non riuscito.");
       console.error(err);
@@ -222,7 +282,7 @@ export default function CreaQuiz() {
     setQuizSalvato(null);
     setTitolo("");
     setSelezionati([]);
-    setForm(FORM_VUOTO);
+    nuovoQuesitoDaZero();
   }
 
   // --- render ------------------------------------------------------------
@@ -359,14 +419,23 @@ export default function CreaQuiz() {
                   {bancaDisponibile.map((q) => (
                     <li
                       key={q.id}
-                      className="flex items-start justify-between gap-3 rounded-lg border border-bordo px-3 py-2"
+                      className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 ${
+                        quesitoBase?.id === q.id
+                          ? "border-primario ring-1 ring-primario"
+                          : "border-bordo"
+                      }`}
                     >
-                      <div className="min-w-0">
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() => caricaNelForm(q)}
+                        title="Apri nel form per una nuova versione o una copia"
+                      >
                         <p className="text-sm">{q.testo}</p>
                         <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
                           {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
                         </p>
-                      </div>
+                      </button>
                       <button
                         type="button"
                         className={BOTTONE_SECONDARIO}
@@ -381,9 +450,36 @@ export default function CreaQuiz() {
             )}
           </section>
 
-          <section className="rounded-xl border border-bordo bg-white p-4">
-            <h2 className="mb-3 text-sm font-semibold">Nuovo quesito</h2>
-            <form className="flex flex-col gap-3" onSubmit={salvaNuovoQuesito}>
+          <section ref={formRef} className="scroll-mt-6 rounded-xl border border-bordo bg-white p-4">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold">
+                {quesitoBase ? "Modifica quesito" : "Nuovo quesito"}
+              </h2>
+              {quesitoBase && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primario"
+                  onClick={nuovoQuesitoDaZero}
+                >
+                  Nuovo quesito da zero
+                </button>
+              )}
+            </div>
+
+            {quesitoBase && (
+              <p className="mb-3 rounded-lg bg-sfondo px-3 py-2 text-xs text-[#1e1b2e]/60">
+                Versione {quesitoBase.versione ?? 0} · autore:{" "}
+                {autoreDiverso ? "un altro docente" : "tu"}
+              </p>
+            )}
+
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                eseguiSalvataggioQuesito(azionePrimaria());
+              }}
+            >
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Testo</span>
                 <textarea
@@ -449,7 +545,7 @@ export default function CreaQuiz() {
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Materia</span>
-                  <input className={`${CAMPO} bg-sfondo`} value={materiaCorso} disabled readOnly />
+                  <input className={`${CAMPO} bg-sfondo`} value={materiaForm} disabled readOnly />
                 </label>
               </div>
 
@@ -465,10 +561,46 @@ export default function CreaQuiz() {
                 />
               </label>
 
-              <div>
-                <button type="submit" className={BOTTONE_PRIMARIO} disabled={!formValido || salvandoQuesito}>
-                  {salvandoQuesito ? "Salvataggio…" : "Aggiungi alla banca"}
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {!quesitoBase && (
+                  <button
+                    type="submit"
+                    className={BOTTONE_PRIMARIO}
+                    disabled={!formValido || salvandoQuesito}
+                  >
+                    {salvandoQuesito ? "Salvataggio…" : "Aggiungi alla banca"}
+                  </button>
+                )}
+
+                {quesitoBase && !autoreDiverso && (
+                  <>
+                    <button
+                      type="submit"
+                      className={BOTTONE_PRIMARIO}
+                      disabled={!formValido || salvandoQuesito}
+                    >
+                      {salvandoQuesito ? "Salvataggio…" : "Salva nuova versione"}
+                    </button>
+                    <button
+                      type="button"
+                      className={BOTTONE_SECONDARIO}
+                      disabled={!formValido || salvandoQuesito}
+                      onClick={() => eseguiSalvataggioQuesito("fork")}
+                    >
+                      Duplica come nuovo quesito
+                    </button>
+                  </>
+                )}
+
+                {quesitoBase && autoreDiverso && (
+                  <button
+                    type="submit"
+                    className={BOTTONE_PRIMARIO}
+                    disabled={!formValido || salvandoQuesito}
+                  >
+                    {salvandoQuesito ? "Salvataggio…" : "Duplica come mio quesito"}
+                  </button>
+                )}
               </div>
             </form>
           </section>
