@@ -36,10 +36,14 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   digitabile in alternativa al link
 - Interfaccia studente: aprire il quiz e rispondere — fatto, su Firestore
   (`getQuizConQuesiti`), solo quiz `attivo`
+- Interfaccia docente: home con elenco dei propri quiz (`DocenteHome`,
+  route `/docente`) — fatto: pubblica / elimina bozza / link-QR; manca
+  modificare una bozza e duplicare
 - Cloud Function: calcolo del punteggio lato server — stub, calcolo ancora client
 - Interfaccia docente: risultati in tempo reale — da fare
-- Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, creaQuiz,
-  avviaQuiz), `quesitiRepository` (getBancaDocente, getQuesito, creaQuesito,
+- Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, getQuizDocente,
+  creaQuiz, avviaQuiz, eliminaQuiz), `quesitiRepository` (getBancaDocente,
+  getQuesito, creaQuesito,
   salvaNuovaVersione, forkQuesito), `corsiRepository` (getCorso,
   getCorsiDocente), `utentiRepository` (getUtente), `risposteRepository`
   (saveAnswer — stub)

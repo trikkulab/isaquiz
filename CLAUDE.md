@@ -207,10 +207,12 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       docente` solo se presenti.
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
-      `creaQuiz` → `stato: "bozza"`; `avviaQuiz` — `bozza → attivo`, a senso
-      unico, scrive `avviato`), `data/quesitiRepository.js`,
-      `data/corsiRepository.js` (`getCorso`, `getCorsiDocente`), nuovo
-      `data/utentiRepository.js` (`getUtente`, `nomeVisibile`).
+      `getQuizDocente` — meta + materia, ordinati per data; `creaQuiz` →
+      `stato: "bozza"`; `avviaQuiz` — `bozza → attivo`, a senso unico, scrive
+      `avviato`; `eliminaQuiz` — delete fisico, solo in bozza),
+      `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
+      `getCorsiDocente`), nuovo `data/utentiRepository.js` (`getUtente`,
+      `nomeVisibile`).
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
       (ex `getQuesitiDocente`) raggruppa per `baseId` e ritorna solo l'ultima
       versione; `getQuesito(id)` risolve qualsiasi versione esatta;
@@ -230,20 +232,24 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       nuovo quesito" (autore = utente) o "Duplica come mio quesito" (autore
       diverso — branch per ora irraggiungibile finché non c'è
       `getQuesitiCondivisi`, Fase 4). "Salva bozza" → pannello con "Pubblica e
-      avvia il quiz" (conferma inline → `avviaQuiz`) → QR (`qrcode.react`) +
-      link `/quiz/{id}`.
-- [ ] `DocenteHome.jsx` non iniziata (elenco quiz/bozze, ingresso a CreaQuiz,
-      risultati). Dopo il salvataggio/avvio, `CreaQuiz` mostra solo un
-      pannello inline, non naviga. Manca anche: cancellare una bozza,
-      duplicare un quiz, codice breve digitabile al posto del link lungo.
+      avvia il quiz" (conferma inline → `avviaQuiz`) → `components/AccessoQuiz.jsx`
+      (QR `qrcode.react` + link `/quiz/{id}` con "Copia"), riusato in
+      DocenteHome. Dopo salva/avvia: link "I miei quiz".
+- [x] `DocenteHome.jsx` (route `/docente`) — elenco dei propri quiz
+      (`getQuizDocente`) con badge di stato, "Crea nuovo quiz", e per riga:
+      bozza → "Pubblica e avvia" (conferma inline) / "Elimina" (conferma
+      inline, `eliminaQuiz`); attivo → toggle "Link e QR" (`AccessoQuiz`).
+- [ ] Ancora da fare lato docente: **modificare una bozza** (serve caricare un
+      quiz esistente in `CreaQuiz`), **duplicare** un quiz, i **risultati**
+      (serve `risposteRepository` reale + fallback di `QuizRisultati` su
+      accesso diretto), un **codice breve** digitabile al posto del link lungo.
 
-Prossimo passo naturale: **`DocenteHome.jsx`** — elenco dei quiz del docente
-(bozze e attivi), ingresso a `CreaQuiz`, accesso ai risultati; da lì anche
-cancellazione bozza e duplicazione quiz. In alternativa chiudere la coda della
-Fase 0 (hosting statico) — serve anche perché il link/QR di `avviaQuiz` punta
-a `window.location.origin`, inutile finché gira solo su `localhost`. Il
-fallback di `QuizRisultati` su accesso diretto (senza `state`) resta da fare
-quando `risposteRepository` sarà reale.
+Prossimo passo naturale: **modificare una bozza** — dare a `CreaQuiz` un
+parametro `:quizId` opzionale che carica titolo/corso/quesiti di un quiz
+esistente e, al salvataggio, fa `update` invece di `create` (solo se ancora in
+bozza). Sblocca anche la duplica utile (duplica → modifica la copia). In
+alternativa chiudere la coda della Fase 0 (hosting statico) — serve comunque
+perché il link/QR punta a `window.location.origin`, inutile su `localhost`.
 
 ## Cosa NON fare in questa fase
 

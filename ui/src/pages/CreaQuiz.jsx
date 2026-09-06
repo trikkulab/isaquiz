@@ -7,8 +7,9 @@
 // Firestore: tutto passa dai repository in /data.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import { useNavigate } from "react-router-dom";
 
+import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
 import {
@@ -43,6 +44,7 @@ const FORM_VUOTO = {
 
 export default function CreaQuiz() {
   const utente = getUtenteCorrente();
+  const navigate = useNavigate();
 
   const [corsi, setCorsi] = useState([]);
   const [corsoId, setCorsoId] = useState("");
@@ -65,7 +67,6 @@ export default function CreaQuiz() {
   const [quizSalvato, setQuizSalvato] = useState(null);
   const [confermaAvvio, setConfermaAvvio] = useState(false);
   const [avviando, setAvviando] = useState(false);
-  const [linkCopiato, setLinkCopiato] = useState(false);
   const [errore, setErrore] = useState(null);
 
   const [filtri, setFiltri] = useState(FILTRI_VUOTI);
@@ -305,20 +306,9 @@ export default function CreaQuiz() {
     }
   }
 
-  async function copiaLink(link) {
-    try {
-      await navigator.clipboard.writeText(link);
-      setLinkCopiato(true);
-      setTimeout(() => setLinkCopiato(false), 2000);
-    } catch {
-      /* clipboard non disponibile: l'utente può selezionare il testo a mano */
-    }
-  }
-
   function creaAltro() {
     setQuizSalvato(null);
     setConfermaAvvio(false);
-    setLinkCopiato(false);
     setTitolo("");
     setSelezionati([]);
     nuovoQuesitoDaZero();
@@ -331,7 +321,6 @@ export default function CreaQuiz() {
   }
 
   if (quizSalvato) {
-    const linkQuiz = `${window.location.origin}/quiz/${quizSalvato.id}`;
     const attivo = quizSalvato.stato === "attivo";
 
     return (
@@ -353,26 +342,8 @@ export default function CreaQuiz() {
           <p className="mb-5 text-xs text-[#1e1b2e]/50">ID: {quizSalvato.id}</p>
 
           {attivo ? (
-            <div className="mb-5 flex flex-col items-center gap-3 rounded-lg border border-bordo bg-sfondo p-4">
-              <p className="text-sm font-medium">Gli studenti accedono da qui:</p>
-              <div className="rounded-lg bg-white p-3">
-                <QRCodeSVG value={linkQuiz} size={180} />
-              </div>
-              <div className="flex w-full items-center gap-2">
-                <input
-                  className={`${CAMPO} bg-white text-xs`}
-                  value={linkQuiz}
-                  readOnly
-                  onFocus={(e) => e.target.select()}
-                />
-                <button
-                  type="button"
-                  className={BOTTONE_SECONDARIO}
-                  onClick={() => copiaLink(linkQuiz)}
-                >
-                  {linkCopiato ? "Copiato" : "Copia"}
-                </button>
-              </div>
+            <div className="mb-5">
+              <AccessoQuiz quizId={quizSalvato.id} />
             </div>
           ) : confermaAvvio ? (
             <div className="mb-5 rounded-lg border border-bordo bg-sfondo p-4">
@@ -409,15 +380,23 @@ export default function CreaQuiz() {
             </button>
           )}
 
-          <button type="button" className={BOTTONE_SECONDARIO} onClick={creaAltro}>
-            Crea un altro quiz
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={BOTTONE_SECONDARIO} onClick={creaAltro}>
+              Crea un altro quiz
+            </button>
+            <button
+              type="button"
+              className={BOTTONE_SECONDARIO}
+              onClick={() => navigate("/docente")}
+            >
+              I miei quiz
+            </button>
+          </div>
         </div>
 
         {!attivo && (
           <p className="mt-4 text-xs text-[#1e1b2e]/50">
-            La bozza resta modificabile finché non la avvii. Elenco e gestione delle
-            bozze: in arrivo con <code>DocenteHome</code>.
+            La bozza resta salvata: la ritrovi (per avviarla o eliminarla) in «I miei quiz».
           </p>
         )}
       </div>

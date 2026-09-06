@@ -14,8 +14,12 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
+  query,
+  where,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -54,6 +58,25 @@ export async function getQuizConQuesiti(quizId) {
   };
 }
 
+// Quiz del docente per la sua home: solo i meta (niente risoluzione quesiti),
+// arricchiti con la materia del corso. Ordinati dal più recente.
+export async function getQuizDocente(docenteId) {
+  const snap = await getDocs(query(quizCol, where("autoreId", "==", docenteId)));
+  const quizzes = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  // Una lettura per corso distinto, non una per quiz.
+  const corsi = new Map();
+  await Promise.all(
+    [...new Set(quizzes.map((q) => q.corsoId).filter(Boolean))].map(async (cid) => {
+      corsi.set(cid, await getCorso(cid));
+    }),
+  );
+
+  return quizzes
+    .map((q) => ({ ...q, materia: corsi.get(q.corsoId)?.materia ?? null }))
+    .sort((a, b) => (b.creato?.toMillis?.() ?? 0) - (a.creato?.toMillis?.() ?? 0));
+}
+
 export async function creaQuiz({ titolo, corsoId, docenteId, quesiti }) {
   // Salva un quiz in stato "bozza". L'avvio (stato -> "attivo") e il QR sono
   // una fetta successiva: qui ci si ferma alla composizione.
@@ -79,6 +102,19 @@ export async function avviaQuiz(quizId) {
   if (snap.data().stato !== "bozza") return snap.data().stato;
   await updateDoc(ref, { stato: "attivo", avviato: serverTimestamp() });
   return "attivo";
+}
+
+export async function eliminaQuiz(quizId) {
+  // Delete FISICO — consentito SOLO in bozza: un quiz mai avviato non è
+  // esistito per nessuno studente. Un quiz attivo/archiviato non si cancella
+  // mai (vedi DECISIONI_DESIGN.md, "Stati del quiz").
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  if (snap.data().stato !== "bozza") {
+    throw new Error("Solo un quiz in bozza può essere eliminato.");
+  }
+  await deleteDoc(ref);
 }
 
 export async function archiviaQuiz(quizId) {
