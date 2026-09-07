@@ -42,17 +42,17 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   route `/docente`) — fatto: crea / modifica bozza / pubblica / chiudi ⇄
   riapri / elimina bozza / duplica / link-QR / risultati
 - Cloud Function: calcolo del punteggio lato server — stub, calcolo ancora client
-- Interfaccia docente: risultati del quiz (`RisultatiDocente`) — fatto:
-  tabella studente × punteggio + per-quesito; aggiornamento manuale, il
-  "tempo reale" (onSnapshot) è un passo successivo
+- Interfaccia docente: risultati del quiz in tempo reale (`RisultatiDocente`,
+  `ascoltaRisposteQuiz` → `onSnapshot`) — fatto: tabella studente × punteggio
+  + per-quesito, aggiornata mentre la classe risponde
 - Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, getQuizDocente,
   creaQuiz, aggiornaQuizBozza, avviaQuiz, chiudiQuiz, riapriQuiz, eliminaQuiz,
   duplicaQuiz), `codiciAccessoRepository` (getQuizIdDaCodice, getCodiceQuiz,
   generaCodiceQuiz, normalizzaCodice), `quesitiRepository` (getBancaDocente,
   getQuesito, creaQuesito, salvaNuovaVersione, forkQuesito), `corsiRepository`
-  (getCorso,
-  getCorsiDocente), `utentiRepository` (getUtente), `risposteRepository`
-  (saveAnswer, getRisposteQuiz, getRisposteStudente; getStatistichePer* → Fase 4/5)
+  (getCorso, getCorsiDocente), `utentiRepository` (getUtente),
+  `risposteRepository` (saveAnswer, getRisposteQuiz, getRisposteStudente,
+  ascoltaRisposteQuiz; getStatistichePer* → Fase 4/5)
 
 ### Fase 2 — Login vero
 - Firebase Auth con provider Google

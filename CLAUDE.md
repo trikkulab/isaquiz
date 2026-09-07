@@ -111,7 +111,10 @@ ora si lavora con Tailwind puro.
   assemblare (es. `getQuizConQuesiti` legge quiz + quesiti + corso + utente).
   Se un componente ha bisogno
   di un nuovo modo di leggere/scrivere dati, si aggiunge una funzione al
-  repository giusto, non una chiamata Firestore inline. L'SDK Firebase è
+  repository giusto, non una chiamata Firestore inline. Anche le
+  sottoscrizioni live (`onSnapshot`) passano dal repository: funzione
+  `ascolta*` che riceve callback e ritorna la funzione di annullamento (il
+  componente la chiama nel cleanup di `useEffect`). L'SDK Firebase è
   dipendenza di `data/package.json` (non di `ui/`); `data/firebaseClient.js` è
   l'unico `initializeApp()` e si collega all'emulatore quando
   `VITE_USE_FIRESTORE_EMULATOR === "true"`.
@@ -209,8 +212,9 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `components/CreditoTecnico.jsx`.
 - [x] `ui/src/pages/RisultatiDocente.jsx` (route
       `/docente/quiz/:quizId/risultati`) — tabella studente × punteggio +
-      "per quesito" (corrette/risposte). Punteggio calcolato lato client.
-      Aggiornamento manuale ("Aggiorna"); onSnapshot rimandato.
+      "per quesito" (corrette/risposte), **in tempo reale**
+      (`ascoltaRisposteQuiz` → `onSnapshot`). Punteggio calcolato lato client;
+      nomi studenti in cache; guardia anti-race tra update ravvicinati.
 - [x] `QuizStudente.jsx` cablato su Firestore (`getQuizConQuesiti(quizId)`),
       niente più `QUIZ_MOCK`. Stati loading / "non trovato" / "non ancora
       avviato" (`bozza`) / "chiuso" (`chiuso`) / "non più disponibile"
@@ -235,7 +239,8 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `nomeVisibile`), `data/risposteRepository.js` (`saveAnswer` — id
       deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
       `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
-      studenteId)`), nuovo `data/codiciAccessoRepository.js` (collezione
+      studenteId)`; `ascoltaRisposteQuiz(quizId, onDati, onErrore)` — live
+      via `onSnapshot`, ritorna l'unsubscribe), nuovo `data/codiciAccessoRepository.js` (collezione
       `codici_accesso`, id = codice: `getQuizIdDaCodice`, `getCodiceQuiz`,
       `generaCodiceQuiz` idempotente, `normalizzaCodice` pura (clemenza
       Crockford + **allowlist** all'alfabeto → output sempre id-doc valido);
@@ -280,16 +285,26 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (conferme inline); attivo → "Risultati" / "Link e QR" (`AccessoQuiz`) /
       "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri"; attivo/chiuso →
       "Duplica" (→ modifica subito la copia).
-- [ ] Ancora da fare lato docente: risultati **in tempo reale** (onSnapshot);
-      chiusura automatica a tempo; `archiviaQuiz`; la pagina statistiche vera
-      (per-argomento, adattiva — Fase 4/5). Generazione del codice di accesso
-      da irrobustire (transazione / Cloud Function) con auth/functions, Fase 2.
+- [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
+      `archiviaQuiz`; la pagina statistiche vera (per-argomento, adattiva —
+      Fase 4/5). Generazione del codice di accesso da irrobustire (transazione
+      / Cloud Function) con auth/functions, Fase 2.
 
-Prossimo passo naturale: **chiudere la coda della Fase 0 — hosting statico**
-(GitHub/Cloudflare Pages). Sblocca davvero il QR/link (oggi
-`window.location.origin` = `localhost`, irraggiungibile da un telefono) e
-permette la prima prova end-to-end su dispositivi reali. In alternativa:
-risultati in tempo reale (onSnapshot) o codice breve.
+**Con questo la Fase 1 (somministrazione quiz, MVP) è di fatto completa** sul
+piano funzionale: docente crea → compone → pubblica (codice/QR) → studente
+entra e risponde → docente vede i risultati in tempo reale. Resta lato server
+`functions/calcolaPunteggio.js` (stub, calcolo client) e resta l'MVP
+inutilizzabile con studenti veri finché non c'è il login (Fase 2).
+
+Due strade, da affrontare in sessioni separate:
+- **Coda Fase 0 — hosting statico** (GitHub/Cloudflare Pages): sblocca QR/link
+  e codice (oggi `window.location.origin` = `localhost`), permette la prima
+  prova end-to-end su dispositivi reali. Richiede un progetto Firebase reale
+  (regole permissive nell'interim — solo dogfooding, niente studenti).
+- **Fase 2 — login vero** (Firebase Auth + Google, dominio istituzionale,
+  mock auth rimossa, security rules reali). È il cancello prima di qualsiasi
+  uso con studenti; sistema anche la micro-race del codice e `corretta`
+  server-side.
 
 ## Cosa NON fare in questa fase
 

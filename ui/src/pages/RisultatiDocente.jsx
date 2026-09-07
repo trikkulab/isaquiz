@@ -1,110 +1,116 @@
-// Vista risultati di UN quiz per il docente: chi ha risposto e come.
+// Vista risultati di UN quiz per il docente: chi ha risposto e come, in tempo
+// reale (le risposte arrivano via onSnapshot mentre la classe risponde).
 // Route /docente/quiz/:quizId/risultati.
 //
 // Stile "docente": sobrio, tabellare, priorità a densità e leggibilità (vedi
 // CLAUDE.md, "Schermate docente e statistiche"). Niente libreria di grafici
 // per ora — la pagina statistiche vera (per-argomento, adattiva) è Fase 4/5.
-// Aggiornamento manuale ("Aggiorna"); il "tempo reale" (onSnapshot) è un
-// possibile passo successivo.
 //
 // Il giusto/sbagliato è calcolato qui lato client (opzioneScelta vs
 // indiceCorretto) — coerente col resto del progetto, `corretta` su RISPOSTA
 // resta scrivibile solo server-side (vedi DECISIONI_DESIGN.md).
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getQuizConQuesiti } from "../../../data/quizRepository.js";
-import { getRisposteQuiz } from "../../../data/risposteRepository.js";
+import { ascoltaRisposteQuiz } from "../../../data/risposteRepository.js";
 import { getUtente, nomeVisibile } from "../../../data/utentiRepository.js";
-
-const BOTTONE_SECONDARIO =
-  "rounded-lg border border-bordo bg-white px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario disabled:cursor-not-allowed disabled:opacity-40";
 
 export default function RisultatiDocente() {
   const { quizId } = useParams();
   const navigate = useNavigate();
 
   const [quiz, setQuiz] = useState(null);
-  const [studenti, setStudenti] = useState([]); // [{ id, nome, risposte:{qId:idx}, corrette, risposte_n }]
-  const [perQuesito, setPerQuesito] = useState([]); // [{ id, testo, corrette, date }]
+  const [studenti, setStudenti] = useState([]); // [{ id, nome, risposte, corrette, risposteN }]
+  const [perQuesito, setPerQuesito] = useState([]); // [{ id, testo, argomento, corrette, date }]
   const [caricamento, setCaricamento] = useState(true);
-  const [aggiornando, setAggiornando] = useState(false);
   const [errore, setErrore] = useState(null);
 
-  const carica = useCallback(async () => {
-    const q = await getQuizConQuesiti(quizId);
-    if (!q) {
-      setErrore("Quiz non trovato.");
-      return;
-    }
-    const risposte = await getRisposteQuiz(quizId);
-
-    // indice corretto per quesitoId
-    const corretto = new Map(q.quesiti.map((x) => [x.id, x.indiceCorretto]));
-
-    // raggruppa per studente
-    const perStudente = new Map();
-    for (const r of risposte) {
-      if (!perStudente.has(r.studenteId)) perStudente.set(r.studenteId, {});
-      perStudente.get(r.studenteId)[r.quesitoId] = r.rispostaData?.opzioneScelta;
-    }
-
-    const ids = [...perStudente.keys()];
-    const utenti = await Promise.all(ids.map((id) => getUtente(id)));
-    const nomeById = new Map(ids.map((id, i) => [id, nomeVisibile(utenti[i]) || id]));
-
-    const righe = ids
-      .map((id) => {
-        const risp = perStudente.get(id);
-        const corrette = Object.entries(risp).filter(
-          ([qId, scelta]) => scelta === corretto.get(qId),
-        ).length;
-        return { id, nome: nomeById.get(id), risposte: risp, corrette, risposteN: Object.keys(risp).length };
-      })
-      .sort((a, b) => b.corrette - a.corrette);
-
-    const perQ = q.quesiti.map((x) => {
-      const date = risposte.filter((r) => r.quesitoId === x.id);
-      const corr = date.filter((r) => r.rispostaData?.opzioneScelta === x.indiceCorretto).length;
-      return { id: x.id, testo: x.testo, argomento: x.argomento, corrette: corr, date: date.length };
-    });
-
-    setQuiz(q);
-    setStudenti(righe);
-    setPerQuesito(perQ);
-  }, [quizId]);
+  const nomiRef = useRef(new Map()); // studenteId -> nome (cache, evita refetch a ogni update)
+  const versioneRef = useRef(0); // guardia anti-race tra update ravvicinati
 
   useEffect(() => {
-    let attivo = true;
+    let vivo = true;
+    let annulla = null;
+
+    async function aggiornaDati(q, risposte) {
+      const v = ++versioneRef.current;
+
+      const corretto = new Map(q.quesiti.map((x) => [x.id, x.indiceCorretto]));
+
+      const perStudente = new Map();
+      for (const r of risposte) {
+        if (!perStudente.has(r.studenteId)) perStudente.set(r.studenteId, {});
+        perStudente.get(r.studenteId)[r.quesitoId] = r.rispostaData?.opzioneScelta;
+      }
+
+      const ids = [...perStudente.keys()];
+      const mancanti = ids.filter((id) => !nomiRef.current.has(id));
+      if (mancanti.length) {
+        const utenti = await Promise.all(mancanti.map((id) => getUtente(id)));
+        mancanti.forEach((id, i) => nomiRef.current.set(id, nomeVisibile(utenti[i]) || id));
+      }
+      if (!vivo || v !== versioneRef.current) return; // un update più recente ha vinto
+
+      const righe = ids
+        .map((id) => {
+          const risp = perStudente.get(id);
+          const corrette = Object.entries(risp).filter(
+            ([qId, scelta]) => scelta === corretto.get(qId),
+          ).length;
+          return {
+            id,
+            nome: nomiRef.current.get(id),
+            corrette,
+            risposteN: Object.keys(risp).length,
+          };
+        })
+        .sort((a, b) => b.corrette - a.corrette);
+
+      const perQ = q.quesiti.map((x) => {
+        const date = risposte.filter((r) => r.quesitoId === x.id);
+        const corr = date.filter((r) => r.rispostaData?.opzioneScelta === x.indiceCorretto).length;
+        return { id: x.id, testo: x.testo, argomento: x.argomento, corrette: corr, date: date.length };
+      });
+
+      setStudenti(righe);
+      setPerQuesito(perQ);
+      setCaricamento(false);
+    }
+
     (async () => {
       try {
-        await carica();
+        const q = await getQuizConQuesiti(quizId);
+        if (!vivo) return;
+        if (!q) {
+          setErrore("Quiz non trovato.");
+          setCaricamento(false);
+          return;
+        }
+        setQuiz(q);
+        annulla = ascoltaRisposteQuiz(
+          quizId,
+          (risposte) => aggiornaDati(q, risposte),
+          (err) => {
+            console.error("ascoltaRisposteQuiz:", err);
+            if (vivo) setErrore("Connessione ai risultati interrotta. Ricarica la pagina.");
+          },
+        );
       } catch (err) {
-        if (attivo) setErrore("Impossibile caricare i risultati.");
         console.error(err);
-      } finally {
-        if (attivo) setCaricamento(false);
+        if (vivo) {
+          setErrore("Impossibile caricare i risultati.");
+          setCaricamento(false);
+        }
       }
     })();
-    return () => {
-      attivo = false;
-    };
-  }, [carica]);
 
-  async function aggiorna() {
-    if (aggiornando) return;
-    setAggiornando(true);
-    setErrore(null);
-    try {
-      await carica();
-    } catch (err) {
-      setErrore("Aggiornamento non riuscito.");
-      console.error(err);
-    } finally {
-      setAggiornando(false);
-    }
-  }
+    return () => {
+      vivo = false;
+      if (annulla) annulla();
+    };
+  }, [quizId]);
 
   if (caricamento) {
     return <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-[#1e1b2e]/60">Caricamento…</div>;
@@ -122,18 +128,17 @@ export default function RisultatiDocente() {
         ← I miei quiz
       </button>
 
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{quiz?.titolo ?? "Risultati"}</h1>
-          <p className="mt-0.5 text-xs text-[#1e1b2e]/55">
-            {[quiz?.materia, `${studenti.length} ${studenti.length === 1 ? "studente" : "studenti"}`]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        </div>
-        <button type="button" className={BOTTONE_SECONDARIO} onClick={aggiorna} disabled={aggiornando}>
-          {aggiornando ? "…" : "Aggiorna"}
-        </button>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">{quiz?.titolo ?? "Risultati"}</h1>
+        <p className="mt-0.5 text-xs text-[#1e1b2e]/55">
+          {[
+            quiz?.materia,
+            `${studenti.length} ${studenti.length === 1 ? "studente" : "studenti"}`,
+            "aggiornamento automatico",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </div>
 
       {errore && (

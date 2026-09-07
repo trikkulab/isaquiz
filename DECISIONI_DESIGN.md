@@ -197,9 +197,12 @@ indipendenti.
   "Statistiche studente" qui sotto (per-argomento, Fase 4/5): questa è la
   vista base "com'è andata la classe su questo quiz", MVP Fase 1, e riguarda
   un solo quiz del suo autore — non è la vista coordinatore cross-materia
-  soggetta a DPIA. Aggiornamento manuale; il "tempo reale" (onSnapshot) è un
-  possibile passo successivo. Punteggio calcolato lato client (`opzioneScelta`
-  vs `indiceCorretto`), `corretta` su `RISPOSTA` resta server-only.
+  soggetta a DPIA. **In tempo reale** (`ascoltaRisposteQuiz` → `onSnapshot`):
+  le risposte compaiono mentre la classe risponde. Punteggio calcolato lato
+  client (`opzioneScelta` vs `indiceCorretto`), `corretta` su `RISPOSTA`
+  resta server-only. Nota: qui il realtime è per il *cruscotto del docente* —
+  non contraddice "niente realtime tipo Kahoot" in "Flusso quiz studente",
+  che riguarda la sincronizzazione tra studenti.
 
 ## Statistiche studente
 

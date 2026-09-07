@@ -17,6 +17,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  onSnapshot,
   query,
   where,
   serverTimestamp,
@@ -38,10 +39,21 @@ export async function saveAnswer(quizId, studenteId, quesitoId, rispostaData) {
 }
 
 export async function getRisposteQuiz(quizId) {
-  // Tutte le risposte di un quiz (tutti gli studenti) — per la vista risultati
-  // del docente.
+  // Tutte le risposte di un quiz (tutti gli studenti), una tantum.
   const snap = await getDocs(query(risposteCol, where("quizId", "==", quizId)));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Sottoscrizione LIVE alle risposte di un quiz (vista risultati docente in
+// tempo reale). Anche le subscription passano dai repository, non da /ui.
+// Ritorna la funzione di annullamento: il chiamante DEVE invocarla allo
+// smontaggio. `onDati` riceve [{ id, ... }]; `onErrore` è opzionale.
+export function ascoltaRisposteQuiz(quizId, onDati, onErrore) {
+  return onSnapshot(
+    query(risposteCol, where("quizId", "==", quizId)),
+    (snap) => onDati(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => onErrore?.(err),
+  );
 }
 
 export async function getRisposteStudente(quizId, studenteId) {
