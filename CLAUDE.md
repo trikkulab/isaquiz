@@ -190,7 +190,12 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `VITE_USE_FIRESTORE_EMULATOR=true` in `ui/.env`. Progetto ancora
       `demo-*` (nessun progetto Firebase reale), `firestore.rules` è un
       placeholder aperto valido solo in locale.
-- [ ] Hosting statico configurato (GitHub Pages o Cloudflare Pages)
+- [~] Hosting statico su **GitHub Pages** (repo `trikkulab/isaquiz`).
+      Workflow `.github/workflows/deploy.yml`: build `ui/` + deploy ad ogni push
+      su `rel`. App sotto `/isaquiz/` (`VITE_BASE`), routing **HashRouter**
+      (`main.jsx`, niente `404.html`). Manca: abilitare Pages (Source: GitHub
+      Actions) + i 6 secret `VITE_FIREBASE_*` sul repo → richiede il progetto
+      Firebase reale. Dettagli e passaggio a dominio custom in `docs/deploy.md`.
 
 **Fase 1 (somministrazione quiz), lato studente completo su dati mock:**
 
@@ -297,10 +302,11 @@ entra e risponde → docente vede i risultati in tempo reale. Resta lato server
 inutilizzabile con studenti veri finché non c'è il login (Fase 2).
 
 Due strade, da affrontare in sessioni separate:
-- **Coda Fase 0 — hosting statico** (GitHub/Cloudflare Pages): sblocca QR/link
-  e codice (oggi `window.location.origin` = `localhost`), permette la prima
-  prova end-to-end su dispositivi reali. Richiede un progetto Firebase reale
-  (regole permissive nell'interim — solo dogfooding, niente studenti).
+- **Coda Fase 0 — hosting statico**: pipeline GitHub Pages già in piedi
+  (`.github/workflows/deploy.yml`, deploy da `rel`). Per la prima prova
+  end-to-end su dispositivi reali manca solo il **progetto Firebase reale**
+  (→ i 6 secret `VITE_FIREBASE_*` sul repo + abilitare Pages; regole permissive
+  nell'interim — solo dogfooding, niente studenti). Vedi `docs/deploy.md`.
 - **Fase 2 — login vero** (Firebase Auth + Google, dominio istituzionale,
   mock auth rimossa, security rules reali). È il cancello prima di qualsiasi
   uso con studenti; sistema anche la micro-race del codice e `corretta`
