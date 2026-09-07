@@ -1,17 +1,69 @@
-// Contenitore "pagina intera" per QuizRisultati — monta la route
-// /quiz/:quizId/risultati. Unico scopo: decidere il layout di questo
-// contesto specifico (qui: aggiungere il credito tecnico in fondo) senza
-// che QuizRisultati.jsx debba sapere di essere una pagina intera — resta
-// "contenuto puro", riusabile anche dentro ModaleCorrezione/PannelloArgomenti
-// (Fase 4/5) senza il credito, che ha senso solo qui.
+// Contenitore "pagina intera" per QuizRisultati — route /quiz/:quizId/risultati.
+// Procura i dati (da navigate state se si arriva da QuizStudente, altrimenti
+// li rilegge da Firestore per link diretto / refresh) e aggiunge il credito
+// tecnico in fondo, che ha senso solo qui. QuizRisultati resta "contenuto puro".
+
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 
 import QuizRisultati from "./QuizRisultati.jsx";
 import CreditoTecnico from "../components/CreditoTecnico.jsx";
+import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { getQuizConQuesiti } from "../../../data/quizRepository.js";
+import { getRisposteStudente } from "../../../data/risposteRepository.js";
 
 export default function QuizRisultatiPagina() {
+  const { quizId } = useParams();
+  const { state } = useLocation();
+
+  const daStato = state?.quiz && state?.risposte ? state : null;
+  const [dati, setDati] = useState(daStato);
+  const [caricamento, setCaricamento] = useState(!daStato);
+  const [errore, setErrore] = useState(null);
+
+  useEffect(() => {
+    if (dati) return;
+    let attivo = true;
+    (async () => {
+      try {
+        const studente = getUtenteCorrente("studente");
+        const [quiz, risposteList] = await Promise.all([
+          getQuizConQuesiti(quizId),
+          getRisposteStudente(quizId, studente.id),
+        ]);
+        if (!attivo) return;
+        if (!quiz) return setErrore("Quiz non trovato.");
+        if (risposteList.length === 0)
+          return setErrore("Non risultano tue risposte a questo quiz.");
+        setDati({
+          quiz,
+          risposte: Object.fromEntries(
+            risposteList.map((r) => [r.quesitoId, r.rispostaData?.opzioneScelta]),
+          ),
+        });
+      } catch (err) {
+        if (attivo) setErrore("Impossibile caricare la correzione.");
+        console.error(err);
+      } finally {
+        if (attivo) setCaricamento(false);
+      }
+    })();
+    return () => {
+      attivo = false;
+    };
+  }, [dati, quizId]);
+
   return (
     <div>
-      <QuizRisultati />
+      {caricamento ? (
+        <p className="mx-auto max-w-[560px] px-4 py-10 text-center text-[#1e1b2e]/60">
+          Caricamento della correzione…
+        </p>
+      ) : errore ? (
+        <p className="mx-auto max-w-[560px] px-4 py-10 text-center text-[#1e1b2e]/70">{errore}</p>
+      ) : (
+        <QuizRisultati quiz={dati.quiz} risposte={dati.risposte} />
+      )}
       <CreditoTecnico />
     </div>
   );

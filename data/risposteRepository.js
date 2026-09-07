@@ -6,18 +6,55 @@
 // più comodo con una sotto-collezione, ma è un caso d'uso secondario qui).
 //
 // Importante: il client scrive solo la risposta grezza (rispostaData). Il campo
-// "corretta" NON viene mai scritto da qui — lo calcola functions/calcolaPunteggio.js
-// lato server, per evitare manipolazioni del punteggio.
+// "corretta" NON viene mai scritto da qui — spetta a functions/calcolaPunteggio.js
+// lato server (stub per ora: il giusto/sbagliato è calcolato lato client
+// confrontando rispostaData.opzioneScelta con quesito.indiceCorretto — rischio
+// noto e accettato, vedi DECISIONI_DESIGN.md, "Flusso quiz studente").
 
-// import { db } from "./firebaseClient.js";
+import { db } from "./firebaseClient.js";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDocs,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
+
+const risposteCol = collection(db, "risposte");
 
 export async function saveAnswer(quizId, studenteId, quesitoId, rispostaData) {
-  // TODO Fase 1: scrive solo il dato grezzo, mai "corretta".
+  // Id deterministico: una seconda risposta allo stesso quesito sovrascrive,
+  // non duplica (una risposta per tripla quiz+studente+quesito).
+  const id = `${quizId}_${studenteId}_${quesitoId}`;
+  await setDoc(doc(db, "risposte", id), {
+    quizId,
+    studenteId,
+    quesitoId,
+    rispostaData,
+    timestamp: serverTimestamp(),
+  });
 }
 
-export async function getRisposteQuiz(quizId, studenteId) {
-  // Per la correzione di UN quiz specifico (QuizRisultati).
-  // TODO Fase 1.
+export async function getRisposteQuiz(quizId) {
+  // Tutte le risposte di un quiz (tutti gli studenti) — per la vista risultati
+  // del docente.
+  const snap = await getDocs(query(risposteCol, where("quizId", "==", quizId)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getRisposteStudente(quizId, studenteId) {
+  // Le risposte di UN studente a UN quiz — per la correzione (QuizRisultati)
+  // aperta senza lo state di navigazione (link diretto, refresh).
+  const snap = await getDocs(
+    query(
+      risposteCol,
+      where("quizId", "==", quizId),
+      where("studenteId", "==", studenteId),
+    ),
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function getStatistichePerArgomento(studenteId, materia) {

@@ -125,10 +125,15 @@ erDiagram
 
 - **Nomi delle collezioni Firestore**: minuscolo, plurale dove naturale. Già
   create (in emulatore): `utenti`, `classi`, `corsi`, `docenti_corso`,
-  `quesiti`, `quiz`, `config` (documento unico `current`). Da creare con la
-  stessa convenzione: `risposte`, `badge`, `docenti_classe`,
+  `quesiti`, `quiz`, `risposte`, `config` (documento unico `current`). Da
+  creare con la stessa convenzione: `badge`, `docenti_classe`,
   `iscrizioni_corso`, `iscrizioni_classe`. Il diagramma qui sopra usa i nomi
   in maiuscolo solo come notazione ER.
+- **`RISPOSTA`**: id documento deterministico `quizId_studenteId_quesitoId`
+  (una risposta per tripla; rispondere di nuovo sovrascrive). `rispostaData`
+  è la scelta grezza (`{ opzioneScelta }`); `corretta` non è scritto dal
+  client (spetta a `functions/calcolaPunteggio.js` — stub: per ora il
+  giusto/sbagliato è calcolato lato client).
 - **`UTENTE` è una tabella sola** per studenti, docenti e amministratore. Il
   campo `ruolo` è solo la cache per la dashboard di default al login — la
   fonte di verità per un contesto specifico (un corso, una classe) è sempre

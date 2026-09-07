@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 import DocenteHome from "./pages/DocenteHome.jsx";
 import CreaQuiz from "./pages/CreaQuiz.jsx";
+import RisultatiDocente from "./pages/RisultatiDocente.jsx";
 import QuizStudente from "./pages/QuizStudente.jsx";
 import QuizRisultatiPagina from "./pages/QuizRisultatiPagina.jsx";
 import StatisticheStudente from "./pages/StatisticheStudente.jsx";
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/docente" element={<DocenteHome />} />
       <Route path="/docente/crea-quiz" element={<CreaQuiz />} />
       <Route path="/docente/crea-quiz/:quizId" element={<CreaQuiz />} />
+      <Route path="/docente/quiz/:quizId/risultati" element={<RisultatiDocente />} />
 
       <Route path="/quiz/:quizId" element={<QuizStudente />} />
       <Route path="/quiz/:quizId/risultati" element={<QuizRisultatiPagina />} />

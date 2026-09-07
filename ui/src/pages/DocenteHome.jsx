@@ -177,13 +177,22 @@ export default function DocenteHome() {
                   )}
 
                   {(q.stato === "attivo" || q.stato === "chiuso") && (
-                    <button
-                      type="button"
-                      className={BOTTONE_SECONDARIO}
-                      onClick={() => setLinkAperto((v) => (v === q.id ? null : q.id))}
-                    >
-                      {linkAperto === q.id ? "Nascondi link" : "Link e QR per gli studenti"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className={BOTTONE_SECONDARIO}
+                        onClick={() => navigate(`/docente/quiz/${q.id}/risultati`)}
+                      >
+                        Risultati
+                      </button>
+                      <button
+                        type="button"
+                        className={BOTTONE_SECONDARIO}
+                        onClick={() => setLinkAperto((v) => (v === q.id ? null : q.id))}
+                      >
+                        {linkAperto === q.id ? "Nascondi link" : "Link e QR per gli studenti"}
+                      </button>
+                    </>
                   )}
 
                   {q.stato === "attivo" && (

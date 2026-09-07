@@ -195,15 +195,23 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       livello (solo display), barra di avanzamento a segmenti
 - [x] `ui/src/components/QuesitoCard.jsx` — riusato in due modalità
       (`"quiz"` e `"correzione"`)
-- [x] `ui/src/pages/QuizRisultati.jsx` — correzione completa con punteggio
-      totale, spiegazione e tag argomento per quesito ("contenuto puro")
-- [x] `ui/src/pages/QuizRisultatiPagina.jsx` — contenitore "pagina intera" per
-      `QuizRisultati` (route `/quiz/:quizId/risultati`), unico punto che monta
-      `components/CreditoTecnico.jsx` (testo da `config/testi.js`)
+- [x] `ui/src/pages/QuizRisultati.jsx` — correzione completa ("contenuto
+      puro"): riceve `quiz` + `risposte` come **prop** (niente più
+      `useLocation` interno).
+- [x] `ui/src/pages/QuizRisultatiPagina.jsx` — contenitore (route
+      `/quiz/:quizId/risultati`): usa lo `state` di navigazione se presente,
+      altrimenti rilegge da Firestore (`getQuizConQuesiti` +
+      `getRisposteStudente`) per link diretto / refresh. Monta
+      `components/CreditoTecnico.jsx`.
+- [x] `ui/src/pages/RisultatiDocente.jsx` (route
+      `/docente/quiz/:quizId/risultati`) — tabella studente × punteggio +
+      "per quesito" (corrette/risposte). Punteggio calcolato lato client.
+      Aggiornamento manuale ("Aggiorna"); onSnapshot rimandato.
 - [x] `QuizStudente.jsx` cablato su Firestore (`getQuizConQuesiti(quizId)`),
       niente più `QUIZ_MOCK`. Stati loading / "non trovato" / "non ancora
       avviato" (`bozza`) / "chiuso" (`chiuso`) / "non più disponibile"
-      (`archiviato`) / "senza quesiti". `BarraQuiz` e `QuizRisultati` mostrano
+      (`archiviato`) / "senza quesiti". `saveAnswer` scrive davvero su
+      `risposte` (fire-and-forget). `BarraQuiz`/`QuizRisultati` mostrano
       `materia · docente` solo se presenti.
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
@@ -214,17 +222,20 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (`bozza → attivo`), `chiudiQuiz` (`attivo → chiuso`), `riapriQuiz`
       (`chiuso → attivo`) — tutte a senso obbligato),
       `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
-      `getCorsiDocente`), nuovo `data/utentiRepository.js` (`getUtente`,
-      `nomeVisibile`).
+      `getCorsiDocente`), `data/utentiRepository.js` (`getUtente`,
+      `nomeVisibile`), `data/risposteRepository.js` (`saveAnswer` — id
+      deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
+      `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
+      studenteId)`).
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
       (ex `getQuesitiDocente`) raggruppa per `baseId` e ritorna solo l'ultima
       versione; `getQuesito(id)` risolve qualsiasi versione esatta;
       `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
       +1), `forkQuesito` (baseId nuovo, autore corrente); `idProssimaVersione`
       (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `archiviaQuiz`,
-      tutto `risposteRepository.js`. Seed: un quiz per stato —
-      `quiz-prova-rinascimento` (`attivo`), `quiz-bozza-informatica`
-      (`bozza`), `quiz-chiuso-informatica` (`chiuso`).
+      `getStatistichePerArgomento` / `getQuizPerArgomento` (Fase 4/5). Seed:
+      un quiz per stato (`quiz-prova-rinascimento` attivo con 7 risposte di 2
+      studenti, `quiz-bozza-informatica`, `quiz-chiuso-informatica`).
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
@@ -248,20 +259,19 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
 - [x] `DocenteHome.jsx` (route `/docente`) — elenco dei propri quiz
       (`getQuizDocente`) con badge di stato, "Crea nuovo quiz", e per riga:
       bozza → "Pubblica e avvia" / "Modifica" (→ `crea-quiz/:id`) / "Elimina"
-      (conferme inline); attivo → "Link e QR" (`AccessoQuiz`) / "Chiudi";
-      chiuso → "Link e QR" / "Riapri"; attivo/chiuso → "Duplica" (→ modifica
-      subito la copia).
-- [ ] Ancora da fare lato docente: i **risultati** (serve `risposteRepository`
-      reale + fallback di `QuizRisultati` su accesso diretto), un **codice
-      breve** digitabile al posto del link lungo, chiusura automatica a tempo,
-      `archiviaQuiz`.
+      (conferme inline); attivo → "Risultati" / "Link e QR" (`AccessoQuiz`) /
+      "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri"; attivo/chiuso →
+      "Duplica" (→ modifica subito la copia).
+- [ ] Ancora da fare lato docente: **codice breve** digitabile al posto del
+      link lungo; risultati **in tempo reale** (onSnapshot); chiusura
+      automatica a tempo; `archiviaQuiz`; la pagina statistiche vera
+      (per-argomento, adattiva — Fase 4/5).
 
-Prossimo passo naturale: **i risultati lato docente** — `risposteRepository`
-reale (`saveAnswer` scrive davvero; `getRisposteQuiz`), fallback di
-`QuizRisultati` quando è aperto senza `state` (link diretto / da DocenteHome),
-e una vista aggregata "chi ha risposto e come" per il docente. In alternativa
-chiudere la coda della Fase 0 (hosting statico) — serve comunque perché il
-link/QR punta a `window.location.origin`, inutile su `localhost`.
+Prossimo passo naturale: **chiudere la coda della Fase 0 — hosting statico**
+(GitHub/Cloudflare Pages). Sblocca davvero il QR/link (oggi
+`window.location.origin` = `localhost`, irraggiungibile da un telefono) e
+permette la prima prova end-to-end su dispositivi reali. In alternativa:
+risultati in tempo reale (onSnapshot) o codice breve.
 
 ## Cosa NON fare in questa fase
 

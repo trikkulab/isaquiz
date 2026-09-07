@@ -84,17 +84,20 @@ export default function QuizStudente() {
 
     setIndiceSelezionato(indice);
     setRisposte((precedenti) => ({ ...precedenti, [quesitoCorrente.id]: indice }));
-    saveAnswer(quiz.id, studente.id, quesitoCorrente.id, {
-      opzioneScelta: indice,
-    });
+    // Fire-and-forget: la correzione immediata usa lo stato in memoria; se la
+    // scrittura fallisce lo studente non se ne accorge (la rivedrà solo un
+    // eventuale accesso differito ai risultati).
+    saveAnswer(quiz.id, studente.id, quesitoCorrente.id, { opzioneScelta: indice }).catch(
+      (err) => console.error("saveAnswer:", err),
+    );
   }
 
   function handleAvanti() {
     if (ultimoQuesito) {
       // Lo studente ha appena finito: passiamo quiz + risposte già in memoria,
-      // così QuizRisultati non deve rileggere nulla. Se la pagina viene aperta
-      // senza questo state (refresh, link diretto), QuizRisultati lo gestisce
-      // con un fallback proprio.
+      // così QuizRisultatiPagina non deve rileggere nulla. Se la pagina viene
+      // aperta senza questo state (refresh, link diretto), la ricarica lei da
+      // Firestore.
       navigate(`/quiz/${quiz.id}/risultati`, { state: { quiz, risposte } });
       return;
     }

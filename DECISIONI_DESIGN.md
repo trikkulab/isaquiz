@@ -178,11 +178,24 @@ indipendenti.
 
 ## Correzione (`QuizRisultati`)
 
-- **Componente "contenuto puro"**: non sa se viene mostrato come pagina intera,
-  dentro un modale, o inline in un pannello. Chi lo monta decide il contenitore.
+- **Componente "contenuto puro"**: riceve `quiz` (con quesiti risolti) e
+  `risposte` (`{ [quesitoId]: opzioneScelta }`) come **prop**. Non sa se è
+  pagina intera, modale o pannello, né da dove vengono i dati. Chi lo monta
+  li procura: `QuizRisultatiPagina` usa lo `state` di navigazione se si
+  arriva da `QuizStudente`, altrimenti li rilegge da Firestore
+  (`getQuizConQuesiti` + `getRisposteStudente`) per link diretto / refresh.
 - **Tag di argomento sempre visibile su ogni quesito**, anche in un quiz misto
   (es. un ripasso con più argomenti) — così il quiz è identico ovunque lo apri,
   nessuna versione "filtrata" a seconda del punto di ingresso.
+- **Risultati lato docente** (`RisultatiDocente`, route
+  `/docente/quiz/:quizId/risultati`): tabella studente × punteggio +
+  "per quesito" (quante corrette su quante risposte). Diverso dalle
+  "Statistiche studente" qui sotto (per-argomento, Fase 4/5): questa è la
+  vista base "com'è andata la classe su questo quiz", MVP Fase 1, e riguarda
+  un solo quiz del suo autore — non è la vista coordinatore cross-materia
+  soggetta a DPIA. Aggiornamento manuale; il "tempo reale" (onSnapshot) è un
+  possibile passo successivo. Punteggio calcolato lato client (`opzioneScelta`
+  vs `indiceCorretto`), `corretta` su `RISPOSTA` resta server-only.
 
 ## Statistiche studente
 

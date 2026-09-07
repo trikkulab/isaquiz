@@ -42,6 +42,15 @@ const utente = {
   },
 };
 
+// Studenti di prova. mock-studente-1 combacia con data/mockAuth.js.
+const studenti = [
+  { id: "mock-studente-1", nome: "Giulia", cognome: "Bianchi" },
+  { id: "mock-studente-2", nome: "Luca", cognome: "Verdi" },
+].map((s) => ({
+  ref: db.doc(`utenti/${s.id}`),
+  data: { nome: s.nome, cognome: s.cognome, ruolo: "studente", classeId: "3A" },
+}));
+
 const classe = {
   ref: db.doc("classi/3A"),
   data: { nome: "3A", annoScolastico: ANNO },
@@ -185,6 +194,27 @@ const quesiti = [
   },
 ];
 
+// Risposte di prova a quiz-prova-rinascimento (corrette: 1, 2, 1, 1).
+// Giulia 3/4, Luca 2/4 con l'ultimo quesito senza risposta.
+const risposteProva = [
+  ["mock-studente-1", "seed-storia-1-v0", 1],
+  ["mock-studente-1", "seed-storia-2-v0", 2],
+  ["mock-studente-1", "seed-storia-3-v0", 0],
+  ["mock-studente-1", "seed-storia-4-v0", 1],
+  ["mock-studente-2", "seed-storia-1-v0", 1],
+  ["mock-studente-2", "seed-storia-2-v0", 0],
+  ["mock-studente-2", "seed-storia-3-v0", 1],
+].map(([studenteId, quesitoId, opzioneScelta]) => ({
+  id: `quiz-prova-rinascimento_${studenteId}_${quesitoId}`,
+  data: {
+    quizId: "quiz-prova-rinascimento",
+    studenteId,
+    quesitoId,
+    rispostaData: { opzioneScelta },
+    timestamp: FieldValue.serverTimestamp(),
+  },
+}));
+
 // --- scrittura --------------------------------------------------------------
 
 async function main() {
@@ -193,6 +223,7 @@ async function main() {
   batch.set(config.ref, config.data);
   batch.set(utente.ref, utente.data);
   batch.set(classe.ref, classe.data);
+  for (const s of studenti) batch.set(s.ref, s.data);
 
   for (const c of corsi) batch.set(db.doc(`corsi/${c.id}`), c.data);
   for (const dc of docentiCorso) batch.set(db.doc(`docenti_corso/${dc.id}`), dc.data);
@@ -216,12 +247,14 @@ async function main() {
     batch.set(db.doc(`quiz/${q.id}`), { ...q.data, creato: FieldValue.serverTimestamp() });
   }
 
+  for (const r of risposteProva) batch.set(db.doc(`risposte/${r.id}`), r.data);
+
   await batch.commit();
 
   console.log(`Seed completato su ${process.env.FIRESTORE_EMULATOR_HOST} (progetto ${PROJECT_ID}).`);
-  console.log(`  config/current, utenti/${DOCENTE_ID}, classi/3A`);
+  console.log(`  config/current, utenti (1 docente + ${studenti.length} studenti), classi/3A`);
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
-  console.log(`  quesiti: ${quesiti.length}`);
+  console.log(`  quesiti: ${quesiti.length} · risposte di prova: ${risposteProva.length}`);
   for (const q of quizzes) console.log(`  quiz: ${q.id} (${q.data.stato}) — /quiz/${q.id}`);
 }
 

@@ -1,43 +1,29 @@
 // Contenuto "puro" della correzione: elenco quesiti con risposta data,
 // corretta, e spiegazione completa (QuesitoCard in modalita="correzione").
 //
-// Importante: questo componente non deve sapere DOVE viene mostrato. Verrà
-// montato in tre contesti diversi, tutti con lo stesso contenuto:
-//   1. come pagina intera, via questa route (/quiz/:quizId/risultati) — l'unico
-//      implementato per ora
-//   2. dentro ModaleCorrezione, su schermo stretto
-//   3. dentro PannelloArgomenti, inline, su schermo largo
-// I contesti 2 e 3 arrivano quando si costruisce la pagina statistiche (Fase 4/5).
-// Niente logica di navigazione o layout specifica di un contesto qui dentro.
+// Non sa DOVE viene mostrato né COME arrivano i dati: riceve `quiz` (con
+// quesiti risolti) e `risposte` ({ [quesitoId]: opzioneScelta }) come prop.
+// Chi lo monta li procura (da navigate state o da risposteRepository) — vedi
+// QuizRisultatiPagina; in Fase 4/5 anche ModaleCorrezione / PannelloArgomenti.
+// Niente logica di navigazione, layout, o fetch qui dentro.
 //
-// I dati arrivano in uno dei due modi:
-//   - già in memoria, passati via navigate(..., { state }) da QuizStudente
-//     appena lo studente finisce il quiz — il caso comune, nessuna lettura extra.
-//   - TODO Fase 1 (seguito) / Fase 4: risposteRepository.getRisposteQuiz(...)
-//     quando si apre questa route senza essere passati da QuizStudente (link
-//     diretto, refresh, o dal futuro drill-down statistiche). Non ancora
-//     implementato: risposteRepository è ancora uno stub.
-
-import { useLocation } from "react-router-dom";
+// Il giusto/sbagliato è calcolato qui lato client (rispostaData vs
+// indiceCorretto) — rischio noto e accettato, vedi DECISIONI_DESIGN.md,
+// "Flusso quiz studente".
 
 import QuesitoCard from "../components/QuesitoCard.jsx";
 
-export default function QuizRisultati() {
-  const { state } = useLocation();
-
-  if (!state?.quiz || !state?.risposte) {
+export default function QuizRisultati({ quiz, risposte }) {
+  if (!quiz || !risposte) {
     return (
       <div className="mx-auto max-w-[560px] px-4 py-10 text-center">
-        <p className="text-[#1e1b2e]/70">
-          Correzione non disponibile: apri questa pagina dal pulsante "Vedi risultati" alla fine di un quiz.
-        </p>
+        <p className="text-[#1e1b2e]/70">Correzione non disponibile.</p>
       </div>
     );
   }
 
-  const { quiz, risposte } = state;
   const risposteCorrette = quiz.quesiti.filter(
-    (quesito) => risposte[quesito.id] === quesito.indiceCorretto
+    (quesito) => risposte[quesito.id] === quesito.indiceCorretto,
   ).length;
 
   return (
