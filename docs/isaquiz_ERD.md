@@ -125,10 +125,16 @@ erDiagram
 
 - **Nomi delle collezioni Firestore**: minuscolo, plurale dove naturale. Già
   create (in emulatore): `utenti`, `classi`, `corsi`, `docenti_corso`,
-  `quesiti`, `quiz`, `risposte`, `config` (documento unico `current`). Da
-  creare con la stessa convenzione: `badge`, `docenti_classe`,
+  `quesiti`, `quiz`, `risposte`, `codici_accesso`, `config` (documento unico
+  `current`). Da creare con la stessa convenzione: `badge`, `docenti_classe`,
   `iscrizioni_corso`, `iscrizioni_classe`. Il diagramma qui sopra usa i nomi
   in maiuscolo solo come notazione ER.
+- **`codici_accesso`** (non nel diagramma): id documento = un codice breve
+  (Crockford Base32; lunghezza parametrica, oggi 6), valore `{ quizId, creato }`. Lo studente digita
+  il codice per entrare in un quiz. Collezione a parte per il lookup diretto
+  codice → quizId. **Da non confondere con `CORSO.codiceAccesso`**, che serve
+  a iscriversi a un CORSO per l'anno; questo è per una singola somministrazione.
+  Vedi `DECISIONI_DESIGN.md`, "Codice di accesso ai quiz".
 - **`RISPOSTA`**: id documento deterministico `quizId_studenteId_quesitoId`
   (una risposta per tripla; rispondere di nuovo sovrascrive). `rispostaData`
   è la scelta grezza (`{ opzioneScelta }`); `corretta` non è scritto dal

@@ -1,15 +1,29 @@
-// QR + link con cui gli studenti aprono un quiz attivo. Usato dopo la
-// pubblicazione in CreaQuiz e nella lista di DocenteHome.
+// Come gli studenti entrano in un quiz attivo: codice breve, QR, o link.
+// Usato dopo la pubblicazione in CreaQuiz e nella lista di DocenteHome.
 //
-// Il link punta a window.location.origin: davvero utile solo dopo l'hosting
-// (su localhost un telefono non lo raggiunge).
+// Il link/QR puntano a window.location.origin: davvero utili solo dopo
+// l'hosting (su localhost un telefono non li raggiunge). Il codice invece
+// funziona appena c'è l'hosting, digitandolo sulla home studente.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+
+import { getCodiceQuiz } from "../../../data/codiciAccessoRepository.js";
 
 export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
   const [copiato, setCopiato] = useState(false);
+  const [codice, setCodice] = useState(null);
   const link = `${window.location.origin}/quiz/${quizId}`;
+
+  useEffect(() => {
+    let attivo = true;
+    getCodiceQuiz(quizId)
+      .then((c) => attivo && setCodice(c))
+      .catch((err) => console.error("getCodiceQuiz:", err));
+    return () => {
+      attivo = false;
+    };
+  }, [quizId]);
 
   async function copia() {
     try {
@@ -23,10 +37,22 @@ export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
 
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-bordo bg-sfondo p-4">
-      <p className="text-sm font-medium">Gli studenti accedono da qui:</p>
+      {codice && (
+        <div className="text-center">
+          <p className="text-xs font-medium text-[#1e1b2e]/55">
+            Codice (su {window.location.host}/studente)
+          </p>
+          <p className="font-titoli text-3xl font-bold tracking-[0.25em] text-primario-scuro">
+            {codice}
+          </p>
+        </div>
+      )}
+
+      <p className="text-sm font-medium">…oppure con il QR:</p>
       <div className="rounded-lg bg-white p-3">
         <QRCodeSVG value={link} size={dimensioneQr} />
       </div>
+
       <div className="flex w-full items-center gap-2">
         <input
           className="w-full rounded-lg border border-bordo bg-white px-3 py-2 text-xs outline-none focus:border-primario"

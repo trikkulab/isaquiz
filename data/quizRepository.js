@@ -26,6 +26,7 @@ import {
 import { getQuesito } from "./quesitiRepository.js";
 import { getCorso } from "./corsiRepository.js";
 import { getUtente, nomeVisibile } from "./utentiRepository.js";
+import { generaCodiceQuiz } from "./codiciAccessoRepository.js";
 
 const quizCol = collection(db, "quiz");
 
@@ -118,14 +119,15 @@ export async function duplicaQuiz(quizId, docenteId) {
 
 export async function avviaQuiz(quizId) {
   // "bozza" -> "attivo": è la pubblicazione, coincide con la generazione del
-  // QR. Da qui il quiz è immutabile e permanente (vedi DECISIONI_DESIGN.md,
-  // "Stati del quiz"). Passaggio a senso unico: se il quiz non è più in
-  // bozza non si fa nulla.
+  // QR e del codice di accesso. Da qui il contenuto è immutabile (vedi
+  // DECISIONI_DESIGN.md, "Stati del quiz"). Passaggio a senso unico.
   const ref = doc(db, "quiz", quizId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error("Quiz non trovato.");
-  if (snap.data().stato !== "bozza") return snap.data().stato;
-  await updateDoc(ref, { stato: "attivo", avviato: serverTimestamp() });
+  const stato = snap.data().stato;
+  if (stato !== "bozza" && stato !== "attivo") return stato; // chiuso/archiviato: niente
+  if (stato === "bozza") await updateDoc(ref, { stato: "attivo", avviato: serverTimestamp() });
+  await generaCodiceQuiz(quizId); // idempotente: crea il codice se manca
   return "attivo";
 }
 
@@ -142,12 +144,15 @@ export async function chiudiQuiz(quizId) {
 }
 
 export async function riapriQuiz(quizId) {
-  // "chiuso" -> "attivo": riapre alle risposte (es. per i ritardatari).
+  // "chiuso" -> "attivo": riapre alle risposte (es. per i ritardatari). Lo
+  // stesso codice di accesso torna valido (non se ne genera uno nuovo);
+  // generaCodiceQuiz lo crea solo se per qualche motivo mancava.
   const ref = doc(db, "quiz", quizId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error("Quiz non trovato.");
   if (snap.data().stato !== "chiuso") return snap.data().stato;
   await updateDoc(ref, { stato: "attivo", riaperto: serverTimestamp() });
+  await generaCodiceQuiz(quizId);
   return "attivo";
 }
 
@@ -167,5 +172,6 @@ export async function eliminaQuiz(quizId) {
 export async function archiviaQuiz(quizId) {
   // TODO fetta successiva (opzionale, non MVP): stato "attivo" -> "archiviato".
   // Non cancella nulla: toglie solo il quiz dalle liste attive del docente,
-  // il riferimento resta intatto per RISPOSTA/QuizRisultati.
+  // il riferimento resta intatto per RISPOSTA/QuizRisultati. Qui si potrà
+  // anche liberare il codice di accesso (delete di codici_accesso/{codice}).
 }

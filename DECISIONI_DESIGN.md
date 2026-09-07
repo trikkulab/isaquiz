@@ -372,8 +372,52 @@ delete fisico); attivo/chiuso → **risultati** (`RisultatiDocente`, route
 quesiti del quiz sono "aggiornati" all'ultima versione del loro `baseId` (una
 bozza si compone sempre dalla banca corrente). Lo studente apre solo quiz
 `attivo` (`QuizStudente` blocca `bozza`/`chiuso`/`archiviato`). Non ancora
-fatti: `archiviaQuiz`, chiusura automatica a tempo, un codice breve digitabile
-in alternativa al link, i risultati in tempo reale (onSnapshot).
+fatti: `archiviaQuiz`, chiusura automatica a tempo, i risultati in tempo reale
+(onSnapshot).
+
+
+## Codice di accesso ai quiz
+
+**Lo studente entra in un quiz digitando un codice breve** (dalla home
+`/studente` → "Partecipa a un quiz"), in alternativa a scansionare il QR o
+aprire il link lungo — è la via comoda per l'uso in classe.
+
+- **Collezione dedicata `codici_accesso`, non un campo su `quiz`.** L'id del
+  documento È il codice, quindi il lookup codice → quizId è un `getDoc`
+  diretto (nessuna query, nessun indice), e l'unicità è garantita dall'id.
+  Documento: `{ quizId, creato }`. Da non confondere con `CORSO.codiceAccesso`,
+  che serve a iscriversi a un CORSO per l'anno — questo è per una singola
+  somministrazione.
+- **Alfabeto Crockford Base32** (`0-9 A-Z` senza `I L O U`, ambigui a occhio),
+  maiuscolo, generato con `crypto.getRandomValues` (`byte % 32`, senza bias).
+  `normalizzaCodice`: maiuscolo, "clemenza" di Crockford (`I/L → 1`, `O → 0`
+  per perdonare chi ricopia male una cifra), poi **allowlist** — si tengono
+  SOLO i caratteri dell'alfabeto, tutto il resto (spazi, punteggiatura, `/`,
+  `..`, `<>`, emoji…) sparisce. Così l'output è sempre un id documento
+  Firestore valido e innocuo. Non è che oggi ci sia un rischio di injection
+  (un `getDoc(doc(...))` è un lookup per chiave, non un query language; React
+  escapa l'output), ma è difesa in profondità e dà un pulito "codice non
+  valido" invece di eccezioni. `getQuizIdDaCodice` non lancia mai per input
+  malformato (id vuoto o troppo lungo → `null`); gli errori di rete invece
+  propagano.
+- **La lunghezza (oggi 6) è un parametro di sola generazione**
+  (`LUNGHEZZA_GENERAZIONE` in `codiciAccessoRepository.js`), in un unico
+  punto. Tutto il resto è length-agnostic: `normalizzaCodice` non tronca,
+  l'input in `/studente` non ha controlli di lunghezza (basta non vuoto), un
+  codice è "valido" se corrisponde a un documento. Cambiare il numero non
+  richiede altre modifiche e non invalida i codici già emessi.
+- **Il codice nasce con la pubblicazione** (`avviaQuiz`) ed è **stabile per
+  tutta la vita del quiz**: `chiudi`/`riapri` non lo rigenerano, così il
+  docente riapre per i ritardatari *con lo stesso codice*. Mai riusato per un
+  altro quiz. `generaCodiceQuiz` è idempotente (self-heal per quiz attivi
+  senza codice). `archiviaQuiz`, quando ci sarà, potrà liberarlo.
+- **Generazione client-side** in `avviaQuiz`, con loop check-then-create per
+  l'unicità. La micro-race (due generazioni simultanee dello stesso codice) è
+  accettata per ora — un docente pubblica un quiz alla volta — ma **è un buco
+  noto da chiudere** con una transazione / Cloud Function quando arrivano auth
+  e functions (Fase 2). Anche le security rules dovranno permettere il `get`
+  su `codici_accesso` (è solo un puntatore; il contenuto del quiz resta
+  protetto da `QuizStudente` che apre solo lo stato `attivo`).
 
 
 ## Modello dati: le risposte (granulari, non aggregate)

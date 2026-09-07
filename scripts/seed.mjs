@@ -117,6 +117,14 @@ const quizzes = [
   },
 ];
 
+// Codici di accesso (collezione codici_accesso, id = il codice). Nell'app li
+// genera avviaQuiz; qui sono fissi per poterli digitare in /studente durante
+// i test. TEST01 -> quiz attivo (entra), TEST02 -> quiz chiuso ("è chiuso").
+const codiciAccesso = [
+  { id: "TEST01", quizId: "quiz-prova-rinascimento" },
+  { id: "TEST02", quizId: "quiz-chiuso-informatica" },
+];
+
 // --- quesiti di prova --------------------------------------------------------
 // Nota: i quesiti hanno id fisso qui sotto solo per rendere il seed idempotente.
 // Nell'app i quesiti creati dal docente useranno addDoc (id auto).
@@ -248,6 +256,12 @@ async function main() {
   }
 
   for (const r of risposteProva) batch.set(db.doc(`risposte/${r.id}`), r.data);
+  for (const c of codiciAccesso) {
+    batch.set(db.doc(`codici_accesso/${c.id}`), {
+      quizId: c.quizId,
+      creato: FieldValue.serverTimestamp(),
+    });
+  }
 
   await batch.commit();
 
@@ -256,6 +270,7 @@ async function main() {
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
   console.log(`  quesiti: ${quesiti.length} · risposte di prova: ${risposteProva.length}`);
   for (const q of quizzes) console.log(`  quiz: ${q.id} (${q.data.stato}) — /quiz/${q.id}`);
+  for (const c of codiciAccesso) console.log(`  codice: ${c.id} -> ${c.quizId}`);
 }
 
 main().catch((err) => {

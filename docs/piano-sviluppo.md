@@ -31,10 +31,11 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   con versionamento (`baseId`/`versione`) e fork
 - Interfaccia docente: comporre un quiz da un elenco di quesiti e salvarlo
   come bozza — fatto
-- Pubblicazione quiz (`stato: bozza → attivo`) + QR/link per studenti — fatto
-  in `CreaQuiz` (`avviaQuiz`, `qrcode.react`); manca un codice breve
-  digitabile in alternativa al link
-- Interfaccia studente: aprire il quiz e rispondere — fatto, su Firestore
+- Pubblicazione quiz (`stato: bozza → attivo`) + accesso studenti — fatto in
+  `CreaQuiz` (`avviaQuiz`): codice breve digitabile (Crockford Base32,
+  collezione `codici_accesso`), QR e link (`qrcode.react`)
+- Interfaccia studente: home `/studente` (`StudenteHome`) con "Partecipa a un
+  quiz" (codice); aprire il quiz e rispondere — fatto, su Firestore
   (`getQuizConQuesiti`), solo quiz `attivo`; le risposte sono persistite
   (`saveAnswer` → collezione `risposte`)
 - Interfaccia docente: home con elenco dei propri quiz (`DocenteHome`,
@@ -46,8 +47,10 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   "tempo reale" (onSnapshot) è un passo successivo
 - Repository /data: `quizRepository` (getQuiz, getQuizConQuesiti, getQuizDocente,
   creaQuiz, aggiornaQuizBozza, avviaQuiz, chiudiQuiz, riapriQuiz, eliminaQuiz,
-  duplicaQuiz), `quesitiRepository` (getBancaDocente, getQuesito, creaQuesito,
-  salvaNuovaVersione, forkQuesito), `corsiRepository` (getCorso,
+  duplicaQuiz), `codiciAccessoRepository` (getQuizIdDaCodice, getCodiceQuiz,
+  generaCodiceQuiz, normalizzaCodice), `quesitiRepository` (getBancaDocente,
+  getQuesito, creaQuesito, salvaNuovaVersione, forkQuesito), `corsiRepository`
+  (getCorso,
   getCorsiDocente), `utentiRepository` (getUtente), `risposteRepository`
   (saveAnswer, getRisposteQuiz, getRisposteStudente; getStatistichePer* → Fase 4/5)
 

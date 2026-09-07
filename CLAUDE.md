@@ -106,9 +106,10 @@ ora si lavora con Tailwind puro.
 
 - **Nessun componente in `ui/` accede a Firestore direttamente.** Sempre tramite
   i moduli in `data/` (`quizRepository.js`, `quesitiRepository.js`,
-  `corsiRepository.js`, `utentiRepository.js`, `risposteRepository.js`). I
-  repository possono chiamarsi tra loro per assemblare (es. `getQuizConQuesiti`
-  legge quiz + quesiti + corso + utente). Se un componente ha bisogno
+  `corsiRepository.js`, `utentiRepository.js`, `risposteRepository.js`,
+  `codiciAccessoRepository.js`). I repository possono chiamarsi tra loro per
+  assemblare (es. `getQuizConQuesiti` legge quiz + quesiti + corso + utente).
+  Se un componente ha bisogno
   di un nuovo modo di leggere/scrivere dati, si aggiunge una funzione al
   repository giusto, non una chiamata Firestore inline. L'SDK Firebase è
   dipendenza di `data/package.json` (non di `ui/`); `data/firebaseClient.js` è
@@ -216,20 +217,32 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (`archiviato`) / "senza quesiti". `saveAnswer` scrive davvero su
       `risposte` (fire-and-forget). `BarraQuiz`/`QuizRisultati` mostrano
       `materia · docente` solo se presenti.
+- [x] `ui/src/pages/StudenteHome.jsx` (route `/studente`) — mini-dashboard
+      studente (mock auth): "Partecipa a un quiz" → campo codice
+      (`normalizzaCodice` live, **nessun controllo di lunghezza**: basta non
+      vuoto) → `getQuizIdDaCodice` → `navigate('/quiz/:quizId')` o "Codice non
+      valido"; link alle statistiche. Diventerà la pagina post-login (Fase 2).
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
       `getQuizDocente` — meta + materia, ordinati per data; `creaQuiz` →
       `stato: "bozza"`; `aggiornaQuizBozza` / `eliminaQuiz` — consentite SOLO
       se `stato: bozza`; `duplicaQuiz` — da qualsiasi quiz crea una nuova
       bozza (id quesiti copiati, nessun legame con l'originale); `avviaQuiz`
-      (`bozza → attivo`), `chiudiQuiz` (`attivo → chiuso`), `riapriQuiz`
-      (`chiuso → attivo`) — tutte a senso obbligato),
+      (`bozza → attivo` + genera il codice di accesso), `chiudiQuiz`
+      (`attivo → chiuso`), `riapriQuiz` (`chiuso → attivo`) — a senso obbligato),
       `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
       `getCorsiDocente`), `data/utentiRepository.js` (`getUtente`,
       `nomeVisibile`), `data/risposteRepository.js` (`saveAnswer` — id
       deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
       `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
-      studenteId)`).
+      studenteId)`), nuovo `data/codiciAccessoRepository.js` (collezione
+      `codici_accesso`, id = codice: `getQuizIdDaCodice`, `getCodiceQuiz`,
+      `generaCodiceQuiz` idempotente, `normalizzaCodice` pura (clemenza
+      Crockford + **allowlist** all'alfabeto → output sempre id-doc valido);
+      Crockford Base32, la lunghezza (oggi 6) è parametro di sola generazione
+      in un unico punto — tutto il resto è length-agnostic; generazione
+      client-side con micro-race accettata — vedi `DECISIONI_DESIGN.md`,
+      "Codice di accesso ai quiz").
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
       (ex `getQuesitiDocente`) raggruppa per `baseId` e ritorna solo l'ultima
       versione; `getQuesito(id)` risolve qualsiasi versione esatta;
@@ -238,7 +251,8 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `archiviaQuiz`,
       `getStatistichePerArgomento` / `getQuizPerArgomento` (Fase 4/5). Seed:
       un quiz per stato (`quiz-prova-rinascimento` attivo con 7 risposte di 2
-      studenti, `quiz-bozza-informatica`, `quiz-chiuso-informatica`).
+      studenti + codice `TEST01`; `quiz-bozza-informatica`;
+      `quiz-chiuso-informatica` + codice `TEST02`).
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
@@ -251,8 +265,9 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       diverso — branch per ora irraggiungibile finché non c'è
       `getQuesitiCondivisi`, Fase 4). "Salva bozza" → pannello con "Pubblica e
       avvia il quiz" (conferma inline → `avviaQuiz`) → `components/AccessoQuiz.jsx`
-      (QR `qrcode.react` + link `/quiz/{id}` con "Copia"), riusato in
-      DocenteHome. Dopo salva/avvia: link "I miei quiz".
+      (codice di accesso + QR `qrcode.react` + link `/quiz/{id}` con "Copia";
+      il codice lo recupera da sé con `getCodiceQuiz`), riusato in DocenteHome.
+      Dopo salva/avvia: link "I miei quiz".
 - [x] `CreaQuiz.jsx` modifica bozza: route `/docente/crea-quiz/:quizId`
       (opzionale) carica titolo/corso/quesiti di una bozza esistente; al
       salvataggio `aggiornaQuizBozza` invece di `creaQuiz`. I quesiti del quiz
@@ -265,10 +280,10 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (conferme inline); attivo → "Risultati" / "Link e QR" (`AccessoQuiz`) /
       "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri"; attivo/chiuso →
       "Duplica" (→ modifica subito la copia).
-- [ ] Ancora da fare lato docente: **codice breve** digitabile al posto del
-      link lungo; risultati **in tempo reale** (onSnapshot); chiusura
-      automatica a tempo; `archiviaQuiz`; la pagina statistiche vera
-      (per-argomento, adattiva — Fase 4/5).
+- [ ] Ancora da fare lato docente: risultati **in tempo reale** (onSnapshot);
+      chiusura automatica a tempo; `archiviaQuiz`; la pagina statistiche vera
+      (per-argomento, adattiva — Fase 4/5). Generazione del codice di accesso
+      da irrobustire (transazione / Cloud Function) con auth/functions, Fase 2.
 
 Prossimo passo naturale: **chiudere la coda della Fase 0 — hosting statico**
 (GitHub/Cloudflare Pages). Sblocca davvero il QR/link (oggi
