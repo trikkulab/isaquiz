@@ -54,6 +54,13 @@ cd ui && npm run dev
 `functions/` ha un proprio `package.json` (`cd functions && npm install`) —
 serve solo quando si lavora sulle Cloud Functions.
 
+## Deploy
+
+Hosting su **GitHub Pages** (repo `trikkulab/isaquiz`): il workflow
+`.github/workflows/deploy.yml` builda `ui/` e pubblica ad ogni push su `rel`.
+App servita sotto `/isaquiz/` (project page), routing con HashRouter.
+Setup e passaggio al dominio custom: `docs/deploy.md`.
+
 ## Stato del progetto
 
 Vedi il Piano di sviluppo per le fasi (0-5) e la checklist dei task.

@@ -1,9 +1,10 @@
 // Come gli studenti entrano in un quiz attivo: codice breve, QR, o link.
 // Usato dopo la pubblicazione in CreaQuiz e nella lista di DocenteHome.
 //
-// Il link/QR puntano a window.location.origin: davvero utili solo dopo
-// l'hosting (su localhost un telefono non li raggiunge). Il codice invece
-// funziona appena c'è l'hosting, digitandolo sulla home studente.
+// Il link/QR si costruiscono da origin + BASE_URL (in prod "/isaquiz/") + "#/"
+// (HashRouter): davvero utili solo dopo l'hosting (su localhost un telefono non
+// li raggiunge). Il codice invece funziona appena c'è l'hosting, digitandolo
+// sulla home studente.
 
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -13,7 +14,9 @@ import { getCodiceQuiz } from "../../../data/codiciAccessoRepository.js";
 export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
   const [copiato, setCopiato] = useState(false);
   const [codice, setCodice] = useState(null);
-  const link = `${window.location.origin}/quiz/${quizId}`;
+  // import.meta.env.BASE_URL: "/" in locale, "/isaquiz/" su GitHub Pages.
+  const radiceApp = `${window.location.origin}${import.meta.env.BASE_URL}`;
+  const link = `${radiceApp}#/quiz/${quizId}`;
 
   useEffect(() => {
     let attivo = true;
@@ -40,7 +43,7 @@ export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
       {codice && (
         <div className="text-center">
           <p className="text-xs font-medium text-[#1e1b2e]/55">
-            Codice (su {window.location.host}/studente)
+            Codice (su {`${window.location.host}${import.meta.env.BASE_URL}#/studente`})
           </p>
           <p className="font-titoli text-3xl font-bold tracking-[0.25em] text-primario-scuro">
             {codice}
