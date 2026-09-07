@@ -187,15 +187,24 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `npm run emu` (radice) avvia l'emulatore Firestore, `npm run seed` lo
       popola (`scripts/seed.mjs`: `config`, `utenti`, `classi`, `corsi`,
       `docenti_corso`, `quesiti`). Client puntato all'emulatore con
-      `VITE_USE_FIRESTORE_EMULATOR=true` in `ui/.env`. Progetto ancora
-      `demo-*` (nessun progetto Firebase reale), `firestore.rules` è un
-      placeholder aperto valido solo in locale.
+      `VITE_USE_FIRESTORE_EMULATOR=true` in `ui/.env`. `npm run seed` di default
+      resta sull'emulatore (`demo-isaquiz`); `SEED_TARGET=prod` + key lo punta
+      al DB reale (vedi `docs/deploy.md`).
 - [~] Hosting statico su **GitHub Pages** (repo `trikkulab/isaquiz`).
       Workflow `.github/workflows/deploy.yml`: build `ui/` + deploy ad ogni push
       su `rel`. App sotto `/isaquiz/` (`VITE_BASE`), routing **HashRouter**
-      (`main.jsx`, niente `404.html`). Manca: abilitare Pages (Source: GitHub
-      Actions) + i 6 secret `VITE_FIREBASE_*` sul repo → richiede il progetto
-      Firebase reale. Dettagli e passaggio a dominio custom in `docs/deploy.md`.
+      (`main.jsx`, niente `404.html`). Dettagli e passaggio a dominio custom in
+      `docs/deploy.md`.
+- [~] **Progetto Firebase reale** — deciso: Firestore region **`europe-west8`
+      (Milano)**, permanente (dati in Italia, cfr. `docs/analisi-gdpr.md`).
+      Regole interim: `firestore.rules` ora è **aperto ma con scadenza**
+      (`request.time < 2026-10-15`) — pubblicabile sul progetto reale SOLO per
+      dogfooding interno, mai con studenti; spostare la data consapevolmente se
+      la Fase 2 slitta. `scripts/seed.mjs` sa puntare al DB reale con
+      `SEED_TARGET=prod` + service-account key (guardia `SEED_CONFIRM`). Lato
+      repo è tutto pronto; restano i passi manuali da console/GitHub nel runbook
+      `docs/deploy.md` (creare progetto, Firestore, incollare regole, 6 secret
+      `VITE_FIREBASE_*`, abilitare Pages, seed, primo deploy).
 
 **Fase 1 (somministrazione quiz), lato studente completo su dati mock:**
 
@@ -303,10 +312,10 @@ inutilizzabile con studenti veri finché non c'è il login (Fase 2).
 
 Due strade, da affrontare in sessioni separate:
 - **Coda Fase 0 — hosting statico**: pipeline GitHub Pages già in piedi
-  (`.github/workflows/deploy.yml`, deploy da `rel`). Per la prima prova
-  end-to-end su dispositivi reali manca solo il **progetto Firebase reale**
-  (→ i 6 secret `VITE_FIREBASE_*` sul repo + abilitare Pages; regole permissive
-  nell'interim — solo dogfooding, niente studenti). Vedi `docs/deploy.md`.
+  (`.github/workflows/deploy.yml`, deploy da `rel`). Repo pronto (regole con
+  scadenza, seed `SEED_TARGET=prod`); restano i passi manuali da console/GitHub
+  nel runbook `docs/deploy.md` per la prima prova end-to-end su dispositivi
+  reali — solo dogfooding, niente studenti.
 - **Fase 2 — login vero** (Firebase Auth + Google, dominio istituzionale,
   mock auth rimossa, security rules reali). È il cancello prima di qualsiasi
   uso con studenti; sistema anche la micro-race del codice e `corretta`

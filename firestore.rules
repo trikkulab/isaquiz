@@ -1,29 +1,25 @@
 rules_version = '2';
 
-// Scheletro iniziale. Finché il login vero (Fase 2) non è collegato, il progetto
-// gira in emulatore con queste regole permissive SOLO in locale — non deployare
-// su un progetto Firebase reale finché le regole sotto non sono complete.
+// INTERIM Fase 0 — queste regole POSSONO essere pubblicate sul progetto Firebase
+// reale, ma SOLO per il dogfooding interno (docente + colleghi), MAI con
+// studenti. Sono aperte (nessun login vero prima della Fase 2) ma con SCADENZA:
+// dopo la data qui sotto Firestore rifiuta ogni lettura/scrittura, così un
+// deploy interim dimenticato si auto-disattiva invece di restare aperto.
+// Se la data si avvicina e la Fase 2 non è pronta: spostala in avanti
+// consapevolmente, non lasciarla scadere per caso.
 //
-// Struttura dati di riferimento (vedi schema condiviso nel progetto):
-// docenti, classi, studenti, domande, quiz, risposte, badge.
-//
-// Principi da implementare qui quando arriva il login vero:
-// - un docente legge/scrive solo le proprie classi e le proprie domande;
-// - una domanda è leggibile da altri docenti solo se domanda.condivisa == true;
-// - uno studente scrive solo le proprie risposte, solo per un quiz con stato "attivo";
-// - il campo "corretta" su una risposta non è mai scrivibile dal client:
-//   lo scrive solo la Cloud Function calcolaPunteggio (vedi functions/).
+// TODO Fase 2 (login vero): sostituire con regole legate a request.auth.
+// Principi da implementare allora:
+// - un docente legge/scrive solo i propri corsi e i propri quesiti;
+// - un quesito è leggibile da altri docenti solo se `condivisa == true`;
+// - uno studente scrive solo le proprie risposte, solo per un quiz `attivo`;
+// - il campo `corretta` su una risposta non è mai scrivibile dal client:
+//   lo scrive solo functions/calcolaPunteggio.js lato server.
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Placeholder di sviluppo: l'emulatore APPLICA queste regole, quindi finché
-    // non c'è il login vero (Fase 2) tutto è aperto — vale SOLO in locale.
-    // TODO Fase 2: sostituire con regole reali legate a request.auth (vedi
-    // principi elencati sopra). Non deployare su un progetto Firebase reale
-    // con questo blocco attivo.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.time < timestamp.date(2026, 10, 15);
     }
   }
 }

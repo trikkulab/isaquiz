@@ -1,18 +1,52 @@
-// Popola l'emulatore Firestore con dati di prova per lo sviluppo interno.
-// Idempotente: usa id fissi con set(), rilanciarlo sovrascrive senza duplicare
-// (tranne i quesiti, vedi sotto). NON tocca mai un progetto Firebase reale:
-// scrive solo sull'emulatore locale.
+// Popola Firestore con dati di prova. Idempotente: usa id fissi con set(),
+// rilanciarlo sovrascrive senza duplicare (tranne i quesiti, vedi sotto).
 //
-// Uso:  npm run emu   (in un terminale)
-//       npm run seed  (in un altro)
+// DEFAULT — emulatore locale (progetto demo-isaquiz). Non tocca nulla di reale.
+//   npm run emu   (in un terminale)
+//   npm run seed  (in un altro)
+//
+// PROGETTO REALE — interim Fase 0, SOLO dogfooding interno (vedi docs/deploy.md).
+// Serve una service-account key (Console Firebase -> Impostazioni progetto ->
+// Account di servizio -> "Genera nuova chiave privata"), da NON versionare.
+//   SEED_TARGET=prod \
+//   SEED_PROJECT_ID=<project-id> \
+//   GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json \
+//   SEED_CONFIRM=<project-id> \
+//   npm run seed
+// SEED_CONFIRM deve combaciare con SEED_PROJECT_ID: guardia anti-"oops".
 
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8080";
-const PROJECT_ID = "demo-isaquiz";
+const TARGET = process.env.SEED_TARGET === "prod" ? "prod" : "emulator";
+let PROJECT_ID;
 
-initializeApp({ projectId: PROJECT_ID });
+if (TARGET === "prod") {
+  PROJECT_ID = process.env.SEED_PROJECT_ID;
+  if (!PROJECT_ID) {
+    console.error("SEED_TARGET=prod richiede SEED_PROJECT_ID=<project-id>.");
+    process.exit(1);
+  }
+  if (process.env.SEED_CONFIRM !== PROJECT_ID) {
+    console.error(
+      `Scrittura sul progetto REALE "${PROJECT_ID}": rilancia con SEED_CONFIRM=${PROJECT_ID} per confermare.`,
+    );
+    process.exit(1);
+  }
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.error(
+      "SEED_TARGET=prod richiede GOOGLE_APPLICATION_CREDENTIALS=/percorso/serviceAccountKey.json.",
+    );
+    process.exit(1);
+  }
+  console.warn(`\n⚠  Seed sul progetto Firebase REALE "${PROJECT_ID}".\n`);
+  initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
+} else {
+  process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8080";
+  PROJECT_ID = "demo-isaquiz";
+  initializeApp({ projectId: PROJECT_ID });
+}
+
 const db = getFirestore();
 
 const ANNO = "2025/26";
@@ -265,7 +299,8 @@ async function main() {
 
   await batch.commit();
 
-  console.log(`Seed completato su ${process.env.FIRESTORE_EMULATOR_HOST} (progetto ${PROJECT_ID}).`);
+  const dove = TARGET === "prod" ? "progetto REALE" : `emulatore ${process.env.FIRESTORE_EMULATOR_HOST}`;
+  console.log(`Seed completato su ${dove} (progetto ${PROJECT_ID}).`);
   console.log(`  config/current, utenti (1 docente + ${studenti.length} studenti), classi/3A`);
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
   console.log(`  quesiti: ${quesiti.length} · risposte di prova: ${risposteProva.length}`);

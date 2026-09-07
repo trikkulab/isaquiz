@@ -13,10 +13,15 @@ build/
 # Firebase
 .firebase/
 .emulator-data/
+firebase-export-*/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .runtimeconfig.json
+
+# Service-account key per il seed del progetto reale — MAI versionare
+*firebase-adminsdk*.json
+serviceAccount*.json
 
 # Editor / OS
 .DS_Store
