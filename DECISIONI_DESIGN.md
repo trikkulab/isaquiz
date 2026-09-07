@@ -175,6 +175,10 @@ indipendenti.
   rivedere se il problema si presenta concretamente, non preventivamente. Chi
   trova questa falla sa già usare gli strumenti sviluppatore meglio della
   media: accettabile in un contesto didattico di informatica.
+  Vedi anche "Modello dati: le risposte (granulari, non aggregate)" per come
+  la scelta di un documento per risposta (invece che aggregato per quiz)
+  renda più semplice imporre lato server, in Fase 2, che `corretta` non sia
+  mai scrivibile dal client.
 
 ## Correzione (`QuizRisultati`)
 
