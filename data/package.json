@@ -1,0 +1,10 @@
+{
+  "name": "isaquiz-data",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Unico punto di accesso al database (Firestore). ui/ consuma questi moduli; nessun altro layer importa l'SDK Firebase direttamente.",
+  "dependencies": {
+    "firebase": "^11.10.0"
+  }
+}

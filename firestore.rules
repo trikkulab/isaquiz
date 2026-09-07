@@ -17,10 +17,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // TODO Fase 2: sostituire con regole reali legate a request.auth.
-    // Placeholder di sviluppo — da NON usare in produzione.
+    // Placeholder di sviluppo: l'emulatore APPLICA queste regole, quindi finché
+    // non c'è il login vero (Fase 2) tutto è aperto — vale SOLO in locale.
+    // TODO Fase 2: sostituire con regole reali legate a request.auth (vedi
+    // principi elencati sopra). Non deployare su un progetto Firebase reale
+    // con questo blocco attivo.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

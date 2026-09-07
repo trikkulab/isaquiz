@@ -9,9 +9,12 @@ Vedi il Project Charter e il Piano di sviluppo (documenti separati) per la visio
 ```
 isaquiz/
 ├── ui/            Frontend (SPA). Non sa nulla di Firestore: parla solo con /data.
-├── data/          Unico punto di accesso al database. Se cambia il DB, cambia solo qui.
-└── functions/     Cloud Functions — solo per ciò che richiede un segreto o fiducia
-                   (proxy verso il provider IA, calcolo del punteggio lato server).
+├── data/          Unico punto di accesso al database (SDK Firebase qui, non in ui/).
+│                  Se cambia il DB, cambia solo qui. Ha un proprio package.json.
+├── functions/     Cloud Functions — solo per ciò che richiede un segreto o fiducia
+│                  (proxy verso il provider IA, calcolo del punteggio lato server).
+├── scripts/       seed.mjs — popola l'emulatore Firestore con dati di prova.
+└── package.json   Tooling di sviluppo (emulatore, seed): npm run emu / npm run seed.
 ```
 
 ## Principio guida per lo sviluppo
@@ -32,10 +35,31 @@ stesso contenuto (`QuizRisultati`), contenitore diverso a seconda dello spazio d
 ## Setup iniziale
 
 ```bash
-cd ui && npm install && npm run dev
+npm install            # radice: tooling (emulatore Firestore, seed)
+cd data && npm install # SDK Firebase (consumato da ui/)
+cd ../ui && npm install
 ```
 
-Le variabili d'ambiente vanno copiate da `.env.example` a `.env` (mai versionato).
+Copiare `.env.example` in `ui/.env` (mai versionato). Per lo sviluppo locale
+bastano `VITE_FIREBASE_PROJECT_ID=demo-isaquiz` e `VITE_USE_FIRESTORE_EMULATOR=true`.
+
+Sviluppo con l'emulatore Firestore (tre terminali):
+
+```bash
+npm run emu     # radice: avvia l'emulatore Firestore (+ Emulator UI su :4000)
+npm run seed    # radice: popola l'emulatore con dati di prova
+cd ui && npm run dev
+```
+
+`functions/` ha un proprio `package.json` (`cd functions && npm install`) —
+serve solo quando si lavora sulle Cloud Functions.
+
+## Deploy
+
+Hosting su **GitHub Pages** (repo `trikkulab/isaquiz`): il workflow
+`.github/workflows/deploy.yml` builda `ui/` e pubblica ad ogni push su `rel`.
+App servita sotto `/isaquiz/` (project page), routing con HashRouter.
+Setup e passaggio al dominio custom: `docs/deploy.md`.
 
 ## Stato del progetto
 

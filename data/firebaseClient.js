@@ -3,7 +3,7 @@
 // `auth`) da qui.
 
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,5 +17,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
+
+// Sviluppo locale: con VITE_USE_FIRESTORE_EMULATOR="true" tutte le letture/
+// scritture vanno all'emulatore Firestore (progetto "demo-isaquiz", nessuna
+// chiave reale necessaria). Vedi package.json alla radice ("npm run emu").
+if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === "true") {
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
 
 // TODO Fase 2: export const auth = getAuth(app);
