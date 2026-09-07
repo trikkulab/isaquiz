@@ -360,16 +360,63 @@ valore tipo `"ia"`, ma è quella la sede per deciderlo.
 mostra QR + link `/quiz/{id}`. `DocenteHome.jsx` (route `/docente`) elenca i
 quiz del docente; per riga: bozza → pubblica / **modifica**
 (`/docente/crea-quiz/:quizId` → `aggiornaQuizBozza`) / elimina (`eliminaQuiz`,
-delete fisico); attivo → link/QR / **chiudi** (`chiudiQuiz`); chiuso → link/QR
-/ **riapri** (`riapriQuiz`); attivo/chiuso → **duplica** (`duplicaQuiz` →
-nuova bozza, si apre subito in modifica). `aggiornaQuizBozza`, `eliminaQuiz`
-sono consentite SOLO finché `stato: bozza`. In modifica, i quesiti del quiz
-sono "aggiornati" all'ultima versione del loro `baseId` (una bozza si compone
-sempre dalla banca corrente). Lo studente apre solo quiz `attivo`
-(`QuizStudente` blocca `bozza`/`chiuso`/`archiviato`). Non ancora fatti:
-`archiviaQuiz`, chiusura automatica a tempo, un codice breve digitabile in
-alternativa al link, la vista risultati.
+delete fisico); attivo/chiuso → **risultati** (`RisultatiDocente`, route
+`/docente/quiz/:quizId/risultati`) / link-QR; attivo → **chiudi**
+(`chiudiQuiz`); chiuso → **riapri** (`riapriQuiz`); attivo/chiuso → **duplica**
+(`duplicaQuiz` → nuova bozza, si apre subito in modifica). `aggiornaQuizBozza`,
+`eliminaQuiz` sono consentite SOLO finché `stato: bozza`. In modifica, i
+quesiti del quiz sono "aggiornati" all'ultima versione del loro `baseId` (una
+bozza si compone sempre dalla banca corrente). Lo studente apre solo quiz
+`attivo` (`QuizStudente` blocca `bozza`/`chiuso`/`archiviato`). Non ancora
+fatti: `archiviaQuiz`, chiusura automatica a tempo, un codice breve digitabile
+in alternativa al link, i risultati in tempo reale (onSnapshot).
 
+
+## Modello dati: le risposte (granulari, non aggregate)
+
+**Una `RISPOSTA` = un documento**, id deterministico
+`quizId_studenteId_quesitoId` nella collezione top-level `risposte`.
+Rispondere di nuovo allo stesso quesito sovrascrive, non duplica. Valutata e
+scartata l'alternativa "un documento per `(quizId, studenteId)` con dentro una
+mappa di tutte le risposte".
+
+**Perché granulare, adesso:**
+
+- **Security rules (Fase 2).** `corretta` non deve mai essere scrivibile dal
+  client (regola fissa, vedi "Flusso quiz studente"). Con un documento per
+  risposta la regola è banale: l'id codifica la proprietà, e si nega la
+  scrittura del campo `corretta`. Con l'aggregato servirebbe validare che un
+  `update` abbia aggiunto *solo* una chiave nella mappa senza toccare i
+  `corretta` annidati nelle chiavi esistenti — in Firestore rules è complicato
+  e fragile.
+- **`calcolaPunteggio.js` come trigger.** Scatta sulla `create` di una
+  risposta, calcola `corretta`, riscrive quel campo. Pulito. Con l'aggregato
+  dovrebbe fare il diff before/after dello snapshot per capire cosa è
+  cambiato.
+- **`RISPOSTA` è un'entità di dominio** (vedi "Terminologia"): un documento per
+  RISPOSTA lo esprime direttamente.
+- **Query longitudinali** (il caso d'uso centrale: "tutte le risposte di uno
+  studente nel tempo", "tutte le risposte al quesito X tra somministrazioni"):
+  le righe granulari le supportano; l'aggregato le rende scansioni di mappe.
+- Le query attuali sono su singolo campo o a più uguaglianze → **nessun indice
+  composto** richiesto.
+
+**Lo svantaggio noto** (più letture: la vista risultati del docente legge N
+righe per studente invece di 1) non morde alla scala pilota. Se un domani pesa
+davvero: **non** si collassa la fonte di verità, si aggiunge un documento
+*riassunto* (`punteggi/{quizId_studenteId}`: totale + conteggi per argomento)
+scritto da `calcolaPunteggio.js` a fine quiz — pattern materialized view,
+granulare resta il write model.
+
+**Se un domani si passasse a un DB relazionale**: il modello granulare è già la
+forma di una tabella normalizzata `risposta(id, quiz_id, studente_id,
+quesito_id, risposta_data, corretta, timestamp)` con
+`UNIQUE(quiz_id, studente_id, quesito_id)` — migrazione = copia 1:1. L'aggregato
+invece diventerebbe una colonna JSON (si perdono `GROUP BY quesito_id`,
+`AVG(corretta)`, gli indici su singola risposta) o andrebbe spacchettato in
+righe durante la migrazione. Le JOIN che in Firestore si evitano
+(`risposta → quesito / quiz / utente`) in SQL si vogliono, e le righe granulari
+le danno gratis.
 
 ## Non ancora deciso
 

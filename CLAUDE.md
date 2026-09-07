@@ -128,9 +128,12 @@ ora si lavora con Tailwind puro.
   layout specifica di un contesto.
 - **Niente JOIN mentali col vecchio schema relazionale.** `quiz.quesiti` è un
   array di ID dentro il documento quiz. `risposte` è una collezione top-level
-  (non sotto-collezione di quiz) con `quizId`/`studenteId`/`quesitoId` come
-  campi, proprio per poter interrogare "tutte le risposte di uno studente nel
-  tempo" trasversalmente ai quiz. Query composte su più entità = letture
+  (non sotto-collezione di quiz), **una `RISPOSTA` per documento** (id
+  `quizId_studenteId_quesitoId`), non aggregata per studente-quiz — proprio
+  per poter interrogare "tutte le risposte di uno studente nel tempo"
+  trasversalmente ai quiz, per le security rules su `corretta`, e per la
+  migrazione a un DB relazionale (vedi `DECISIONI_DESIGN.md`, "Modello dati:
+  le risposte"). Query composte su più entità = letture
   separate assemblate nel codice del repository, non una query sola.
 - **"Quesito" (non "domanda"), "opzioni" (non "risposte") per le sue
   alternative.** "Risposta" è già l'entità distinta di cosa lo studente ha
