@@ -19,10 +19,13 @@ isaquiz/
 
 ## Principio guida per lo sviluppo
 
-Si parte dal flusso centrale — somministrazione del quiz — con un'autenticazione fittizia
-("mock auth", vedi `data/mockAuth.js`). Il login reale con Google (Firebase Auth) viene
-collegato solo quando il resto è stabile. Nessuno studente deve usare la piattaforma
-prima che il login vero sia in funzione: il mock è solo per lo sviluppo interno.
+Si è partiti dal flusso centrale — somministrazione del quiz — con un'autenticazione
+fittizia. Dalla Fase 2 il login è **reale**: Firebase Auth con Google, ristretto al
+dominio istituzionale, provisioning di `utenti/{uid}` e ruolo docente da
+`config/current.docentiAutorizzati` (ricontrollato a ogni login). Il layer è in
+`data/authProvider.js` (nessun componente `ui/` parla con Firebase Auth
+direttamente); in UI l'utente arriva da `ui/src/auth/AuthContext.jsx` e le route
+sono protette da `RichiediAuth`.
 
 ## Layout responsive/adattivo
 
@@ -40,19 +43,25 @@ cd data && npm install # SDK Firebase (consumato da ui/)
 cd ../ui && npm install
 ```
 
-Copiare `.env.example` in `ui/.env` (mai versionato). Per lo sviluppo locale
-bastano `VITE_FIREBASE_PROJECT_ID=demo-isaquiz` e `VITE_USE_FIRESTORE_EMULATOR=true`.
+Serve anche `cd functions && npm install` (le Cloud Function girano nell'emulatore).
 
-Sviluppo con l'emulatore Firestore (tre terminali):
+Creare `ui/.env` (mai versionato). Per lo sviluppo locale bastano
+`VITE_FIREBASE_PROJECT_ID=demo-isaquiz` e `VITE_USE_FIRESTORE_EMULATOR=true`
+(la stessa flag collega Firestore, Auth e Functions agli emulatori).
+
+Sviluppo con gli emulatori (tre terminali):
 
 ```bash
-npm run emu     # radice: avvia l'emulatore Firestore (+ Emulator UI su :4000)
-npm run seed    # radice: popola l'emulatore con dati di prova
+npm run emu     # radice: Firestore + Auth + Functions (+ Emulator UI su :4000)
+npm run seed    # radice: popola i dati di prova E gli utenti Auth dell'emulatore
 cd ui && npm run dev
 ```
 
-`functions/` ha un proprio `package.json` (`cd functions && npm install`) —
-serve solo quando si lavora sulle Cloud Functions.
+`npm run seed` crea nell'emulatore gli account Auth `rossi@istituto.example`
+(docente), `giulia.bianchi@istituto.example` e `luca.verdi@istituto.example`
+(studenti). Nella pagina `/accedi` si "accede" con uno di questi tramite il
+selettore dell'emulatore Auth. Per intestare i dati demo a un altro account:
+`SEED_DOCENTE_EMAIL=tua@istituto.example npm run seed`.
 
 ## Deploy
 

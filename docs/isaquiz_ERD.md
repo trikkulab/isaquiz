@@ -15,6 +15,10 @@ erDiagram
         string cognome
         string ruolo
         string classeId
+        string photoURL
+        string nickname
+        string avatarEmoji
+        number livello
     }
 
     CLASSE {
@@ -58,6 +62,7 @@ erDiagram
     CONFIG {
         string annoScolasticoCorrente
         string docentiAutorizzati
+        string dominioIstituzionale
         string nomeIstituto
         string codiceMeccanografico
     }
@@ -145,7 +150,16 @@ erDiagram
   campo `ruolo` è solo la cache per la dashboard di default al login — la
   fonte di verità per un contesto specifico (un corso, una classe) è sempre
   la riga di collegamento (`ISCRIZIONE_CORSO`, `DOCENTE_CORSO`,
-  `DOCENTE_CLASSE`), mai questo campo.
+  `DOCENTE_CLASSE`), mai questo campo. Id documento = uid di Firebase Auth. Dal
+  login reale (Fase 2) il documento è creato/aggiornato dal provisioning in
+  `data/authProvider.js`: `email/nome/cognome/photoURL` da Google, `ruolo`
+  ricalcolato ogni volta da `docentiAutorizzati`, `nickname/avatarEmoji/livello`
+  default deterministici (solo se assenti). Vedi `DECISIONI_DESIGN.md`,
+  "Autenticazione e provisioning utente".
+- **`config/istituto`** (sotto-documento a parte, non nel diagramma):
+  `{ dominioIstituzionale, nomeIstituto }`, **leggibile senza login** — serve
+  alla pagina `/accedi`. Il resto di CONFIG (incl. `docentiAutorizzati`) sta in
+  `config/current`, dietro autenticazione.
 - **`CORSO`, non `CLASSE`, contiene i quiz.** `CLASSE` è l'unità amministrativa
   usata dal coordinatore per la vista d'insieme — schema presente da subito,
   vista aggregata cross-materia rimandata a dopo la DPIA (Fase 4/5).

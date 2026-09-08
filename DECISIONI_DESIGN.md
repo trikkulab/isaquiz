@@ -23,11 +23,13 @@ un'ambiguità che il resto della documentazione si sforza di evitare. Quindi:
 
 ## Sviluppo
 
-**Mock auth prima, login vero solo per i ragazzi.** Si sviluppa con un'autenticazione
-fittizia (`data/mockAuth.js`) finché tutto il flusso non è stabile. Firebase Auth
-con Google si collega solo alla fine (Fase 2 del piano di sviluppo). Nessuno
-studente deve usare la piattaforma prima che il login vero sia attivo — è una
-scelta didattica, non solo tecnica: i ragazzi vedono solo il prodotto finito.
+**Mock auth prima, login vero solo per i ragazzi.** Si è sviluppato con
+un'autenticazione fittizia finché il flusso non è stato stabile; in **Fase 2**
+`data/mockAuth.js` è stato sostituito da Firebase Auth con Google
+(`data/authProvider.js`). Nessuno studente deve usare la piattaforma prima che il
+login vero sia attivo — è una scelta didattica, non solo tecnica: i ragazzi
+vedono solo il prodotto finito. Dettaglio sotto, "Autenticazione e provisioning
+utente".
 
 **Emulatore Firestore, non un progetto Firebase reale, finché non serve.** Lo
 sviluppo gira sull'emulatore (`firebase-tools`, progetto `demo-isaquiz` — il
@@ -36,9 +38,8 @@ servizi reali). `scripts/seed.mjs` (usa `firebase-admin`) popola dati di prova
 in modo idempotente. Il tooling vive in un `package.json` alla radice
 (`npm run emu`, `npm run seed`); l'SDK Firebase client è dipendenza di
 `data/package.json`, non di `ui/`, perché solo `data/` parla con Firestore.
-`firestore.rules` è un placeholder aperto (`allow read, write: if true`): valido
-SOLO in locale, le regole vere legate a `request.auth` arrivano in Fase 2 —
-niente deploy su un progetto reale con quel blocco attivo.
+`firestore.rules` in Fase 2 non è più un placeholder: regole reali legate a
+`request.auth` (vedi sotto, "Security rules").
 
 ## Modello dati: classi, corsi, iscrizioni (multi-anno)
 
@@ -147,6 +148,84 @@ Firebase, proprio `CONFIG`, proprio dominio Google) — zero dati condivisi tra
 le due, zero problemi di contitolarità, perché restano titolari del tutto
 indipendenti.
 
+## Autenticazione e provisioning utente (Fase 2)
+
+**Firebase Auth + Google, ristretto al dominio istituzionale.** Unico provider
+(niente email/password). `data/authProvider.js` è il solo punto che parla con
+Firebase Auth; la UI riceve l'utente da `ui/src/auth/AuthContext.jsx` e protegge
+le route con `RichiediAuth`. `data/mockAuth.js` è stato rimosso.
+
+**Il dominio si controlla in tre punti, e va bene così.**
+- `hd` come *hint* nel popup Google (pre-seleziona l'account Workspace) — non è
+  un controllo, Google lo tratta come suggerimento;
+- controllo esplicito in `authProvider` subito dopo il login (email fuori
+  dominio → `signOut` + `ErroreDominio`) e di nuovo alla ripresa di sessione;
+- **controllo vero** nelle security rules (`isDominio()`).
+
+Il dominio vive come **costante nel file `firestore.rules`** e come documento
+**pubblico** `config/istituto` (`{ dominioIstituzionale, nomeIstituto }`,
+leggibile senza login perché serve alla pagina `/accedi`). La lista
+`docentiAutorizzati` resta in `config/current`, dietro autenticazione — non si
+espone una lista di email a chi non è loggato. Duplicazione dominio
+(rules + config) accettata: un'installazione = un istituto, cambiarlo è raro e
+consapevole.
+
+**Provisioning a ogni login, non solo al primo.** `ascoltaUtenteCorrente`, a
+ogni `onAuthStateChanged` con utente:
+1. rilegge `docentiAutorizzati`;
+2. `ruolo = lista.include(email) ? "docente" : "studente"` — **ricalcolato ogni
+   volta**: togliere un'email dalla lista fa tornare studente al login
+   successivo, senza azioni sull'utente;
+3. `upsert` di `utenti/{uid}` (merge) con `email/nome/cognome/photoURL` da
+   Google + `ruolo`. `uid` di Firebase Auth = id del documento.
+
+Il ruolo `admin` non è mai scrivibile dall'app (rules: `ruolo in
+['studente','docente']`), solo da console — coerente con "Amministratore:
+cruscotto minimale".
+
+**`nickname` / `avatarEmoji` / `livello`: default deterministici, non
+onboarding.** Passando dall'utente mock (che aveva questi campi) all'account
+Google reale si sarebbe persa l'estetica "studente" già costruita
+(`BarraQuiz`, `StudenteHome`). Invece di una schermata di onboarding (rimandata),
+`authProvider` genera default stabili: `nickname` = nome proprio (o parte locale
+dell'email), `avatarEmoji` scelto per hash dell'uid (così non cambia tra login),
+`livello` = 1. Scritti solo se assenti: un domani un onboarding vero potrà
+sovrascriverli. `livello` resta puro display finché non c'è la gamification
+(Fase 4).
+
+**Onboarding docente / creazione corsi: ancora scoperto.** Non c'è UI per creare
+un `CORSO`: un docente reale è operativo solo se `corsi`/`docenti_corso` esistono
+già per il suo uid. Nodo noto (era "Non ancora deciso"), da sciogliere prima di
+allargare i docenti pilota. Il seed può intestare i dati demo all'account con cui
+si fa login (`SEED_DOCENTE_EMAIL`), e in prod risolve l'uid del docente per email
+(che deve aver fatto login almeno una volta).
+
+## Security rules (Fase 2) — minime ma reali
+
+**Obiettivo dichiarato: sbloccare l'uso con studenti, non blindare ogni
+invariante.** Le regole in `firestore.rules` legano tutto a `request.auth` e
+coprono i casi che contano davvero:
+- `corretta` su `RISPOSTA` non scrivibile dal client (create senza il campo;
+  update solo su `rispostaData`/`timestamp`);
+- risposte solo del proprio `studenteId`, solo su quiz `attivo`;
+- niente escalation di ruolo (`admin` vietato, `docente` solo se in lista);
+- quiz e quesiti scrivibili solo da chi si dichiara autore;
+- `codici_accesso` non scrivibile dal client (solo la Cloud Function);
+- lettura di un quiz `bozza` riservata all'autore.
+
+**Cosa NON è ancora verificato** (elencato anche nel commento in testa al file e
+nella memory `project_rules_firestore_da_rafforzare`):
+- lettura di `utenti` / `corsi` / `quesiti` è larga (chiunque del dominio) —
+  serve oggi perché lo studente carica quiz+quesiti e il docente i nomi degli
+  studenti; un `indiceCorretto` è quindi enumerabile da un utente del dominio
+  che indovini gli id;
+- transizioni di stato del quiz e immutabilità del contenuto dopo la
+  pubblicazione;
+- invarianti di versionamento dei quesiti (baseId/versione, no edit in place);
+- forma/completezza dei documenti scritti.
+
+Il rafforzamento è un lavoro a parte, non un blocco per il primo uso.
+
 ## Flusso quiz studente
 
 - **Solo avanti, niente tasto indietro.** Coerente con "verifica immediata", non
@@ -162,23 +241,19 @@ indipendenti.
   l'informazione più facile da suggerire a voce a un compagno, quindi la prima
   da proteggere. La prop che rivela la risposta corretta su `QuesitoCard`
   esiste solo nel contesto `QuizRisultati`, mai durante lo svolgimento.
-- **Il calcolo di giusto/sbagliato resta lato client (per ora), rischio noto e
-  accettato.** La UI non mostra mai la risposta corretta durante il quiz (vedi
-  sopra), ma il dato `indiceCorretto` arriva comunque al client insieme al
-  quesito — chi ispeziona il codice o lo stato React vede in anticipo tutte le
-  risposte corrette del quiz. La correzione "vera" (validare ogni risposta
-  server-side, rivelare l'esito solo dopo, tramite `calcolaPunteggio.js`
-  triggerato dalla scrittura Firestore, già previsto per il campo `corretta`
-  su `risposte`) è stata scartata per ora: moltiplica le invocazioni Cloud
-  Function per il numero di risposte, un costo che ha senso affrontare solo se
-  la piattaforma prende piede davvero. Scelta esplicita, non dimenticanza — da
-  rivedere se il problema si presenta concretamente, non preventivamente. Chi
-  trova questa falla sa già usare gli strumenti sviluppatore meglio della
-  media: accettabile in un contesto didattico di informatica.
-  Vedi anche "Modello dati: le risposte (granulari, non aggregate)" per come
-  la scelta di un documento per risposta (invece che aggregato per quiz)
-  renda più semplice imporre lato server, in Fase 2, che `corretta` non sia
-  mai scrivibile dal client.
+- **`corretta` si calcola lato server (dalla Fase 2); il calcolo client resta
+  solo per il display immediato.** `functions/calcolaPunteggio.js` (trigger
+  `onDocumentWritten` su `risposte/{id}`) scrive `corretta`; le security rules
+  vietano al client di toccare quel campo. In UI il confronto `opzioneScelta`
+  vs `indiceCorretto` resta per mostrare subito ✓/✗ e per
+  `RisultatiDocente`/`QuizRisultati` — non è più la fonte di verità. Il costo
+  (un'invocazione per risposta) in Fase 1 era stato rimandato; con Fase 2 lo si
+  è accettato: a scala pilota è trascurabile e serviva comunque per le rules su
+  `corretta`. Nota residua: `indiceCorretto` arriva comunque al client col
+  quesito — chi ispeziona lo stato React vede in anticipo le risposte del quiz
+  corrente. Accettato (contesto didattico di informatica). Vedi anche "Modello
+  dati: le risposte (granulari, non aggregate)": un documento per risposta rende
+  banale la regola che vieta al client di scrivere `corretta`.
 
 ## Correzione (`QuizRisultati`)
 
@@ -629,13 +704,16 @@ aprire il link lungo — è la via comoda per l'uso in classe.
   docente riapre per i ritardatari *con lo stesso codice*. Mai riusato per un
   altro quiz. `generaCodiceQuiz` è idempotente (self-heal per quiz attivi
   senza codice). `archiviaQuiz`, quando ci sarà, potrà liberarlo.
-- **Generazione client-side** in `avviaQuiz`, con loop check-then-create per
-  l'unicità. La micro-race (due generazioni simultanee dello stesso codice) è
-  accettata per ora — un docente pubblica un quiz alla volta — ma **è un buco
-  noto da chiudere** con una transazione / Cloud Function quando arrivano auth
-  e functions (Fase 2). Anche le security rules dovranno permettere il `get`
-  su `codici_accesso` (è solo un puntatore; il contenuto del quiz resta
-  protetto da `QuizStudente` che apre solo lo stato `attivo`).
+- **Generazione lato server (Fase 2).** `data/codiciAccessoRepository.js`
+  `generaCodiceQuiz` invoca la callable `functions/generaCodiceAccesso.js`:
+  verifica che il chiamante sia l'autore del quiz e che il quiz sia `attivo`,
+  poi genera il codice in una `runTransaction` (query di esistenza + candidato +
+  `set`) con retry — idempotente e **senza la micro-race** del vecchio
+  check-then-create client-side. Il client non scrive più su `codici_accesso`
+  (rules: `write: if false`); la lettura è aperta a chi è autenticato (è solo un
+  puntatore; il contenuto del quiz resta protetto da `QuizStudente`, che apre
+  solo lo stato `attivo`). L'alfabeto Crockford e la lunghezza sono duplicati
+  nella function (functions/ non importa da data/) — sincronizzati a mano.
 
 
 ## Modello dati: le risposte (granulari, non aggregate)
@@ -648,17 +726,17 @@ mappa di tutte le risposte".
 
 **Perché granulare, adesso:**
 
-- **Security rules (Fase 2).** `corretta` non deve mai essere scrivibile dal
-  client (regola fissa, vedi "Flusso quiz studente"). Con un documento per
-  risposta la regola è banale: l'id codifica la proprietà, e si nega la
-  scrittura del campo `corretta`. Con l'aggregato servirebbe validare che un
-  `update` abbia aggiunto *solo* una chiave nella mappa senza toccare i
-  `corretta` annidati nelle chiavi esistenti — in Firestore rules è complicato
-  e fragile.
-- **`calcolaPunteggio.js` come trigger.** Scatta sulla `create` di una
-  risposta, calcola `corretta`, riscrive quel campo. Pulito. Con l'aggregato
-  dovrebbe fare il diff before/after dello snapshot per capire cosa è
-  cambiato.
+- **Security rules (Fase 2 — fatte).** `corretta` non è scrivibile dal client:
+  con un documento per risposta la regola è banale (`create` senza il campo;
+  `update` solo su `rispostaData`/`timestamp` via `affectedKeys().hasOnly(...)`).
+  Con l'aggregato servirebbe validare che un `update` abbia aggiunto *solo* una
+  chiave nella mappa senza toccare i `corretta` annidati — in Firestore rules è
+  complicato e fragile. (Per far tornare i conti con `hasOnly`, `saveAnswer` usa
+  `merge`: un re-invio non rimuove `corretta` scritto dal server.)
+- **`calcolaPunteggio.js` come trigger (Fase 2 — fatto).** Scatta su
+  `onDocumentWritten` di una risposta, calcola `corretta`, riscrive quel campo
+  (guardia anti-loop). Con l'aggregato dovrebbe fare il diff before/after dello
+  snapshot per capire cosa è cambiato.
 - **`RISPOSTA` è un'entità di dominio** (vedi "Terminologia"): un documento per
   RISPOSTA lo esprime direttamente.
 - **Query longitudinali** (il caso d'uso centrale: "tutte le risposte di uno

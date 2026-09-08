@@ -1,9 +1,9 @@
 # Deploy — GitHub Pages
 
-Stato: **coda Fase 0**. Obiettivo di questo deploy: avere l'app raggiungibile da
-dispositivi reali per il dogfooding (docente + qualche collega). **Non** per uso
-con studenti — manca il login vero (Fase 2), le regole Firestore sono ancora
-permissive.
+Stato: **coda Fase 0**, con Fase 2 (login vero) già nel codice. Le sezioni 1–9
+sotto sono il setup base del progetto Firebase + Pages; la sezione **"Fase 2 —
+abilitare il login"** più in fondo va fatta prima di qualsiasi accesso reale.
+Fino ad allora, dogfooding solo con gli account che si creano a mano.
 
 ## Come funziona
 
@@ -41,13 +41,16 @@ non serve autenticarla ora). Regione Firestore scelta: **`europe-west8` (Milano)
    della sezione — poco importa comunque, incolliamo subito le nostre).
 5. Attiva.
 
-### 3. Regole interim
+### 3. Regole
 
-Console Firestore → tab **Regole** → incolla **tutto il contenuto di
-`firestore.rules`** del repo (aperte ma con scadenza `2026-10-15`) → **Pubblica**.
+`firestore.rules` nel repo è la fonte di verità (regole reali, Fase 2). Puoi
+incollarle a mano una prima volta (Console Firestore → **Regole** → Pubblica),
+ma dalla Fase 2 conviene il deploy via CLI: vedi "Fase 2 — abilitare il login".
 
-> `firestore.rules` nel repo resta la fonte di verità: se lo modifichi, ri-incolla
-> qui. Il deploy via CLI si aggancerà in Fase 2.
+> **Allinea la costante del dominio**: in `firestore.rules`, la funzione
+> `dominioIstituzionale()` ritorna `'istituto.example'`. Sostituiscilo col
+> dominio Google Workspace reale **prima** di pubblicare, e tienilo uguale a
+> `config/istituto.dominioIstituzionale`.
 
 ### 4. Web app + config
 
@@ -98,11 +101,11 @@ cambiare progetto senza toccare il codice, non perché siano segrete.
 3. **Revoca la chiave** dalla console quando hai finito (o tienila al sicuro per i
    re-seed). Il seed è idempotente: puoi rilanciarlo.
 
-> I dati di `config/current` sono di esempio (`IIS Esempio`, docente
-> `rossi@istituto.example`). Con la mock auth ancora attiva il docente corrente è
-> `mock-docente-1` a prescindere, quindi per il dogfooding vanno bene così;
-> aggiornali (nome istituto reale, tua email in `docentiAutorizzati`) quando
-> arriva il login vero in Fase 2.
+> I dati di `config` sono di esempio (`IIS Esempio`, dominio `istituto.example`,
+> docente `rossi@istituto.example`). Col login reale vanno messi valori veri:
+> vedi "Fase 2 — abilitare il login", punto B. Per intestare i quiz/quesiti demo
+> al tuo account: `SEED_DOCENTE_EMAIL=<tua email> …` (dopo che hai fatto login
+> almeno una volta, così l'account esiste).
 
 ### 8. Primo deploy
 
@@ -152,3 +155,74 @@ un `404.html`, lo snippet di decode in `index.html`).
 Il workflow fa `npm ci` in **`data/`** e in **`ui/`**: `ui/` importa i moduli di
 `data/`, che dipendono dall'SDK `firebase`. Senza le dipendenze di `data/` il
 build fallisce a risolvere `firebase/firestore`.
+
+## Fase 2 — abilitare il login
+
+Da fare prima di qualsiasi accesso reale (dogfooding incluso, appena si vuole
+usare il proprio account Google invece di utenti creati a mano).
+
+### A. Console Firebase — Authentication
+
+1. **Build → Authentication → Get started** (se non già fatto).
+2. **Sign-in method → Google → Enable.** Support email: quella dell'istituto/tua.
+3. **Settings → Authorized domains**: devono esserci `localhost` e
+   **`isaquiz.trikkulab.it`** (aggiungilo).
+4. Se l'istituto ha Google Workspace: l'OAuth consent screen (Google Cloud
+   Console → APIs & Services → OAuth consent screen) può restare **Internal**,
+   così solo gli account del dominio possono autorizzare l'app.
+
+### B. Firestore — `config`
+
+Console Firestore, oppure `scripts/seed.mjs` (`SEED_TARGET=prod …`, vedi §7):
+
+- `config/current`: `dominioIstituzionale` = dominio reale;
+  `docentiAutorizzati` = **email vere in minuscolo** dei docenti pilota;
+  `nomeIstituto`, `annoScolasticoCorrente`.
+- `config/istituto`: `{ dominioIstituzionale, nomeIstituto }` (stessi valori) —
+  è il documento **pubblico** che la pagina `/accedi` legge senza login.
+
+### C. Costante del dominio in `firestore.rules`
+
+`dominioIstituzionale()` nel file rules → dominio reale (deve combaciare con
+`config`). Cambiarlo richiede ri-deploy delle regole.
+
+### D. Deploy di rules + functions (CLI)
+
+Serve la Firebase CLI autenticata (finora mai fatto su questa macchina):
+
+```sh
+npx firebase login          # una tantum
+npx firebase use <project-id>
+npx firebase deploy --only firestore:rules,functions
+```
+
+Le tre function: `calcolaPunteggio` (trigger), `generaCodiceAccesso` e
+`generaQuesiti` (callable), regione `europe-west8`. `functions/` ha il suo
+`package.json` (Node 20). Il primo deploy functions può chiedere di abilitare
+alcune API Google Cloud e un piano **Blaze** (il free tier resta ampio).
+
+### E. Secret del build
+
+I 6 `VITE_FIREBASE_*` (§5) bastano: `authDomain` è già tra quelli. Nessuna nuova
+variabile per l'auth.
+
+### F. Verifica
+
+1. `https://isaquiz.trikkulab.it/#/accedi` → "Accedi con Google".
+2. Con un account del dominio in `docentiAutorizzati` → atterra su `/docente`.
+3. Con un account del dominio non in lista → `/studente`; `/docente` negato.
+4. Con un account fuori dominio → errore "usa l'account della scuola", nessuna
+   sessione.
+5. Pubblica un quiz → il codice compare (lo genera la Cloud Function). Rispondi
+   come studente → in Firestore la risposta prende `corretta`.
+
+### Note
+
+- I quiz demo del seed sono intestati a `rossi@istituto.example` (o a
+  `SEED_DOCENTE_EMAIL`). In prod il docente vero, al primo login, ottiene un
+  `utenti/{uid}` con ruolo docente ma **nessun corso**: non c'è ancora UI per
+  creare un `CORSO`, quindi i `corsi`/`docenti_corso` vanno creati per il suo
+  uid (ri-seed con `SEED_DOCENTE_EMAIL=<sua email>` dopo il suo primo login, o
+  Admin SDK). Nodo noto, vedi `DECISIONI_DESIGN.md`.
+- Emulatori in locale: `npm run emu` avvia anche Auth e Functions; `npm run
+  seed` crea gli account Auth di prova.

@@ -9,8 +9,8 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
 | Fase | Obiettivo | Output atteso | Stima |
 |---|---|---|---|
 | 0 | Setup iniziale | Repository /ui /data /functions; schema Firestore vuoto; mock auth | 1 sera |
-| 1 | Somministrazione quiz (MVP) | Docente crea/avvia quiz, studenti rispondono via QR, risultati in tempo reale | 3-4 giorni |
-| 2 | Login vero | Firebase Auth Google, dominio istituzionale, mock rimosso | 1 giorno |
+| 1 ✅ | Somministrazione quiz (MVP) | Docente crea/avvia quiz, studenti rispondono via QR, risultati in tempo reale | 3-4 giorni |
+| 2 ✅ | Login vero | Firebase Auth Google, dominio istituzionale, mock rimosso, rules reali | 1 giorno |
 | 3 | Generazione domande IA | Cloud Function proxy, upload testo/appunti, revisione docente | 3-5 giorni |
 | 4 | Banca dati condivisa e gamification | Condivisione domande tra docenti, sistema badge | 1-2 settimane |
 | 5 | Sperimentazione pilota | Rilascio con login reale, raccolta feedback | da pianificare |
@@ -56,11 +56,20 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   `risposteRepository` (saveAnswer, getRisposteQuiz, getRisposteStudente,
   ascoltaRisposteQuiz; getStatistichePer* → Fase 4/5)
 
-### Fase 2 — Login vero
-- Firebase Auth con provider Google
-- Restrizione al dominio istituzionale (parametro hd)
-- Sostituzione del mock auth con l'utente autenticato reale
-- Security rules di Firestore (docente vede solo la propria classe, ecc.)
+### Fase 2 — Login vero — FATTA
+
+- [x] Firebase Auth con provider Google (`data/authProvider.js`, `ui/src/auth/`)
+- [x] Restrizione al dominio istituzionale (hint `hd` + controllo in
+      authProvider + `isDominio()` nelle rules)
+- [x] Mock auth rimossa; provisioning `utenti/{uid}` + ruolo docente da
+      `config/current.docentiAutorizzati`, ricontrollato a ogni login
+- [x] Security rules di Firestore reali — **minime ma reali** (legate a
+      `request.auth`; da rafforzare: vedi `DECISIONI_DESIGN.md`, "Security rules")
+- [x] `functions/calcolaPunteggio.js` reale (trigger, `corretta` server-side)
+- [x] Codice di accesso senza race (`functions/generaCodiceAccesso.js`, callable)
+- Restano: passi manuali di deploy (`docs/deploy.md`, "Fase 2 — abilitare il
+  login"); onboarding docente / creazione corsi (non c'è ancora UI); vista
+  "docente vede solo la propria classe" più stretta (oggi lettura larga).
 
 ### Fase 3 — Generazione domande IA
 - Cloud Function proxy verso il provider IA (chiave mai esposta al client)

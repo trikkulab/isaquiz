@@ -125,16 +125,22 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
   `ascolta*` che riceve callback e ritorna la funzione di annullamento (il
   componente la chiama nel cleanup di `useEffect`). L'SDK Firebase è
   dipendenza di `data/package.json` (non di `ui/`); `data/firebaseClient.js` è
-  l'unico `initializeApp()` e si collega all'emulatore quando
+  l'unico `initializeApp()` ed esporta `db`, `auth`, `functions`; si collega
+  agli emulatori (Firestore + Auth + Functions) quando
   `VITE_USE_FIRESTORE_EMULATOR === "true"`.
-- **Mock auth attiva** (`data/mockAuth.js`, funzione `getUtenteCorrente()`).
-  NON collegare Firebase Auth reale finché non richiesto esplicitamente — è un
-  task pianificato per la Fase 2, non da anticipare. Nessuno studente deve
-  usare la piattaforma prima che il login vero sia attivo.
+- **Auth reale (Fase 2 — fatta).** Firebase Auth + Google, ristretto al dominio
+  istituzionale. Layer in `data/authProvider.js` (`accediConGoogle`, `esci`,
+  `ascoltaUtenteCorrente`): nessun componente `ui/` tocca Firebase Auth
+  direttamente. Al login (ogni volta, non solo il primo) si fa provisioning di
+  `utenti/{uid}` e si ricalcola `ruolo` da `config/current.docentiAutorizzati`.
+  In UI: `ui/src/auth/AuthContext.jsx` (`useUtenteCorrente`/`useAuth`) +
+  `RichiediAuth` sulle route. Mai reintrodurre un flusso "diventa docente".
+  `data/mockAuth.js` non esiste più.
 - **Il campo `corretta` su una risposta non si scrive mai dal client.** Il
-  client scrive solo la risposta grezza (`saveAnswer`); il calcolo e la
-  scrittura di `corretta` sono responsabilità esclusiva di
-  `functions/calcolaPunteggio.js`, lato server.
+  client scrive solo la risposta grezza (`saveAnswer`, con `merge`); il calcolo
+  e la scrittura di `corretta` sono di `functions/calcolaPunteggio.js` (trigger
+  Firestore su `risposte/{id}`), e le security rules vietano `corretta` nel
+  payload del client. Il calcolo client che resta in UI serve solo al display.
 - **`QuizRisultati.jsx` è "contenuto puro".** Non deve mai assumere di essere
   montato come pagina intera, dentro un modale, o inline in un pannello — chi
   lo monta decide il contenitore. Non aggiungerci logica di navigazione o
@@ -194,10 +200,13 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
 
 ## Stato attuale del progetto
 
-Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
+**Fase 1 (MVP somministrazione) e Fase 2 (login vero) completate.** Prossimo:
+coda Fase 0 (primo deploy end-to-end su progetto reale) e/o Fase 3 (IA).
+
+Fase 0 — setup:
 
 - [x] Struttura cartelle `/ui`, `/data`, `/functions`
-- [x] Mock auth (stub funzionante in `data/mockAuth.js`)
+- [x] ~~Mock auth~~ → sostituita in Fase 2 da `data/authProvider.js` (Auth reale)
 - [x] Collezioni Firestore create con dati di prova — **in emulatore**:
       `npm run emu` (radice) avvia l'emulatore Firestore, `npm run seed` lo
       popola (`scripts/seed.mjs`: `config`, `utenti`, `classi`, `corsi`,
@@ -212,16 +221,16 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       in `docs/deploy.md`.
 - [~] **Progetto Firebase reale** — deciso: Firestore region **`europe-west8`
       (Milano)**, permanente (dati in Italia, cfr. `docs/analisi-gdpr.md`).
-      Regole interim: `firestore.rules` ora è **aperto ma con scadenza**
-      (`request.time < 2026-10-15`) — pubblicabile sul progetto reale SOLO per
-      dogfooding interno, mai con studenti; spostare la data consapevolmente se
-      la Fase 2 slitta. `scripts/seed.mjs` sa puntare al DB reale con
-      `SEED_TARGET=prod` + service-account key (guardia `SEED_CONFIRM`). Lato
-      repo è tutto pronto; restano i passi manuali da console/GitHub nel runbook
-      `docs/deploy.md` (creare progetto, Firestore, incollare regole, 6 secret
-      `VITE_FIREBASE_*`, abilitare Pages, seed, primo deploy).
+      `firestore.rules` ora sono **reali** (Fase 2: legate a `request.auth`,
+      minime ma reali — vedi il commento in testa al file e
+      `DECISIONI_DESIGN.md`, "Security rules", per cosa resta da rafforzare).
+      `scripts/seed.mjs` sa puntare al DB reale con `SEED_TARGET=prod` +
+      service-account key (guardia `SEED_CONFIRM`). Restano i passi manuali da
+      console/GitHub nel runbook `docs/deploy.md` (creare progetto, Firestore,
+      abilitare Google Auth + authorized domains, 6 secret `VITE_FIREBASE_*`,
+      `firebase deploy --only firestore:rules,functions`, Pages, seed, deploy).
 
-**Fase 1 (somministrazione quiz), lato studente completo su dati mock:**
+**Fase 1 (somministrazione quiz) — componenti e repository:**
 
 - [x] `ui/src/pages/QuizStudente.jsx` — svolgimento quiz, un quesito alla
       volta, feedback immediato ✓/✗, nessun tasto indietro, avanzamento
@@ -250,11 +259,11 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (`archiviato`) / "senza quesiti". `saveAnswer` scrive davvero su
       `risposte` (fire-and-forget). `BarraQuiz`/`QuizRisultati` mostrano
       `materia · docente` solo se presenti.
-- [x] `ui/src/pages/StudenteHome.jsx` (route `/studente`) — mini-dashboard
-      studente (mock auth): "Partecipa a un quiz" → campo codice
-      (`normalizzaCodice` live, **nessun controllo di lunghezza**: basta non
-      vuoto) → `getQuizIdDaCodice` → `navigate('/quiz/:quizId')` o "Codice non
-      valido"; link alle statistiche. Diventerà la pagina post-login (Fase 2).
+- [x] `ui/src/pages/StudenteHome.jsx` (route `/studente`) — pagina post-login
+      dello studente: "Partecipa a un quiz" → campo codice (`normalizzaCodice`
+      live, **nessun controllo di lunghezza**: basta non vuoto) →
+      `getQuizIdDaCodice` → `navigate('/quiz/:quizId')` o "Codice non valido";
+      link alle statistiche; bottone "Esci".
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
       `getQuizDocente` — meta + materia, ordinati per data; `creaQuiz` →
@@ -273,10 +282,9 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `codici_accesso`, id = codice: `getQuizIdDaCodice`, `getCodiceQuiz`,
       `generaCodiceQuiz` idempotente, `normalizzaCodice` pura (clemenza
       Crockford + **allowlist** all'alfabeto → output sempre id-doc valido);
-      Crockford Base32, la lunghezza (oggi 6) è parametro di sola generazione
-      in un unico punto — tutto il resto è length-agnostic; generazione
-      client-side con micro-race accettata — vedi `DECISIONI_DESIGN.md`,
-      "Codice di accesso ai quiz").
+      Crockford Base32; `generaCodiceQuiz` invoca la Cloud Function
+      `generaCodiceAccesso` (transazione, verifica autore) — niente più race —
+      vedi `DECISIONI_DESIGN.md`, "Codice di accesso ai quiz").
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
       (ex `getQuesitiDocente`) raggruppa per `baseId`, ritorna solo l'ultima
       versione, e filtra `attivo !== false` salvo `{ includiInattivi: true }`;
@@ -290,9 +298,10 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       studenti + codice `TEST01`; `quiz-bozza-informatica`;
       `quiz-chiuso-informatica` + codice `TEST02`); 7 quesiti di cui 1 inattivo
       (`seed-info-3`), gli altri senza il campo `attivo`.
-- [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
-      giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
-      (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
+- [x] `functions/calcolaPunteggio.js` — Cloud Function reale (Fase 2): trigger
+      `onDocumentWritten` su `risposte/{id}`, scrive `corretta` server-side
+      (guardia anti-loop, ricalcolo al cambio risposta). Il calcolo client resta
+      solo per il display immediato.
 - [x] `CreaQuiz.jsx` — comporre un quiz: selettore corso, banca quesiti con
       ricerca (testo/opzioni), filtro (materia, argomento), ordinamento
       (recenti / testo / argomento, verso invertibile via `BottoneVerso`),
@@ -327,29 +336,32 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       "Duplica" (→ modifica subito la copia).
 - [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
       `archiviaQuiz`; la pagina statistiche vera (per-argomento, adattiva —
-      Fase 4/5). Generazione del codice di accesso da irrobustire (transazione
-      / Cloud Function) con auth/functions, Fase 2.
+      Fase 4/5).
+- [x] **Codice di accesso senza race (Fase 2)**: `functions/generaCodiceAccesso.js`
+      (callable, transazione + verifica autore); `data/codiciAccessoRepository.js`
+      `generaCodiceQuiz` la invoca. Il client non scrive più su `codici_accesso`.
 
-**Con questo la Fase 1 (somministrazione quiz, MVP) è di fatto completa** sul
-piano funzionale: docente crea → compone → pubblica (codice/QR) → studente
-entra e risponde → docente vede i risultati in tempo reale. Resta lato server
-`functions/calcolaPunteggio.js` (stub, calcolo client) e resta l'MVP
-inutilizzabile con studenti veri finché non c'è il login (Fase 2).
+**Fase 2 (login vero) — fatta.** Firebase Auth + Google, dominio istituzionale,
+provisioning `utenti/{uid}` + ruolo da lista a ogni login, `data/mockAuth.js`
+rimossa, security rules reali, `calcolaPunteggio` server-side, codice di accesso
+via Cloud Function. `data/authProvider.js` + `ui/src/auth/`. Emulatori: `npm run
+emu` avvia anche Auth e Functions; `npm run seed` crea gli account Auth di prova.
 
-Due strade, da affrontare in sessioni separate:
-- **Coda Fase 0 — hosting statico**: pipeline GitHub Pages già in piedi
-  (`.github/workflows/deploy.yml`, deploy da `rel`). Repo pronto (regole con
-  scadenza, seed `SEED_TARGET=prod`); restano i passi manuali da console/GitHub
-  nel runbook `docs/deploy.md` per la prima prova end-to-end su dispositivi
-  reali — solo dogfooding, niente studenti.
-- **Fase 2 — login vero** (Firebase Auth + Google, dominio istituzionale,
-  mock auth rimossa, security rules reali). È il cancello prima di qualsiasi
-  uso con studenti; sistema anche la micro-race del codice e `corretta`
-  server-side.
+Prossimo, da affrontare in sessioni separate:
+- **Coda Fase 0 — primo deploy reale**: pipeline GitHub Pages già in piedi
+  (`.github/workflows/deploy.yml`, deploy da `rel`). Restano i passi manuali da
+  console/GitHub nel runbook `docs/deploy.md` (sezione "Fase 2 — abilitare il
+  login") per la prima prova end-to-end su dispositivi reali.
+- **Onboarding docente / creazione corsi**: non c'è ancora UI per creare un
+  `CORSO` (era "Non ancora deciso" in `DECISIONI_DESIGN.md`). Oggi un docente
+  vero può lavorare solo se `corsi`/`docenti_corso` sono stati creati per il
+  suo uid (seed, o Admin SDK). Da affrontare prima di allargare i docenti pilota.
+- **Rafforzare le security rules** — vedi memory `project_rules_firestore_da_rafforzare`.
 
 ## Cosa NON fare in questa fase
 
-Non anticipare Fase 2 (login vero), Fase 3 (IA), Fase 4 (banca dati condivisa e
-badge) mentre si lavora sull'MVP di somministrazione — sono volutamente
-rimandate, vedi "Cosa resta fuori dal primo rilascio" nel piano di sviluppo.
+Non anticipare Fase 3 (IA), Fase 4 (banca dati condivisa e badge/livelli): sono
+volutamente rimandate, vedi "Cosa resta fuori dal primo rilascio" nel piano di
+sviluppo. Il campo `UTENTE.livello` esiste ma è solo un default (1) di display
+finché non c'è la gamification.
 
