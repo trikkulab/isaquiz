@@ -49,6 +49,15 @@ popola i dati di prova, `cd ui && npm run dev`. Dettagli in `README.md`.
 riparla quando si arriva alla pagina statistiche (accordion, modale, tabs), per
 ora si lavora con Tailwind puro.
 
+**Colore = informazione, e mai hard-coded.** Tutti i colori sono token
+`--color-*` in `@theme` (`ui/src/index.css`), con nomi di **ruolo** non di
+tinta. Serve un colore nuovo → si aggiunge un token lì, non un hex in un
+componente. Ogni ruolo un token solo (concetti diversi non condividono un
+token anche a parità di valore oggi). Il colore non è mai l'unico segnale di
+uno stato: accanto c'è sempre l'etichetta. Dark theme predisposto ma non
+attivo (blocco `@media` commentato in `index.css`). Regola completa, tabella
+dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
+
 - **Schermate studente (`QuizStudente`, `BarraQuiz`, `QuesitoCard`)**: qui c'è
   libertà di giudizio estetico — target sono studenti giovani, quindi
   l'interfaccia deve risultare moderna, accattivante, viva (non uno stile

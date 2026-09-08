@@ -113,7 +113,7 @@ export default function RisultatiDocente() {
   }, [quizId]);
 
   if (caricamento) {
-    return <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-[#1e1b2e]/60">Caricamento…</div>;
+    return <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-inchiostro/60">Caricamento…</div>;
   }
 
   const nQuesiti = quiz?.quesiti.length ?? 0;
@@ -130,7 +130,7 @@ export default function RisultatiDocente() {
 
       <div className="mb-6">
         <h1 className="text-xl font-semibold">{quiz?.titolo ?? "Risultati"}</h1>
-        <p className="mt-0.5 text-xs text-[#1e1b2e]/55">
+        <p className="mt-0.5 text-xs text-inchiostro/55">
           {[
             quiz?.materia,
             `${studenti.length} ${studenti.length === 1 ? "studente" : "studenti"}`,
@@ -148,15 +148,15 @@ export default function RisultatiDocente() {
       )}
 
       {studenti.length === 0 ? (
-        <div className="rounded-xl border border-bordo bg-white p-6 text-sm text-[#1e1b2e]/60">
+        <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
           Ancora nessuna risposta.
         </div>
       ) : (
         <>
-          <section className="mb-6 overflow-hidden rounded-xl border border-bordo bg-white">
+          <section className="mb-6 overflow-hidden rounded-xl border border-bordo bg-superficie">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-bordo text-left text-xs text-[#1e1b2e]/55">
+                <tr className="border-b border-bordo text-left text-xs text-inchiostro/55">
                   <th className="px-4 py-2 font-medium">Studente</th>
                   <th className="px-4 py-2 font-medium">Punteggio</th>
                   <th className="px-4 py-2 font-medium">Risposte</th>
@@ -169,7 +169,7 @@ export default function RisultatiDocente() {
                     <td className="px-4 py-2 font-medium">
                       {s.corrette} / {nQuesiti}
                     </td>
-                    <td className="px-4 py-2 text-[#1e1b2e]/60">
+                    <td className="px-4 py-2 text-inchiostro/60">
                       {s.risposteN} / {nQuesiti}
                     </td>
                   </tr>
@@ -178,18 +178,18 @@ export default function RisultatiDocente() {
             </table>
           </section>
 
-          <section className="rounded-xl border border-bordo bg-white p-4">
+          <section className="rounded-xl border border-bordo bg-superficie p-4">
             <h2 className="mb-3 text-sm font-semibold">Per quesito</h2>
             <ol className="flex flex-col gap-2">
               {perQuesito.map((q, i) => (
                 <li key={q.id} className="flex items-start justify-between gap-3 text-sm">
                   <span className="min-w-0">
-                    <span className="text-[#1e1b2e]/40">{i + 1}.</span> {q.testo}
+                    <span className="text-inchiostro/40">{i + 1}.</span> {q.testo}
                     {q.argomento && (
-                      <span className="ml-1 text-xs text-[#1e1b2e]/45">· {q.argomento}</span>
+                      <span className="ml-1 text-xs text-inchiostro/45">· {q.argomento}</span>
                     )}
                   </span>
-                  <span className="shrink-0 tabular-nums text-[#1e1b2e]/70">
+                  <span className="shrink-0 tabular-nums text-inchiostro/70">
                     {q.corrette}/{q.date} corrette
                   </span>
                 </li>

@@ -235,6 +235,71 @@ contenitore che lo monta. Stesso principio vale per eventuali grafici futuri
 (non ancora implementati): i dati aggregati vivono nel repository, la UI decide
 solo come disporli in base allo spazio disponibile.
 
+## Sistema colore
+
+**Il colore porta informazione, non è decorazione.** Ogni tinta del progetto
+ha un *ruolo* preciso; la scelta di quale colore usare non è mai estetica.
+
+**Regola fissa: nessun colore hard-coded nei componenti.** Tutti i colori
+vivono come token `--color-*` in `@theme` dentro `ui/src/index.css`. Se serve
+un colore nuovo si aggiunge un token lì, con un nome che dice il **ruolo** (a
+cosa serve: `--color-superficie`, `--color-stato-chiuso`), mai la tinta
+(`--color-viola`, `--color-grigio-10`). Conseguenza voluta: cambiare una
+tonalità è una riga sola, e il dark theme (sotto) diventa quasi gratis.
+
+**Ogni ruolo compare una volta sola.** Due concetti diversi non condividono un
+token anche se oggi hanno lo stesso valore — altrimenti non si può ritoccarne
+uno senza l'altro. Casi già separati per questo motivo:
+
+| Ruolo | Token | Nota |
+|---|---|---|
+| Testo base | `--color-inchiostro` | le opacità `/40`..`/80` danno i toni tenui |
+| Sfondo pagina | `--color-sfondo` | |
+| Card / pannelli / righe / campi | `--color-superficie` | oggi bianco; nel dark NON bianco |
+| Testo e veli su fondo primario | `--color-su-primario` | oggi bianco; header gradiente, bottoni pieni |
+| Risposta esatta (`QuesitoCard`) | `--color-corretto` / `-sfondo` | |
+| Risposta scelta sbagliata (`QuesitoCard`) | `--color-errato` / `-sfondo` | verde/rosso dell'**esito**, non dello stato |
+| Errore di sistema / validazione (banner) | `--color-errore` / `-sfondo` | stesso rosso di `errato` oggi, ruolo distinto |
+| Stato quiz `bozza` | `--color-stato-bozza` / `-sfondo` | viola: "in lavorazione, tuo" |
+| Stato quiz `attivo` | `--color-stato-attivo` / `-sfondo` | verde **proprio**, non quello di `corretto` |
+| Stato quiz `chiuso` | `--color-stato-chiuso` / `-sfondo` | ambra: chiuso ma riapribile |
+| Stato quiz `archiviato` | `--color-stato-archiviato` / `-sfondo` | grigio: terminale |
+
+I quattro stati del quiz hanno quattro tinte distinte apposta: nella lista
+docente si riconosce lo stato dal colore del badge. **Il colore non è mai
+l'unico segnale** — l'etichetta testuale resta sempre (accessibilità,
+daltonismo).
+
+**Eccezioni ammesse al "niente hard-coded", annotate nel codice:**
+- sfondo del QR in `AccessoQuiz` → sempre `bg-white` reale: serve alla
+  scansione, non deve seguire il tema;
+- `--shadow-morbida` / `--shadow-bottone` incorporano il primario come `rgba`:
+  è un'ombra, non un colore di contenuto. Da rivedere col dark theme.
+
+**Colore per materia: non ancora.** Distinguere le materie a colpo d'occhio
+(liste quesiti/quiz) è rimandato a quando c'è la superficie che ne beneficia
+(pagina statistiche). Quando si farà: una funzione pura `coloreMateria(nome)`
+che mappa su un set chiuso di 6-8 token, non tinte a mano sparse nei componenti.
+
+### Dark theme — predisposto, non attivo
+
+**Obiettivo dichiarato, soprattutto per le schermate studente** (telefoni in
+aula, uso serale, OLED). Non implementato nell'MVP: il grosso del valore è
+sulla pagina statistiche, che non esiste ancora. Rimandato lì.
+
+Cosa è già pronto:
+- token con nomi di ruolo, zero hex nei componenti (fatto);
+- blocco `@media (prefers-color-scheme: dark)` **commentato** in `index.css`
+  che elenca i soli token da ridefinire;
+- la palette light è stata scelta verificando che le relazioni fra tinte
+  (i quattro stati, esito giusto/sbagliato) reggano anche su fondo scuro.
+
+Cosa manca (da fare quando si affronta): dare i valori scuri ai token, la QA
+sistematica schermo per schermo, la gestione di `--shadow-*` e dei pochi
+`bg-white` deliberati. Nessun componente andrà toccato: usano tutti nomi di
+ruolo. Se a quel punto il dark non si vuole più, i token semantici restano
+comunque il modo corretto di gestire i colori — non si è perso nulla.
+
 ## Internazionalizzazione
 
 **Nessuna i18n prevista, deliberatamente.** Il progetto resta interamente in

@@ -42,7 +42,7 @@ export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
     <div className="flex flex-col items-center gap-3 rounded-lg border border-bordo bg-sfondo p-4">
       {codice && (
         <div className="text-center">
-          <p className="text-xs font-medium text-[#1e1b2e]/55">
+          <p className="text-xs font-medium text-inchiostro/55">
             Codice (su {`${window.location.host}${import.meta.env.BASE_URL}#/studente`})
           </p>
           <p className="font-titoli text-3xl font-bold tracking-[0.25em] text-primario-scuro">
@@ -52,20 +52,21 @@ export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
       )}
 
       <p className="text-sm font-medium">…oppure con il QR:</p>
+      {/* Sfondo del QR sempre bianco: serve alla scansione, non segue il tema. */}
       <div className="rounded-lg bg-white p-3">
         <QRCodeSVG value={link} size={dimensioneQr} />
       </div>
 
       <div className="flex w-full items-center gap-2">
         <input
-          className="w-full rounded-lg border border-bordo bg-white px-3 py-2 text-xs outline-none focus:border-primario"
+          className="w-full rounded-lg border border-bordo bg-superficie px-3 py-2 text-xs outline-none focus:border-primario"
           value={link}
           readOnly
           onFocus={(e) => e.target.select()}
         />
         <button
           type="button"
-          className="shrink-0 rounded-lg border border-bordo bg-white px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario"
+          className="shrink-0 rounded-lg border border-bordo bg-superficie px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario"
           onClick={copia}
         >
           {copiato ? "Copiato" : "Copia"}

@@ -43,23 +43,23 @@ export default function QuesitoCard({
   function classeOpzione(indice) {
     if (inCorrezione) {
       if (indice === indiceCorretto) {
-        return `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-[#1e1b2e]`;
+        return `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-inchiostro`;
       }
       if (indice === indiceSelezionato) {
-        return `${BASE_OPZIONE} border-errore bg-errore-sfondo text-[#1e1b2e]`;
+        return `${BASE_OPZIONE} border-errato bg-errato-sfondo text-inchiostro`;
       }
-      return `${BASE_OPZIONE} border-bordo bg-white text-[#1e1b2e] opacity-55`;
+      return `${BASE_OPZIONE} border-bordo bg-superficie text-inchiostro opacity-55`;
     }
 
     if (indice !== indiceSelezionato) {
-      return `${BASE_OPZIONE} border-bordo bg-white text-[#1e1b2e]` + (haRisposto ? " opacity-55" : "");
+      return `${BASE_OPZIONE} border-bordo bg-superficie text-inchiostro` + (haRisposto ? " opacity-55" : "");
     }
     if (!haRisposto) {
-      return `${BASE_OPZIONE} border-bordo bg-white text-[#1e1b2e]`;
+      return `${BASE_OPZIONE} border-bordo bg-superficie text-inchiostro`;
     }
     return corretta
-      ? `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-[#1e1b2e]`
-      : `${BASE_OPZIONE} border-errore bg-errore-sfondo text-[#1e1b2e]`;
+      ? `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-inchiostro`
+      : `${BASE_OPZIONE} border-errato bg-errato-sfondo text-inchiostro`;
   }
 
   function esito(indice) {
@@ -73,7 +73,7 @@ export default function QuesitoCard({
   }
 
   return (
-    <div className="rounded-[22px] bg-white px-5 py-6 shadow-morbida">
+    <div className="rounded-[22px] bg-superficie px-5 py-6 shadow-morbida">
       {inCorrezione && argomento && (
         <span className="mb-2 inline-block rounded-full bg-sfondo px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-primario">
           {argomento}
@@ -95,7 +95,7 @@ export default function QuesitoCard({
               <span className="flex-1">{opzione}</span>
               {segno && (
                 <span
-                  className={"text-base font-bold " + (segno === "✓" ? "text-corretto" : "text-errore")}
+                  className={"text-base font-bold " + (segno === "✓" ? "text-corretto" : "text-errato")}
                   aria-hidden="true"
                 >
                   {segno}
@@ -107,7 +107,7 @@ export default function QuesitoCard({
       </div>
 
       {inCorrezione && spiegazione && (
-        <p className="mt-4 rounded-[14px] bg-sfondo px-4 py-3 text-sm leading-relaxed text-[#1e1b2e]/80">
+        <p className="mt-4 rounded-[14px] bg-sfondo px-4 py-3 text-sm leading-relaxed text-inchiostro/80">
           {spiegazione}
         </p>
       )}

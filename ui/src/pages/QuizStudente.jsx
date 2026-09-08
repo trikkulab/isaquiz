@@ -62,7 +62,7 @@ export default function QuizStudente() {
 
   if (caricamento) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4 text-[#1e1b2e]/60">
+      <div className="flex min-h-screen items-center justify-center px-4 text-inchiostro/60">
         Caricamento del quiz…
       </div>
     );
@@ -71,7 +71,7 @@ export default function QuizStudente() {
   if (errore) {
     return (
       <div className="mx-auto flex min-h-screen max-w-[560px] items-center px-4 text-center">
-        <p className="text-[#1e1b2e]/70">{errore}</p>
+        <p className="text-inchiostro/70">{errore}</p>
       </div>
     );
   }

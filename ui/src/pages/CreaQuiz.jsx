@@ -28,13 +28,13 @@ import {
 } from "../../../data/quizRepository.js";
 
 const CAMPO =
-  "w-full rounded-lg border border-bordo bg-white px-3 py-2 text-sm outline-none focus:border-primario";
+  "w-full rounded-lg border border-bordo bg-superficie px-3 py-2 text-sm outline-none focus:border-primario";
 const BOTTONE_PRIMARIO =
-  "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
+  "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-su-primario transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
 const BOTTONE_SECONDARIO =
-  "rounded-lg border border-bordo bg-white px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario disabled:cursor-not-allowed disabled:opacity-40";
+  "rounded-lg border border-bordo bg-superficie px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario disabled:cursor-not-allowed disabled:opacity-40";
 const FILTRO =
-  "rounded-lg border border-bordo bg-white px-2.5 py-1.5 text-xs outline-none focus:border-primario disabled:opacity-40";
+  "rounded-lg border border-bordo bg-superficie px-2.5 py-1.5 text-xs outline-none focus:border-primario disabled:opacity-40";
 
 const FILTRI_VUOTI = { materia: "", argomento: "", cerca: "" };
 
@@ -441,14 +441,14 @@ export default function CreaQuiz() {
   // --- render ------------------------------------------------------------
 
   if (caricamento) {
-    return <div className="mx-auto max-w-5xl px-4 py-10 text-sm text-[#1e1b2e]/60">Caricamento…</div>;
+    return <div className="mx-auto max-w-5xl px-4 py-10 text-sm text-inchiostro/60">Caricamento…</div>;
   }
 
   if (bloccato) {
     return (
       <div className="mx-auto max-w-xl px-4 py-10">
-        <div className="rounded-xl border border-bordo bg-white p-6">
-          <p className="mb-4 text-sm text-[#1e1b2e]/70">{bloccato}</p>
+        <div className="rounded-xl border border-bordo bg-superficie p-6">
+          <p className="mb-4 text-sm text-inchiostro/70">{bloccato}</p>
           <button
             type="button"
             className={BOTTONE_SECONDARIO}
@@ -472,15 +472,15 @@ export default function CreaQuiz() {
           </div>
         )}
 
-        <div className="rounded-xl border border-bordo bg-white p-6">
+        <div className="rounded-xl border border-bordo bg-superficie p-6">
           <h1 className="mb-2 text-lg font-semibold">
             {attivo ? "Quiz avviato" : quizSalvato.modificata ? "Bozza aggiornata" : "Bozza salvata"}
           </h1>
-          <p className="mb-1 text-sm text-[#1e1b2e]/70">
+          <p className="mb-1 text-sm text-inchiostro/70">
             «{quizSalvato.titolo}» — {quizSalvato.numQuesiti}{" "}
             {quizSalvato.numQuesiti === 1 ? "quesito" : "quesiti"}
           </p>
-          <p className="mb-5 text-xs text-[#1e1b2e]/50">ID: {quizSalvato.id}</p>
+          <p className="mb-5 text-xs text-inchiostro/50">ID: {quizSalvato.id}</p>
 
           {attivo ? (
             <div className="mb-5">
@@ -536,7 +536,7 @@ export default function CreaQuiz() {
         </div>
 
         {!attivo && (
-          <p className="mt-4 text-xs text-[#1e1b2e]/50">
+          <p className="mt-4 text-xs text-inchiostro/50">
             La bozza resta salvata: la ritrovi (per avviarla o eliminarla) in «I miei quiz».
           </p>
         )}
@@ -555,15 +555,15 @@ export default function CreaQuiz() {
       )}
 
       {avviso && (
-        <div className="mb-4 rounded-lg border border-bordo bg-sfondo px-3 py-2 text-xs text-[#1e1b2e]/70">
+        <div className="mb-4 rounded-lg border border-bordo bg-sfondo px-3 py-2 text-xs text-inchiostro/70">
           {avviso}
         </div>
       )}
 
       {/* Dati del quiz */}
-      <section className="mb-6 grid gap-4 rounded-xl border border-bordo bg-white p-4 sm:grid-cols-2">
+      <section className="mb-6 grid gap-4 rounded-xl border border-bordo bg-superficie p-4 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Corso</span>
+          <span className="mb-1 block text-xs font-medium text-inchiostro/60">Corso</span>
           <select className={CAMPO} value={corsoId} onChange={(e) => setCorsoId(e.target.value)}>
             {corsi.length === 0 && <option value="">Nessun corso</option>}
             {corsi.map((c) => (
@@ -574,7 +574,7 @@ export default function CreaQuiz() {
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Titolo del quiz</span>
+          <span className="mb-1 block text-xs font-medium text-inchiostro/60">Titolo del quiz</span>
           <input
             className={CAMPO}
             value={titolo}
@@ -587,10 +587,10 @@ export default function CreaQuiz() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Colonna A — banca + nuovo quesito */}
         <div className="flex flex-col gap-6">
-          <section className="rounded-xl border border-bordo bg-white p-4">
+          <section className="rounded-xl border border-bordo bg-superficie p-4">
             <h2 className="mb-3 text-sm font-semibold">
               Banca quesiti{" "}
-              <span className="font-normal text-[#1e1b2e]/50">
+              <span className="font-normal text-inchiostro/50">
                 ({filtriAttivi
                   ? `${bancaDisponibile.length} di ${nonSelezionati.length}`
                   : bancaDisponibile.length})
@@ -657,7 +657,7 @@ export default function CreaQuiz() {
                   Azzera
                 </button>
               )}
-              <label className="ml-auto flex items-center gap-1.5 text-xs text-[#1e1b2e]/60">
+              <label className="ml-auto flex items-center gap-1.5 text-xs text-inchiostro/60">
                 <input
                   type="checkbox"
                   className="accent-primario"
@@ -669,13 +669,13 @@ export default function CreaQuiz() {
             </div>
 
             {nonSelezionati.length === 0 ? (
-              <p className="text-sm text-[#1e1b2e]/50">
+              <p className="text-sm text-inchiostro/50">
                 {!mostraInattivi && banca.some((q) => q.attivo === false)
                   ? "Nessun quesito attivo. Spunta «Mostra inattivi» o creane uno qui sotto."
                   : "Nessun quesito disponibile. Creane uno qui sotto."}
               </p>
             ) : bancaDisponibile.length === 0 ? (
-              <p className="text-sm text-[#1e1b2e]/50">Nessun quesito corrisponde ai filtri.</p>
+              <p className="text-sm text-inchiostro/50">Nessun quesito corrisponde ai filtri.</p>
             ) : (
               <div className="h-[420px] min-h-[160px] max-h-[75vh] resize-y overflow-auto pr-1">
                 {/* Altezza regolabile dall'utente (maniglia di resize nativa,
@@ -701,13 +701,13 @@ export default function CreaQuiz() {
                         >
                           <p className="text-sm">
                             {inattivo && (
-                              <span className="mr-1.5 rounded bg-[#1e1b2e]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1e1b2e]/55">
+                              <span className="mr-1.5 rounded bg-inchiostro/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-inchiostro/55">
                                 inattivo
                               </span>
                             )}
                             {q.testo}
                           </p>
-                          <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
+                          <p className="mt-0.5 text-xs text-inchiostro/50">
                             {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
                           </p>
                         </button>
@@ -731,7 +731,7 @@ export default function CreaQuiz() {
                               </button>
                               <button
                                 type="button"
-                                className="text-xs font-medium text-[#1e1b2e]/45 hover:text-errore"
+                                className="text-xs font-medium text-inchiostro/45 hover:text-errore"
                                 onClick={() => cambiaAttivo(q, false)}
                               >
                                 Disattiva
@@ -747,7 +747,7 @@ export default function CreaQuiz() {
             )}
           </section>
 
-          <section ref={formRef} className="scroll-mt-6 rounded-xl border border-bordo bg-white p-4">
+          <section ref={formRef} className="scroll-mt-6 rounded-xl border border-bordo bg-superficie p-4">
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold">
                 {quesitoBase ? "Modifica quesito" : "Nuovo quesito"}
@@ -764,7 +764,7 @@ export default function CreaQuiz() {
             </div>
 
             {quesitoBase && (
-              <p className="mb-3 rounded-lg bg-sfondo px-3 py-2 text-xs text-[#1e1b2e]/60">
+              <p className="mb-3 rounded-lg bg-sfondo px-3 py-2 text-xs text-inchiostro/60">
                 Versione {quesitoBase.versione ?? 0} · autore:{" "}
                 {autoreDiverso ? "un altro docente" : "tu"}
               </p>
@@ -778,7 +778,7 @@ export default function CreaQuiz() {
               }}
             >
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Testo</span>
+                <span className="mb-1 block text-xs font-medium text-inchiostro/60">Testo</span>
                 <textarea
                   className={`${CAMPO} resize-y`}
                   rows={2}
@@ -788,7 +788,7 @@ export default function CreaQuiz() {
               </label>
 
               <div>
-                <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">
+                <span className="mb-1 block text-xs font-medium text-inchiostro/60">
                   Opzioni (seleziona quella corretta)
                 </span>
                 <div className="flex flex-col gap-2">
@@ -810,7 +810,7 @@ export default function CreaQuiz() {
                       />
                       <button
                         type="button"
-                        className="px-1 text-lg leading-none text-[#1e1b2e]/40 hover:text-errore disabled:opacity-30"
+                        className="px-1 text-lg leading-none text-inchiostro/40 hover:text-errore disabled:opacity-30"
                         onClick={() => rimuoviOpzione(i)}
                         disabled={form.opzioni.length <= OPZIONI_MIN}
                         aria-label={`Rimuovi opzione ${i + 1}`}
@@ -832,7 +832,7 @@ export default function CreaQuiz() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Argomento</span>
+                  <span className="mb-1 block text-xs font-medium text-inchiostro/60">Argomento</span>
                   <input
                     className={CAMPO}
                     value={form.argomento}
@@ -841,7 +841,7 @@ export default function CreaQuiz() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Materia</span>
+                  <span className="mb-1 block text-xs font-medium text-inchiostro/60">Materia</span>
                   <select
                     className={CAMPO}
                     value={materiaEffettiva}
@@ -860,7 +860,7 @@ export default function CreaQuiz() {
               </div>
 
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">
+                <span className="mb-1 block text-xs font-medium text-inchiostro/60">
                   Spiegazione (opzionale)
                 </span>
                 <textarea
@@ -917,14 +917,14 @@ export default function CreaQuiz() {
         </div>
 
         {/* Colonna B — quesiti nel quiz */}
-        <section className="rounded-xl border border-bordo bg-white p-4 lg:sticky lg:top-6 lg:self-start">
+        <section className="rounded-xl border border-bordo bg-superficie p-4 lg:sticky lg:top-6 lg:self-start">
           <h2 className="mb-3 text-sm font-semibold">
             Quesiti nel quiz{" "}
-            <span className="font-normal text-[#1e1b2e]/50">({quesitiNelQuiz.length})</span>
+            <span className="font-normal text-inchiostro/50">({quesitiNelQuiz.length})</span>
           </h2>
 
           {quesitiNelQuiz.length === 0 ? (
-            <p className="text-sm text-[#1e1b2e]/50">
+            <p className="text-sm text-inchiostro/50">
               Aggiungi quesiti dalla banca o creane di nuovi.
             </p>
           ) : (
@@ -936,15 +936,15 @@ export default function CreaQuiz() {
                 >
                   <div className="min-w-0">
                     <p className="text-sm">
-                      <span className="text-[#1e1b2e]/40">{i + 1}.</span> {q.testo}
+                      <span className="text-inchiostro/40">{i + 1}.</span> {q.testo}
                     </p>
-                    <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
+                    <p className="mt-0.5 text-xs text-inchiostro/50">
                       {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
                     </p>
                   </div>
                   <button
                     type="button"
-                    className="px-1 text-lg leading-none text-[#1e1b2e]/40 hover:text-errore"
+                    className="px-1 text-lg leading-none text-inchiostro/40 hover:text-errore"
                     onClick={() => rimuoviDalQuiz(q.id)}
                     aria-label="Rimuovi dal quiz"
                   >
@@ -965,7 +965,7 @@ export default function CreaQuiz() {
               {salvandoBozza ? "Salvataggio…" : quizId ? "Salva modifiche" : "Salva bozza"}
             </button>
             {!bozzaValida && (
-              <p className="mt-2 text-xs text-[#1e1b2e]/50">
+              <p className="mt-2 text-xs text-inchiostro/50">
                 Servono un titolo, un corso e almeno un quesito.
               </p>
             )}

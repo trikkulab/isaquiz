@@ -7,7 +7,7 @@ export default function BottoneVerso({ discendente, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
-      className="rounded-lg border border-bordo bg-white px-2.5 py-1.5 text-xs font-semibold leading-none text-primario transition-colors hover:border-primario"
+      className="rounded-lg border border-bordo bg-superficie px-2.5 py-1.5 text-xs font-semibold leading-none text-primario transition-colors hover:border-primario"
       title={
         discendente
           ? "Ordine decrescente — clicca per invertire"

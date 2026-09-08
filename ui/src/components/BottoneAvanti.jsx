@@ -49,11 +49,11 @@ export default function BottoneAvanti({ onAvanti, etichetta }) {
     <button
       type="button"
       onClick={avanza}
-      className="relative w-full max-w-[560px] animate-comparsa overflow-hidden rounded-full bg-gradient-to-br from-accento to-primario p-4 font-titoli text-base font-bold text-white shadow-bottone active:scale-[0.98]"
+      className="relative w-full max-w-[560px] animate-comparsa overflow-hidden rounded-full bg-gradient-to-br from-accento to-primario p-4 font-titoli text-base font-bold text-su-primario shadow-bottone active:scale-[0.98]"
     >
       <span
         aria-hidden="true"
-        className="absolute inset-0 origin-left bg-white/25 transition-transform ease-linear"
+        className="absolute inset-0 origin-left bg-su-primario/25 transition-transform ease-linear"
         style={{
           transitionDuration: `${DURATA_AVANZAMENTO_AUTOMATICO_MS}ms`,
           transform: riempito ? "scaleX(1)" : "scaleX(0)",

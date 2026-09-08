@@ -17,7 +17,7 @@ export default function QuizRisultati({ quiz, risposte }) {
   if (!quiz || !risposte) {
     return (
       <div className="mx-auto max-w-[560px] px-4 py-10 text-center">
-        <p className="text-[#1e1b2e]/70">Correzione non disponibile.</p>
+        <p className="text-inchiostro/70">Correzione non disponibile.</p>
       </div>
     );
   }
@@ -28,7 +28,7 @@ export default function QuizRisultati({ quiz, risposte }) {
 
   return (
     <div className="mx-auto max-w-[560px] px-4 py-6">
-      <header className="mb-6 rounded-[22px] bg-gradient-to-br from-primario to-primario-scuro px-5 py-6 text-white shadow-morbida">
+      <header className="mb-6 rounded-[22px] bg-gradient-to-br from-primario to-primario-scuro px-5 py-6 text-su-primario shadow-morbida">
         {[quiz.materia, quiz.docente].some(Boolean) && (
           <p className="text-[13px] opacity-85">
             {[quiz.materia, quiz.docente].filter(Boolean).join(" · ")}

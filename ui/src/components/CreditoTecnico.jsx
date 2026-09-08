@@ -20,7 +20,7 @@ export default function CreditoTecnico() {
   const testo = `${nomeApp} v${version} — Realizzato da ${nomeSviluppatore} con ${elencaConE(tecnologie)}`;
 
   return (
-    <p className="mt-8 pb-6 text-center text-xs text-gray-400">
+    <p className="mt-8 pb-6 text-center text-xs text-inchiostro/40">
       {link ? (
         <a href={link} className="hover:underline">
           {testo}

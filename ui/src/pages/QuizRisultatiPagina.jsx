@@ -56,11 +56,11 @@ export default function QuizRisultatiPagina() {
   return (
     <div>
       {caricamento ? (
-        <p className="mx-auto max-w-[560px] px-4 py-10 text-center text-[#1e1b2e]/60">
+        <p className="mx-auto max-w-[560px] px-4 py-10 text-center text-inchiostro/60">
           Caricamento della correzione…
         </p>
       ) : errore ? (
-        <p className="mx-auto max-w-[560px] px-4 py-10 text-center text-[#1e1b2e]/70">{errore}</p>
+        <p className="mx-auto max-w-[560px] px-4 py-10 text-center text-inchiostro/70">{errore}</p>
       ) : (
         <QuizRisultati quiz={dati.quiz} risposte={dati.risposte} />
       )}

@@ -12,11 +12,11 @@ export default function BarraQuiz({ studente, quiz, corrente, totale }) {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-10 rounded-b-[22px] bg-gradient-to-br from-primario to-primario-scuro px-5 pt-4 pb-3.5 text-white shadow-morbida">
+    <header className="sticky top-0 z-10 rounded-b-[22px] bg-gradient-to-br from-primario to-primario-scuro px-5 pt-4 pb-3.5 text-su-primario shadow-morbida">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 font-titoli text-xl font-bold"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-su-primario/20 font-titoli text-xl font-bold"
             aria-hidden="true"
           >
             {studente.avatarEmoji || iniziali}
@@ -31,7 +31,7 @@ export default function BarraQuiz({ studente, quiz, corrente, totale }) {
 
         {studente.livello != null && (
           <span
-            className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-white/[0.18] px-3 py-1.5 text-[13px] font-semibold"
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-su-primario/[0.18] px-3 py-1.5 text-[13px] font-semibold"
             title="Il tuo livello"
           >
             <span aria-hidden="true">⭐</span>
@@ -65,10 +65,10 @@ export default function BarraQuiz({ studente, quiz, corrente, totale }) {
               className={
                 "h-[5px] flex-1 rounded-full transition-colors duration-300 " +
                 (stato === "completato"
-                  ? "bg-white"
+                  ? "bg-su-primario"
                   : stato === "attivo"
-                  ? "bg-gradient-to-r from-white to-white/50"
-                  : "bg-white/25")
+                  ? "bg-gradient-to-r from-su-primario to-su-primario/50"
+                  : "bg-su-primario/25")
               }
             />
           );

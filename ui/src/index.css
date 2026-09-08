@@ -1,25 +1,86 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
+/* Design token del progetto. REGOLA (vedi DECISIONI_DESIGN.md, "Sistema
+   colore"): nessun colore hard-coded nei componenti — se serve un colore
+   nuovo si aggiunge un token QUI, con un nome che dice il RUOLO (a cosa
+   serve), non la tinta. Ogni ruolo compare una volta sola: due concetti
+   diversi non condividono un token anche se oggi hanno lo stesso valore. */
 @theme {
+  /* --- Marchio e azioni --- */
   --color-primario: #7c5cff;
   --color-primario-scuro: #5e3fe0;
   --color-accento: #ff5da2;
+
+  /* --- Superfici e testo --- */
+  --color-sfondo: #f4f2ff; /* sfondo della pagina */
+  --color-superficie: #ffffff; /* card, pannelli, righe di tabella, campi */
+  --color-bordo: #e7e3f7;
+  --color-inchiostro: #1e1b2e; /* testo base; le opacità /40../80 danno i toni tenui */
+  --color-su-primario: #ffffff; /* testo e veli sopra un fondo primario/accento */
+
+  /* --- Esito di una risposta (QuesitoCard) --- */
   --color-corretto: #22c55e;
   --color-corretto-sfondo: #e9fbef;
+  --color-errato: #ef4444; /* la risposta scelta era sbagliata */
+  --color-errato-sfondo: #fdecec;
+
+  /* --- Avvisi di sistema / validazione (banner d'errore) --- */
+  /* Ruolo distinto da "risposta errata": stesso rosso oggi, ma disaccoppiato
+     così può divergere senza toccare i componenti. */
   --color-errore: #ef4444;
   --color-errore-sfondo: #fdecec;
-  --color-sfondo: #f4f2ff;
-  --color-bordo: #e7e3f7;
+
+  /* --- Stato di un quiz (badge nelle liste docente) --- */
+  /* Quattro tinte distinte: si riconosce lo stato dal colore, non solo
+     dall'etichetta (che resta, per accessibilità). `attivo` è un verde
+     PROPRIO, non quello di `corretto`. */
+  --color-stato-bozza: #6d4bd8;
+  --color-stato-bozza-sfondo: #efeafc;
+  --color-stato-attivo: #15803d;
+  --color-stato-attivo-sfondo: #e7f8ee;
+  --color-stato-chiuso: #b45309;
+  --color-stato-chiuso-sfondo: #fbeee0;
+  --color-stato-archiviato: #5f5d6e;
+  --color-stato-archiviato-sfondo: #efeef4;
 
   --font-titoli: "Poppins", "Segoe UI", system-ui, sans-serif;
   --font-testo: "Inter", "Segoe UI", system-ui, sans-serif;
 
+  /* Le ombre incorporano il primario "a mano" (rgba): sono l'unico colore
+     non-token rimasto, accettato perché è un'ombra e non un colore di
+     contenuto. Da rivedere se/quando si fa il dark theme. */
   --shadow-morbida: 0 10px 30px rgba(94, 63, 224, 0.12);
   --shadow-bottone: 0 8px 20px rgba(124, 92, 255, 0.35);
 
   --animate-comparsa: comparsa 0.2s ease;
 }
+
+/* --- Dark theme: PREDISPOSTO, non ancora attivo ------------------------
+   Obiettivo dichiarato per le schermate studente (vedi DECISIONI_DESIGN.md,
+   "Sistema colore"), rimandato a quando ci sarà più superficie (statistiche).
+   Quando si affronta: togliere il commento e dare i valori "scuri" ai soli
+   token qui sotto — i componenti NON si toccano, usano tutti nomi di ruolo.
+   Restano da gestire a parte: --shadow-* (rgba del primario) e i pochi
+   `bg-white` deliberati (sfondo del QR, che deve restare bianco per la
+   scansione).
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-sfondo: #_______;
+    --color-superficie: #_______;
+    --color-bordo: #_______;
+    --color-inchiostro: #_______;
+    --color-corretto-sfondo: #_______;
+    --color-errato-sfondo: #_______;
+    --color-errore-sfondo: #_______;
+    --color-stato-bozza-sfondo: #_______;
+    --color-stato-attivo-sfondo: #_______;
+    --color-stato-chiuso-sfondo: #_______;
+    --color-stato-archiviato-sfondo: #_______;
+  }
+}
+--------------------------------------------------------------------------- */
 
 @keyframes comparsa {
   from {
@@ -34,7 +95,7 @@
 
 @layer base {
   body {
-    @apply bg-sfondo text-[#1e1b2e] font-testo antialiased m-0;
+    @apply bg-sfondo text-inchiostro font-testo antialiased m-0;
   }
 
   h1,

@@ -23,11 +23,11 @@ import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
 
 const BOTTONE_PRIMARIO =
-  "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
+  "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-su-primario transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
 const BOTTONE_SECONDARIO =
-  "rounded-lg border border-bordo bg-white px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario disabled:cursor-not-allowed disabled:opacity-40";
+  "rounded-lg border border-bordo bg-superficie px-3 py-1.5 text-sm font-medium text-primario transition-colors hover:border-primario disabled:cursor-not-allowed disabled:opacity-40";
 const FILTRO =
-  "rounded-lg border border-bordo bg-white px-2.5 py-1.5 text-xs outline-none focus:border-primario disabled:opacity-40";
+  "rounded-lg border border-bordo bg-superficie px-2.5 py-1.5 text-xs outline-none focus:border-primario disabled:opacity-40";
 
 // Ordine "logico" degli stati per l'omonimo ordinamento.
 const ORDINE_STATO = { bozza: 0, attivo: 1, chiuso: 2, archiviato: 3 };
@@ -47,11 +47,13 @@ function comparatoreQuiz(ordine) {
   return perData; // "recenti"
 }
 
+// Un colore per stato: si riconosce a colpo d'occhio senza leggere. L'etichetta
+// testuale resta comunque (accessibilità: mai solo colore).
 const BADGE = {
-  bozza: "bg-sfondo text-primario",
-  attivo: "bg-corretto-sfondo text-corretto",
-  chiuso: "bg-[#1e1b2e]/10 text-[#1e1b2e]/60",
-  archiviato: "bg-[#1e1b2e]/10 text-[#1e1b2e]/55",
+  bozza: "bg-stato-bozza-sfondo text-stato-bozza",
+  attivo: "bg-stato-attivo-sfondo text-stato-attivo",
+  chiuso: "bg-stato-chiuso-sfondo text-stato-chiuso",
+  archiviato: "bg-stato-archiviato-sfondo text-stato-archiviato",
 };
 
 // Azioni che passano da una conferma inline. `fn(quizId)` ritorna una Promise.
@@ -164,7 +166,7 @@ export default function DocenteHome() {
         <h1 className="text-xl font-semibold">
           I miei quiz{" "}
           {filtriAttivi && (
-            <span className="text-sm font-normal text-[#1e1b2e]/50">
+            <span className="text-sm font-normal text-inchiostro/50">
               ({quizVisibili.length} di {quiz.length})
             </span>
           )}
@@ -244,13 +246,13 @@ export default function DocenteHome() {
       )}
 
       {caricamento ? (
-        <p className="text-sm text-[#1e1b2e]/60">Caricamento…</p>
+        <p className="text-sm text-inchiostro/60">Caricamento…</p>
       ) : quiz.length === 0 ? (
-        <div className="rounded-xl border border-bordo bg-white p-6 text-sm text-[#1e1b2e]/60">
+        <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
           Nessun quiz. Inizia con «Crea nuovo quiz».
         </div>
       ) : quizVisibili.length === 0 ? (
-        <div className="rounded-xl border border-bordo bg-white p-6 text-sm text-[#1e1b2e]/60">
+        <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
           Nessun quiz corrisponde ai filtri.
         </div>
       ) : (
@@ -260,11 +262,11 @@ export default function DocenteHome() {
             const cfgConferma =
               conferma?.id === q.id ? AZIONI_CONFERMA[conferma.tipo] : null;
             return (
-              <li key={q.id} className="rounded-xl border border-bordo bg-white p-4">
+              <li key={q.id} className="rounded-xl border border-bordo bg-superficie p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{q.titolo}</p>
-                    <p className="mt-0.5 text-xs text-[#1e1b2e]/55">
+                    <p className="mt-0.5 text-xs text-inchiostro/55">
                       {[q.materia, `${nQuesiti} ${nQuesiti === 1 ? "quesito" : "quesiti"}`]
                         .filter(Boolean)
                         .join(" · ")}
@@ -398,7 +400,7 @@ export default function DocenteHome() {
                 {linkAperto === q.id && (q.stato === "attivo" || q.stato === "chiuso") && (
                   <div className="mt-3">
                     {q.stato === "chiuso" && (
-                      <p className="mb-2 text-xs text-[#1e1b2e]/55">
+                      <p className="mb-2 text-xs text-inchiostro/55">
                         Il quiz è chiuso: il link funziona solo dopo "Riapri".
                       </p>
                     )}
