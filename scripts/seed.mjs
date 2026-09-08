@@ -17,6 +17,7 @@
 
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 
 const TARGET = process.env.SEED_TARGET === "prod" ? "prod" : "emulator";
 let PROJECT_ID;
@@ -43,6 +44,7 @@ if (TARGET === "prod") {
   initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
 } else {
   process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8080";
+  process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "127.0.0.1:9099";
   PROJECT_ID = "demo-isaquiz";
   initializeApp({ projectId: PROJECT_ID });
 }
@@ -50,8 +52,15 @@ if (TARGET === "prod") {
 const db = getFirestore();
 
 const ANNO = "2025/26";
-const DOCENTE_ID = "mock-docente-1"; // deve combaciare con data/mockAuth.js
-const DOCENTE_EMAIL = "rossi@istituto.example";
+// Dominio istituzionale fittizio per lo sviluppo: tutte le email seed (docente
+// e studenti) ne fanno parte, così il gate di dominio (client + rules) le
+// accetta in emulatore. In produzione va sostituito col dominio Google
+// Workspace reale — vedi docs/deploy.md e la costante in firestore.rules.
+const DOMINIO = "istituto.example";
+// uid Auth (emulatore) + id doc `utenti`. Storici: tenuti così per non rompere
+// i riferimenti già presenti nei quiz/risposte seed (autoreId, studenteId).
+const DOCENTE_ID = "mock-docente-1";
+const DOCENTE_EMAIL = `rossi@${DOMINIO}`;
 
 // --- documenti a id fisso (idempotenti) ---------------------------------------
 
@@ -60,6 +69,7 @@ const config = {
   data: {
     annoScolasticoCorrente: ANNO,
     docentiAutorizzati: [DOCENTE_EMAIL],
+    dominioIstituzionale: DOMINIO,
     nomeIstituto: "IIS Esempio",
     codiceMeccanografico: "XXIS00000X",
   },
@@ -76,13 +86,19 @@ const utente = {
   },
 };
 
-// Studenti di prova. mock-studente-1 combacia con data/mockAuth.js.
+// Studenti di prova. Gli id sono anche gli uid Auth nell'emulatore.
 const studenti = [
-  { id: "mock-studente-1", nome: "Giulia", cognome: "Bianchi" },
-  { id: "mock-studente-2", nome: "Luca", cognome: "Verdi" },
+  { id: "mock-studente-1", nome: "Giulia", cognome: "Bianchi", email: `giulia.bianchi@${DOMINIO}` },
+  { id: "mock-studente-2", nome: "Luca", cognome: "Verdi", email: `luca.verdi@${DOMINIO}` },
 ].map((s) => ({
   ref: db.doc(`utenti/${s.id}`),
-  data: { nome: s.nome, cognome: s.cognome, ruolo: "studente", classeId: "3A" },
+  data: {
+    email: s.email,
+    nome: s.nome,
+    cognome: s.cognome,
+    ruolo: "studente",
+    classeId: "3A",
+  },
 }));
 
 const classe = {
@@ -271,6 +287,37 @@ const risposteProva = [
   },
 }));
 
+// --- utenti Auth (solo emulatore) ------------------------------------------
+// In produzione gli account nascono dal login Google reale (provisioning in
+// data/authProvider.js), non dal seed. In emulatore invece li creiamo qui, con
+// uid = id del documento `utenti`, così si può "accedere come" un utente seed
+// dalla Emulator UI e i riferimenti (autoreId, studenteId) restano validi.
+async function seedUtentiAuth() {
+  if (TARGET === "prod") return;
+  const auth = getAuth();
+  const persone = [
+    { uid: DOCENTE_ID, email: DOCENTE_EMAIL, displayName: "Mario Rossi" },
+    ...studenti.map((s) => ({
+      uid: s.ref.id,
+      email: s.data.email,
+      displayName: `${s.data.nome} ${s.data.cognome}`,
+    })),
+  ];
+  for (const p of persone) {
+    const props = { ...p, emailVerified: true };
+    try {
+      await auth.createUser(props);
+    } catch (err) {
+      if (err.code === "auth/uid-already-exists" || err.code === "auth/email-already-exists") {
+        await auth.updateUser(p.uid, { email: p.email, displayName: p.displayName, emailVerified: true });
+      } else {
+        throw err;
+      }
+    }
+  }
+  console.log(`  utenti Auth (emulatore): ${persone.map((p) => p.email).join(", ")}`);
+}
+
 // --- scrittura --------------------------------------------------------------
 
 async function main() {
@@ -312,6 +359,7 @@ async function main() {
   }
 
   await batch.commit();
+  await seedUtentiAuth();
 
   const dove = TARGET === "prod" ? "progetto REALE" : `emulatore ${process.env.FIRESTORE_EMULATOR_HOST}`;
   console.log(`Seed completato su ${dove} (progetto ${PROJECT_ID}).`);

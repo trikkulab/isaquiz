@@ -6,10 +6,14 @@
 // inviato qui deve essere appunti/argomenti del docente, mai dati di studenti
 // specifici (nomi, valutazioni) — vedi analisi GDPR, sezione 5.
 //
-// TODO Fase 3.
+// TODO Fase 3. Per ora è un wrapper vuoto (callable), serve solo a rendere la
+// function deployabile/emulabile.
 
-export async function generaQuesiti(request) {
-  // TODO: request.data.testo -> chiamata al provider -> risposta con
-  // quesiti proposti, che il docente dovrà sempre rivedere prima di pubblicarli
-  // (human in the loop).
-}
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { REGIONE } from "./_admin.js";
+
+export const generaQuesiti = onCall({ region: REGIONE }, async (request) => {
+  // TODO Fase 3: request.data.testo -> chiamata al provider -> quesiti proposti,
+  // che il docente dovrà sempre rivedere prima di pubblicarli (human in the loop).
+  throw new HttpsError("unimplemented", "Generazione IA non ancora disponibile (Fase 3).");
+});
