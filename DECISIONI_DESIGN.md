@@ -345,6 +345,122 @@ semplice flag.
   `{ includiInattivi }` (default `false`); CreaQuiz carica tutto una volta
   (`includiInattivi: true`) e filtra lato client col toggle.
 
+## Generazione domande: interna vs esterna
+
+**La distinzione è per pubblico, non per fase.** Non si tratta di "prima
+prompt+import, poi in una fase successiva l'integrazione vera": i due
+percorsi convivono fin dall'introduzione della funzionalità, rivolti a
+platee diverse.
+
+- **Generazione interna** (chiamata reale a un provider IA da
+  `functions/aiProvider.js`): riservata all'autore del progetto per
+  dogfooding/sviluppo. Non è pensata per i docenti pilota.
+- **Generazione esterna** (prompt-template mostrato in UI + import di un
+  JSON prodotto dal docente con un proprio strumento IA, es. ChatGPT/Gemini
+  personale): il percorso per tutti gli altri docenti.
+
+**Perché non integrare l'IA per tutti fin da subito.** Un'unica chiave API
+condivisa significa che l'uso di un docente consuma la quota (gratuita) di
+tutti gli altri — rischio concreto già con pochi docenti pilota, che userebbe
+in poche ore l'intera quota giornaliera del free tier. Rimandare
+l'integrazione "per tutti" a quando ci sarà un budget d'istituto reale (non
+il credito personale dell'autore) evita il problema alla radice, senza
+bloccare né lo sviluppo né l'uso personale nel frattempo.
+
+**Vantaggio collaterale sul fronte GDPR.** Con la generazione esterna, la
+piattaforma non chiama mai un'API IA per conto del docente: il docente usa
+un proprio strumento personale, sotto i termini di quello strumento, e
+incolla solo il risultato (testo JSON) in una pagina di import. Non c'è
+quindi un trattamento dati che passa dalla piattaforma verso un provider IA
+in questo percorso — il tema "fornitore IA come sub-responsabile del
+trattamento" (`analisi-gdpr.md`, sez. 2 e 5) resta pertinente solo per la
+generazione interna, cioè per l'unico utente (l'autore) che la usa. Il
+warning su cosa non caricare (dati studenti) resta comunque da mostrare
+prima del prompt copiabile, indipendentemente da chi genera.
+
+**Sblocco della generazione interna: flag su `UTENTE`, non su `CONFIG`.**
+Un campo booleano (es. `UTENTE.generazioneIA`), analogo a come `ruolo` è
+oggi solo cache di comodo ma con fonte di verità nel controllo ad ogni
+login: qui la verifica avviene ad ogni chiamata alla funzione, non solo
+alla creazione dell'utente. Diversamente da `docentiAutorizzati` (lista
+piatta in `CONFIG`, pensata per crescere con l'onboarding di più docenti),
+questo flag è pensato per restare a una sola persona per tutto il pilot —
+non serve quindi una lista dedicata in `CONFIG`, un campo sull'utente è
+sufficiente e più semplice da leggere/scrivere.
+
+**Guardia sul consumo, anche per l'unico utente abilitato.** Anche
+generando solo tu, un errore (loop, doppio click, test ripetuti durante lo
+sviluppo) può bruciare la quota giornaliera del free tier senza preavviso.
+Un contatore semplice (es. `richiesteIAOggi` + data sull'utente, azzerato
+al cambio giorno) blocca la chiamata oltre una soglia scelta a mano,
+verificato lato Cloud Function prima di inoltrare la richiesta al
+provider — non solo lato client, per non essere aggirabile.
+
+**Punto di unione tra i due percorsi: la pagina di revisione/validazione.**
+Entrambi i flussi producono lo stesso output intermedio (vedi sotto) e
+confluiscono nella stessa pagina, sul modello di `QuizRisultati`
+("contenuto puro"): riceve un array di quesiti-candidati come prop, senza
+sapere se provengono da una chiamata API o da un paste+parsing. Chi la
+monta (il bottone "Genera" per il percorso interno, il form di import per
+quello esterno) si occupa solo di procurarle l'array nel formato giusto.
+Nessun quesito finisce in banca (`creaQuesito`) finché non è stato accettato
+esplicitamente riga per riga in questa pagina — stesso principio "human in
+the loop" già scritto nel project charter e nell'analisi GDPR, applicato
+anche alla provenienza della generazione, non solo alla validazione del
+contenuto.
+
+**Schema dell'array intermedio** (contratto tra "chi genera" e "chi
+importa/valida", identico per i due percorsi):
+
+```json
+{
+  "quesiti": [
+    {
+      "testo": "Qual è la capitale del Giappone?",
+      "opzioni": ["Pechino", "Tokyo", "Seul", "Bangkok"],
+      "indiceCorretto": 1,
+      "spiegazione": "Tokyo è la capitale del Giappone dal 1868.",
+      "argomento": "Geografia asiatica"
+    }
+  ]
+}
+```
+
+Obbligatori: `testo`, `opzioni` (≥2 elementi, stringhe non vuote),
+`indiceCorretto` (intero, `0 ≤ indiceCorretto < opzioni.length`),
+**`spiegazione`** (stringa non vuota — coerente con l'uso in
+`QuizRisultati` al riepilogo finale, vedi "Flusso quiz studente": un
+quesito senza spiegazione romperebbe silenziosamente quella schermata).
+Opzionale: `argomento` (impatta solo il tag visivo su `QuesitoCard` e le
+future statistiche per-argomento, non il flusso di correzione). Assente
+deliberatamente: `materia` — non viene mai richiesta al modello né lasciata
+libera nell'output IA, la assegna la pagina di revisione dal corso
+selezionato, con la stessa select vincolata già decisa per il form manuale
+(vedi voce su `QUESITO.materia`).
+
+Validazione in fase di import: ogni elemento è controllato singolarmente
+contro le regole sopra; un elemento non valido non blocca gli altri —
+resta segnalato ed editabile a mano nella pagina di revisione invece di
+obbligare a rigenerare l'intero array.
+
+**`QUESITO.fonte` prende quindi un significato concreto** (era lasciato
+aperto in "Stati del quiz"): `"manuale"` per il form diretto,
+`"ia-interna"` / `"ia-esterna"` per i due percorsi qui descritti — utile a
+distinguerli in banca senza che cambi nient'altro nel modello dati.
+
+**Possibile terza via, non implementata ora: chiave propria del docente.**
+Alcuni docenti con competenze informatiche potrebbero preferire generazione
+interna vera ma con una propria chiave API (costo, se presente, a loro
+carico — non del progetto, non dell'istituto). Non implementata nel pilot:
+aggiungerebbe superficie (campo chiave sul profilo, mai esposta in chiaro
+dopo il salvataggio, validazione, gestione errori di chiave scaduta/senza
+credito) per un pubblico verosimilmente ristretto. Annotata qui perché è
+richiesta probabile, non ipotetica — se e quando arriva, si innesta senza
+stravolgere il disegno attuale: la pagina di revisione resta identica,
+cambia solo quale chiave usa `functions/aiProvider.js` per quell'utente
+(quella del progetto, o quella personale se presente e valida). Vedi anche
+voce corrispondente in "Non ancora deciso".
+
 ## Stati del quiz
 
 **Enum `QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**
@@ -385,12 +501,15 @@ serve tracciare "duplicato da". Lo stesso vale per il fork di un quesito
 (`forkQuesito`: nuovo `baseId`, autore = utente corrente): non si registra da
 quale quesito derivi.
 
-**`QUESITO.fonte`: campo presente nello schema, significato non ancora
-fissato.** Oggi ogni scrittura da `CreaQuiz` (`creaQuesito`,
-`salvaNuovaVersione`, `forkQuesito`) lo lascia a `"manuale"`. Non va usato per
-la provenienza del fork né per altro finché non c'è una decisione esplicita —
-quando la Fase 3 introdurrà i quesiti generati dall'IA servirà probabilmente un
-valore tipo `"ia"`, ma è quella la sede per deciderlo.
+**`QUESITO.fonte`: significato ora fissato** (vedi "Generazione domande:
+interna vs esterna"). Valori possibili: `"manuale"` (form diretto, valore
+di default per tutte le scritture odierne da `CreaQuiz`), `"ia-interna"`
+(generazione con provider IA integrato), `"ia-esterna"` (import da
+prompt+JSON prodotto dal docente con un proprio strumento). Non usato per
+la provenienza del fork (`forkQuesito` eredita `fonte` dal quesito
+originale, non lo resetta a `"manuale"` — se un domani servisse distinguere
+"fork di un manuale" da "fork di un IA", andrà rivalutato, non è il caso
+d'uso principale oggi).
 
 **Stato dell'implementazione**: `CreaQuiz.jsx`, dopo "Salva bozza", offre
 "Pubblica e avvia il quiz" (conferma inline, data l'irreversibilità) →
@@ -524,3 +643,10 @@ le danno gratis.
   Decisione rimandata: probabile da affrontare insieme alla Fase 2 (login
   vero + `docentiAutorizzati`), quando si definisce comunque l'onboarding
   del docente.
+
+- **Chiave IA personale del docente, come terza via oltre a interna/esterna.**
+  Richiesta probabile da colleghi con background informatico, non ipotetica.
+  Rimandata: vedi nota in "Generazione domande: interna vs esterna" per il
+  dettaglio di cosa comporterebbe implementarla (campo chiave sul profilo,
+  mai in chiaro dopo il salvataggio, validazione, gestione errori) e perché
+  non si innesta comunque in modo distruttivo sul disegno attuale.
