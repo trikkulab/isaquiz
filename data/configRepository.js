@@ -9,6 +9,10 @@ import { db } from "./firebaseClient.js";
 import { doc, getDoc } from "firebase/firestore";
 
 const configRef = doc(db, "config", "current");
+// Sotto-documento pubblico (leggibile senza login): dominio + nome istituto.
+// Serve alla pagina di accesso prima che ci sia una sessione. Il resto di
+// CONFIG (inclusa la lista docentiAutorizzati) resta dietro autenticazione.
+const istitutoRef = doc(db, "config", "istituto");
 
 export async function getConfig() {
   const snap = await getDoc(configRef);
@@ -23,11 +27,18 @@ export async function getDocentiAutorizzati() {
   return lista.map((e) => String(e).trim().toLowerCase()).filter(Boolean);
 }
 
-// Dominio Google Workspace dell'istituto (es. "istituto.example"). Usato per
-// l'hint `hd` di Google e per il controllo post-login in authProvider.
-// Il controllo "vero" è comunque nelle security rules (una costante nel file).
+// Dominio Google Workspace dell'istituto (es. "istituto.example"). Da
+// config/istituto (pubblico): serve prima del login per l'hint `hd` di Google e
+// per il messaggio d'errore. Il controllo "vero" del dominio è comunque nel
+// provisioning post-login e nelle security rules (costante nel file rules).
 export async function getDominioIstituzionale() {
-  const config = await getConfig();
-  const dominio = config?.dominioIstituzionale;
+  const snap = await getDoc(istitutoRef);
+  const dominio = snap.exists() ? snap.data().dominioIstituzionale : null;
   return dominio ? String(dominio).trim().toLowerCase() : null;
+}
+
+// Nome dell'istituto (per footer/informative). Anche questo da config/istituto.
+export async function getNomeIstituto() {
+  const snap = await getDoc(istitutoRef);
+  return snap.exists() ? (snap.data().nomeIstituto ?? null) : null;
 }

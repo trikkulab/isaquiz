@@ -50,6 +50,7 @@ if (TARGET === "prod") {
 }
 
 const db = getFirestore();
+const auth = getAuth();
 
 const ANNO = "2025/26";
 // Dominio istituzionale fittizio per lo sviluppo: tutte le email seed (docente
@@ -57,12 +58,33 @@ const ANNO = "2025/26";
 // accetta in emulatore. In produzione va sostituito col dominio Google
 // Workspace reale — vedi docs/deploy.md e la costante in firestore.rules.
 const DOMINIO = "istituto.example";
-// uid Auth (emulatore) + id doc `utenti`. Storici: tenuti così per non rompere
-// i riferimenti già presenti nei quiz/risposte seed (autoreId, studenteId).
-const DOCENTE_ID = "mock-docente-1";
-const DOCENTE_EMAIL = `rossi@${DOMINIO}`;
+
+// Email del docente demo. Override con SEED_DOCENTE_EMAIL per intestare i dati
+// demo all'account con cui si fa davvero login (utile in locale col login reale,
+// e in prod per il dogfooding).
+const DOCENTE_EMAIL = (process.env.SEED_DOCENTE_EMAIL || `rossi@${DOMINIO}`).toLowerCase();
+
+// uid del docente demo = id del documento `utenti` + autoreId di quiz/quesiti.
+//  - emulatore: uid fisso "mock-docente-1" (l'utente Auth lo crea seedUtentiAuth);
+//    se SEED_DOCENTE_EMAIL punta a un account già esistente, si usa quello.
+//  - prod: si cerca l'account per email (il docente deve aver fatto login almeno
+//    una volta, così il provisioning ha creato l'account).
+let DOCENTE_ID = "mock-docente-1";
+try {
+  DOCENTE_ID = (await auth.getUserByEmail(DOCENTE_EMAIL)).uid;
+} catch {
+  if (TARGET === "prod") {
+    console.error(
+      `Nessun account per ${DOCENTE_EMAIL}. Il docente deve fare login almeno una volta prima del seed (oppure passa SEED_DOCENTE_EMAIL).`,
+    );
+    process.exit(1);
+  }
+  // emulatore: l'account verrà creato più avanti con uid "mock-docente-1".
+}
 
 // --- documenti a id fisso (idempotenti) ---------------------------------------
+
+const NOME_ISTITUTO = "IIS Esempio";
 
 const config = {
   ref: db.doc("config/current"),
@@ -70,9 +92,16 @@ const config = {
     annoScolasticoCorrente: ANNO,
     docentiAutorizzati: [DOCENTE_EMAIL],
     dominioIstituzionale: DOMINIO,
-    nomeIstituto: "IIS Esempio",
+    nomeIstituto: NOME_ISTITUTO,
     codiceMeccanografico: "XXIS00000X",
   },
+};
+
+// Sotto-documento pubblico (leggibile senza login, vedi firestore.rules):
+// dominio + nome, usati dalla pagina di accesso prima che ci sia una sessione.
+const configIstituto = {
+  ref: db.doc("config/istituto"),
+  data: { dominioIstituzionale: DOMINIO, nomeIstituto: NOME_ISTITUTO },
 };
 
 const utente = {
@@ -324,6 +353,7 @@ async function main() {
   const batch = db.batch();
 
   batch.set(config.ref, config.data);
+  batch.set(configIstituto.ref, configIstituto.data);
   batch.set(utente.ref, utente.data);
   batch.set(classe.ref, classe.data);
   for (const s of studenti) batch.set(s.ref, s.data);

@@ -6,10 +6,10 @@
 // più comodo con una sotto-collezione, ma è un caso d'uso secondario qui).
 //
 // Importante: il client scrive solo la risposta grezza (rispostaData). Il campo
-// "corretta" NON viene mai scritto da qui — spetta a functions/calcolaPunteggio.js
-// lato server (stub per ora: il giusto/sbagliato è calcolato lato client
-// confrontando rispostaData.opzioneScelta con quesito.indiceCorretto — rischio
-// noto e accettato, vedi DECISIONI_DESIGN.md, "Flusso quiz studente").
+// "corretta" NON viene mai scritto da qui — lo scrive functions/calcolaPunteggio.js
+// lato server (trigger su questa collezione), e le security rules vietano al
+// client di toccarlo. Il calcolo lato client che resta in UI serve solo al
+// display immediato.
 
 import { db } from "./firebaseClient.js";
 import {
@@ -29,13 +29,14 @@ export async function saveAnswer(quizId, studenteId, quesitoId, rispostaData) {
   // Id deterministico: una seconda risposta allo stesso quesito sovrascrive,
   // non duplica (una risposta per tripla quiz+studente+quesito).
   const id = `${quizId}_${studenteId}_${quesitoId}`;
-  await setDoc(doc(db, "risposte", id), {
-    quizId,
-    studenteId,
-    quesitoId,
-    rispostaData,
-    timestamp: serverTimestamp(),
-  });
+  // merge: rispondere di nuovo aggiorna rispostaData/timestamp senza rimuovere
+  // `corretta` (scritto dal server) — così le rules vedono un update che tocca
+  // solo i campi consentiti al client, e calcolaPunteggio ricalcola sull'update.
+  await setDoc(
+    doc(db, "risposte", id),
+    { quizId, studenteId, quesitoId, rispostaData, timestamp: serverTimestamp() },
+    { merge: true },
+  );
 }
 
 export async function getRisposteQuiz(quizId) {

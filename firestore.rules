@@ -1,25 +1,151 @@
 rules_version = '2';
 
-// INTERIM Fase 0 — queste regole POSSONO essere pubblicate sul progetto Firebase
-// reale, ma SOLO per il dogfooding interno (docente + colleghi), MAI con
-// studenti. Sono aperte (nessun login vero prima della Fase 2) ma con SCADENZA:
-// dopo la data qui sotto Firestore rifiuta ogni lettura/scrittura, così un
-// deploy interim dimenticato si auto-disattiva invece di restare aperto.
-// Se la data si avvicina e la Fase 2 non è pronta: spostala in avanti
-// consapevolmente, non lasciarla scadere per caso.
+// ─────────────────────────────────────────────────────────────────────────────
+// Fase 2 — regole REALI ma MINIME. Sbloccano l'uso con studenti (login vero),
+// non blindano ogni invariante. Da RAFFORZARE in una fase successiva
+// (vedi memory `project_rules_firestore_da_rafforzare` e DECISIONI_DESIGN.md,
+// "Security rules"). In particolare NON sono ancora verificati:
+//  - lettura `utenti` / `corsi` ristretta (oggi: chiunque del dominio);
+//  - lettura `quesiti` ristretta all'autore + condivisi + quiz che li usano
+//    (oggi: chiunque del dominio — un `indiceCorretto` è quindi enumerabile);
+//  - transizioni di stato del quiz (bozza→attivo→chiuso…) e immutabilità del
+//    contenuto dopo la pubblicazione;
+//  - invarianti di versionamento dei quesiti (baseId/versione, no edit in place);
+//  - forma/completezza dei documenti scritti.
 //
-// TODO Fase 2 (login vero): sostituire con regole legate a request.auth.
-// Principi da implementare allora:
-// - un docente legge/scrive solo i propri corsi e i propri quesiti;
-// - un quesito è leggibile da altri docenti solo se `condivisa == true`;
-// - uno studente scrive solo le proprie risposte, solo per un quiz `attivo`;
-// - il campo `corretta` su una risposta non è mai scrivibile dal client:
-//   lo scrive solo functions/calcolaPunteggio.js lato server.
+// Dominio istituzionale: COSTANTE qui sotto. Un'installazione = un istituto
+// (vedi DECISIONI_DESIGN.md, "Multi-istituto"). Cambiarlo = modificare qui,
+// allineare `config/current.dominioIstituzionale`, e ripubblicare le regole.
+// ─────────────────────────────────────────────────────────────────────────────
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 10, 15);
+
+    function dominioIstituzionale() {
+      return 'istituto.example';
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isDominio() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower().matches('^[^@]+@' + dominioIstituzionale() + '$');
+    }
+
+    // Email autorizzata come docente: lista in config/current, riletta a ogni
+    // valutazione (una get() — accettabile, si tratta di scritture al login).
+    function isDocenteAutorizzato() {
+      return isDominio()
+        && request.auth.token.email.lower() in
+             get(/databases/$(database)/documents/config/current).data.docentiAutorizzati;
+    }
+
+    function isAutoreQuiz(quizId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/quiz/$(quizId)).data.autoreId == request.auth.uid;
+    }
+
+    // ── config ────────────────────────────────────────────────────────────
+    // config/istituto: dominio + nome istituto, leggibili SENZA login (servono
+    // alla pagina di accesso: hint `hd`, messaggio d'errore, footer).
+    // config/current: tutto il resto, inclusa la lista email dei docenti
+    // autorizzati — solo per utenti autenticati.
+    // Scrittura: sempre e solo da console / Admin SDK.
+    match /config/istituto {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /config/{doc} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── utenti ────────────────────────────────────────────────────────────
+    // Lettura larga (dominio): student legge il nome del docente del quiz,
+    // docente legge i nomi degli studenti nei risultati. DA RESTRINGERE.
+    // Scrittura: solo il proprio documento, ruolo studente|docente (mai admin),
+    // 'docente' solo se in lista, email = quella del token.
+    match /utenti/{uid} {
+      allow read: if isDominio();
+      allow write: if isDominio()
+        && request.auth.uid == uid
+        && request.resource.data.email.lower() == request.auth.token.email.lower()
+        && request.resource.data.ruolo in ['studente', 'docente']
+        && (request.resource.data.ruolo != 'docente' || isDocenteAutorizzato());
+    }
+
+    // ── corsi / collegamenti docente ──────────────────────────────────────
+    // Nessuna UI di creazione corso ancora: sola lettura, scrittura da seed/
+    // Admin SDK.
+    match /corsi/{id} {
+      allow read: if isDominio();
+      allow write: if false;
+    }
+    match /docenti_corso/{id} {
+      allow read: if isDominio();
+      allow write: if false;
+    }
+
+    // ── quesiti ───────────────────────────────────────────────────────────
+    // Lettura larga (dominio) — necessaria oggi perché lo studente carica i
+    // quesiti del quiz. DA RESTRINGERE (autore + condivisi + referenziati).
+    // Scrittura: chi si dichiara autore del documento. Nessun delete (i quesiti
+    // si disattivano). Versionamento non verificato qui.
+    match /quesiti/{id} {
+      allow read: if isDominio();
+      allow create, update: if isSignedIn()
+        && request.resource.data.autoreId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ── quiz ──────────────────────────────────────────────────────────────
+    // Lettura: autore sempre; altri del dominio solo se non è più una bozza.
+    // Scrittura: solo l'autore (create e update). Transizioni di stato e
+    // immutabilità del contenuto NON verificate qui.
+    match /quiz/{id} {
+      allow read: if isSignedIn()
+        && (resource.data.autoreId == request.auth.uid
+            || (isDominio() && resource.data.stato != 'bozza'));
+      allow create: if isSignedIn()
+        && request.resource.data.autoreId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.autoreId == request.auth.uid;
+    }
+
+    // ── codici_accesso ───────────────────────────────────────────────────
+    // Solo un puntatore codice→quizId. Lettura per chiunque autenticato (lo
+    // studente risolve il codice). Scrittura SOLO dalla Cloud Function
+    // (Admin SDK), mai dal client.
+    match /codici_accesso/{codice} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── risposte ─────────────────────────────────────────────────────────
+    // Lettura: la propria risposta, o l'autore del quiz (vista risultati).
+    // Creazione: solo la propria (studenteId = uid), su quiz ATTIVO, senza il
+    // campo `corretta`. Aggiornamento: solo rispostaData/timestamp (mai
+    // `corretta`, che scrive solo il server). Nessun delete dal client.
+    match /risposte/{id} {
+      allow read: if isSignedIn()
+        && (resource.data.studenteId == request.auth.uid
+            || isAutoreQuiz(resource.data.quizId));
+
+      allow create: if isSignedIn()
+        && request.resource.data.studenteId == request.auth.uid
+        && request.resource.data.rispostaData != null
+        && !('corretta' in request.resource.data)
+        && get(/databases/$(database)/documents/quiz/$(request.resource.data.quizId)).data.stato == 'attivo';
+
+      allow update: if isSignedIn()
+        && resource.data.studenteId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rispostaData', 'timestamp'])
+        && get(/databases/$(database)/documents/quiz/$(resource.data.quizId)).data.stato == 'attivo';
+
+      allow delete: if false;
     }
   }
 }
