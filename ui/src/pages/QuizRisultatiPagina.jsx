@@ -8,13 +8,14 @@ import { useLocation, useParams } from "react-router-dom";
 
 import QuizRisultati from "./QuizRisultati.jsx";
 import CreditoTecnico from "../components/CreditoTecnico.jsx";
-import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getQuizConQuesiti } from "../../../data/quizRepository.js";
 import { getRisposteStudente } from "../../../data/risposteRepository.js";
 
 export default function QuizRisultatiPagina() {
   const { quizId } = useParams();
   const { state } = useLocation();
+  const studente = useUtenteCorrente();
 
   const daStato = state?.quiz && state?.risposte ? state : null;
   const [dati, setDati] = useState(daStato);
@@ -26,7 +27,6 @@ export default function QuizRisultatiPagina() {
     let attivo = true;
     (async () => {
       try {
-        const studente = getUtenteCorrente("studente");
         const [quiz, risposteList] = await Promise.all([
           getQuizConQuesiti(quizId),
           getRisposteStudente(quizId, studente.id),
@@ -51,7 +51,7 @@ export default function QuizRisultatiPagina() {
     return () => {
       attivo = false;
     };
-  }, [dati, quizId]);
+  }, [dati, quizId, studente.id]);
 
   return (
     <div>

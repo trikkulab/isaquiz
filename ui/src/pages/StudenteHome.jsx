@@ -1,6 +1,6 @@
-// Home dello studente (route /studente). Post-login (Fase 2) sarà la pagina a
-// cui si arriva dopo l'accesso; per ora usa la mock auth. Da qui: partecipare
-// a un quiz col codice, e (in futuro) vedere le proprie statistiche.
+// Home dello studente (route /studente): la pagina a cui si arriva dopo il
+// login. Da qui: partecipare a un quiz col codice, e (in futuro) vedere le
+// proprie statistiche.
 //
 // Stile "studente": più vivo e accogliente delle schermate docente (vedi
 // CLAUDE.md, "Schermate studente"), ma leggero e velocissimo.
@@ -8,14 +8,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { useAuth } from "../auth/AuthContext.jsx";
 import {
   getQuizIdDaCodice,
   normalizzaCodice,
 } from "../../../data/codiciAccessoRepository.js";
 
 export default function StudenteHome() {
-  const studente = getUtenteCorrente("studente");
+  const { utente: studente, esci } = useAuth();
   const navigate = useNavigate();
 
   const [codice, setCodice] = useState("");
@@ -55,10 +55,17 @@ export default function StudenteHome() {
         >
           {studente.avatarEmoji || "🙂"}
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="font-titoli text-lg font-bold">Ciao {studente.nickname || studente.nome}!</p>
-          <p className="text-xs text-inchiostro/55">{studente.classeId}</p>
+          <p className="truncate text-xs text-inchiostro/55">{studente.classeId || studente.email}</p>
         </div>
+        <button
+          type="button"
+          onClick={esci}
+          className="ml-auto shrink-0 text-xs font-medium text-inchiostro/55 hover:text-inchiostro"
+        >
+          Esci
+        </button>
       </header>
 
       <section className="rounded-[22px] bg-gradient-to-br from-primario to-primario-scuro p-6 text-su-primario shadow-morbida">

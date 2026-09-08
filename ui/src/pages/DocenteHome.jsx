@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { useAuth } from "../auth/AuthContext.jsx";
 import {
   getQuizDocente,
   avviaQuiz,
@@ -78,7 +78,7 @@ const AZIONI_CONFERMA = {
 };
 
 export default function DocenteHome() {
-  const utente = getUtenteCorrente();
+  const { utente, esci } = useAuth();
   const navigate = useNavigate();
 
   const [quiz, setQuiz] = useState([]);
@@ -171,13 +171,22 @@ export default function DocenteHome() {
             </span>
           )}
         </h1>
-        <button
-          type="button"
-          className={BOTTONE_PRIMARIO}
-          onClick={() => navigate("/docente/crea-quiz")}
-        >
-          Crea nuovo quiz
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className={BOTTONE_PRIMARIO}
+            onClick={() => navigate("/docente/crea-quiz")}
+          >
+            Crea nuovo quiz
+          </button>
+          <button
+            type="button"
+            onClick={esci}
+            className="text-xs font-medium text-inchiostro/55 hover:text-inchiostro"
+          >
+            Esci
+          </button>
+        </div>
       </div>
 
       {errore && (

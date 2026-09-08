@@ -11,7 +11,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
-import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
 import {
   getBancaDocente,
@@ -70,7 +70,7 @@ const FORM_VUOTO = {
 };
 
 export default function CreaQuiz() {
-  const utente = getUtenteCorrente();
+  const utente = useUtenteCorrente();
   const navigate = useNavigate();
   const { quizId } = useParams(); // presente = si modifica una bozza esistente
 

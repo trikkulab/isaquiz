@@ -18,7 +18,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import BarraQuiz from "../components/BarraQuiz.jsx";
 import QuesitoCard from "../components/QuesitoCard.jsx";
 import BottoneAvanti from "../components/BottoneAvanti.jsx";
-import { getUtenteCorrente } from "../../../data/mockAuth.js";
+import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getQuizConQuesiti } from "../../../data/quizRepository.js";
 import { saveAnswer } from "../../../data/risposteRepository.js";
 
@@ -26,7 +26,7 @@ export default function QuizStudente() {
   const { quizId } = useParams();
   const navigate = useNavigate();
 
-  const studente = getUtenteCorrente("studente");
+  const studente = useUtenteCorrente();
 
   const [quiz, setQuiz] = useState(null);
   const [caricamento, setCaricamento] = useState(true);
