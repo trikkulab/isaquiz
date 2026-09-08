@@ -9,10 +9,11 @@ permissive.
 
 - Workflow: `.github/workflows/deploy.yml`. Builda `ui/` e pubblica su GitHub
   Pages **ad ogni push su `rel`** (o a mano dalla tab Actions → Run workflow).
-- La app è servita come **project page**: `https://trikkulab.github.io/isaquiz/`.
-  Il workflow passa `VITE_BASE=/isaquiz/` al build (in locale la base resta `/`).
+- Dominio: **`https://isaquiz.trikkulab.it/`** (custom domain su GitHub Pages,
+  `ui/public/CNAME`). Il workflow passa `VITE_BASE=/` (radice del dominio). Il
+  vecchio URL `trikkulab.github.io/isaquiz/` viene rediretto qui da GitHub.
 - Routing: **HashRouter** (`ui/src/main.jsx`). Gli URL hanno il `#`
-  (`.../isaquiz/#/quiz/abc`). Scelta voluta: nessun `404.html` da tenere
+  (`isaquiz.trikkulab.it/#/quiz/abc`). Scelta voluta: nessun `404.html` da tenere
   sincronizzato, refresh e link diretti funzionano sempre su hosting statico.
 
 ## Setup una tantum — creare il progetto Firebase reale
@@ -106,35 +107,45 @@ cambiare progetto senza toccare il codice, non perché siano segrete.
 ### 8. Primo deploy
 
 Merge `dev` → `rel` (o push su `rel`). La tab **Actions** builda e pubblica su
-`https://trikkulab.github.io/isaquiz/`.
+`https://isaquiz.trikkulab.it/`.
 
 ### 9. Verifica end-to-end
 
-1. Apri `https://trikkulab.github.io/isaquiz/#/studente`.
+1. Apri `https://isaquiz.trikkulab.it/#/studente`.
 2. Inserisci il codice `TEST01` → deve caricare "Verifica: il Rinascimento".
 3. `#/docente` → deve elencare i 3 quiz di prova con i badge di stato.
 
 Se le schermate dati vanno in errore: secret mancanti/errati (passo 5) o regole
 non pubblicate (passo 3).
 
-## Passaggio al dominio custom (quando sarà attivo)
+## Dominio custom — `isaquiz.trikkulab.it`
 
-Modifica minima:
+Configurato. Sottodominio → project page di `trikkulab/isaquiz`.
 
-1. `.github/workflows/deploy.yml`: `VITE_BASE: /` (invece di `/isaquiz/`).
-2. `ui/public/CNAME` con il dominio (una riga). Il file viene copiato tal quale
-   in `dist/`.
-3. DNS del dominio → record per GitHub Pages (`A` verso gli IP di GitHub, o
-   `CNAME` verso `trikkulab.github.io`).
-4. **Settings → Pages → Custom domain**: inserisci il dominio, attendi il check,
-   spunta "Enforce HTTPS".
+**Ordine di esecuzione** (evita che il sito si rompa a metà):
 
-Nessuna modifica al codice: i link/QR si costruiscono da `import.meta.env.BASE_URL`
-(vedi `ui/src/components/AccessoQuiz.jsx`).
+1. **DNS** (pannello di `trikkulab.it`): record `CNAME`, host `isaquiz`, valore
+   `trikkulab.github.io.` (il dominio del profilo, **non** `.../isaquiz`).
+2. **GitHub → Settings → Pages → Custom domain**: `isaquiz.trikkulab.it` → Save.
+   Attendi il check DNS verde (minuti → ~1h), poi spunta **Enforce HTTPS**
+   (il certificato può richiedere fino a 24h, di solito molto meno).
+3. Solo a check verde: merge `dev` → `rel`. Il build ora esce con `VITE_BASE=/`
+   e `ui/public/CNAME` → assets serviti dalla radice del dominio.
 
-Opzionale, dopo il dominio: se il `#` negli URL dà fastidio si può tornare a
-`BrowserRouter` + `404.html` di fallback SPA. È una modifica localizzata
-(`main.jsx`, un `404.html`, e lo snippet di decode in `index.html`).
+> Se inverti l'ordine (deploy con `VITE_BASE=/` prima che il dominio risponda),
+> `trikkulab.github.io/isaquiz/` si rompe: cerca gli asset in `/assets` invece di
+> `/isaquiz/assets`. Con il custom domain attivo GitHub redirige comunque il
+> vecchio URL qui.
+
+**Fase 2**: aggiungi `isaquiz.trikkulab.it` ai *domini autorizzati* di Firebase
+Auth, altrimenti il login Google lo rifiuta.
+
+Nessuna modifica al codice applicativo: i link/QR si costruiscono da
+`import.meta.env.BASE_URL` (vedi `ui/src/components/AccessoQuiz.jsx`).
+
+Opzionale, più avanti: se il `#` negli URL dà fastidio si può tornare a
+`BrowserRouter` + `404.html` di fallback SPA. Modifica localizzata (`main.jsx`,
+un `404.html`, lo snippet di decode in `index.html`).
 
 ## Dipendenze del build
 

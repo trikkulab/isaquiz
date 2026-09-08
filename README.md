@@ -56,10 +56,9 @@ serve solo quando si lavora sulle Cloud Functions.
 
 ## Deploy
 
-Hosting su **GitHub Pages** (repo `trikkulab/isaquiz`): il workflow
-`.github/workflows/deploy.yml` builda `ui/` e pubblica ad ogni push su `rel`.
-App servita sotto `/isaquiz/` (project page), routing con HashRouter.
-Setup e passaggio al dominio custom: `docs/deploy.md`.
+Hosting su **GitHub Pages** (repo `trikkulab/isaquiz`), dominio custom
+**`isaquiz.trikkulab.it`**: il workflow `.github/workflows/deploy.yml` builda
+`ui/` e pubblica ad ogni push su `rel`. Routing con HashRouter. Setup: `docs/deploy.md`.
 
 ## Stato del progetto
 

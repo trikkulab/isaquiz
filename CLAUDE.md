@@ -196,11 +196,11 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       `VITE_USE_FIRESTORE_EMULATOR=true` in `ui/.env`. `npm run seed` di default
       resta sull'emulatore (`demo-isaquiz`); `SEED_TARGET=prod` + key lo punta
       al DB reale (vedi `docs/deploy.md`).
-- [~] Hosting statico su **GitHub Pages** (repo `trikkulab/isaquiz`).
+- [~] Hosting statico su **GitHub Pages** (repo `trikkulab/isaquiz`), dominio
+      custom **`isaquiz.trikkulab.it`** (`ui/public/CNAME`, `VITE_BASE=/`).
       Workflow `.github/workflows/deploy.yml`: build `ui/` + deploy ad ogni push
-      su `rel`. App sotto `/isaquiz/` (`VITE_BASE`), routing **HashRouter**
-      (`main.jsx`, niente `404.html`). Dettagli e passaggio a dominio custom in
-      `docs/deploy.md`.
+      su `rel`. Routing **HashRouter** (`main.jsx`, niente `404.html`). Dettagli
+      in `docs/deploy.md`.
 - [~] **Progetto Firebase reale** — deciso: Firestore region **`europe-west8`
       (Milano)**, permanente (dati in Italia, cfr. `docs/analisi-gdpr.md`).
       Regole interim: `firestore.rules` ora è **aperto ma con scadenza**
