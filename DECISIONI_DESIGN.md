@@ -314,6 +314,37 @@ in banca, non referenziata). Non è un bug, è spazio trascurabile alla scala
 attuale; un eventuale cleanup è un job separato, non da gestire nel flusso di
 `CreaQuiz`.
 
+## Disattivazione dei quesiti
+
+**Un quesito si può disattivare/riattivare, non si cancella.** Quando un
+quesito non convince più o si rivela sbagliato, il docente lo disattiva: resta
+su Firestore ma sparisce dalla banca (quindi non finisce in nuovi quiz).
+Cancellarlo davvero richiederebbe un controllo d'uso (è referenziato da qualche
+`quiz.quesiti`? da quesiti derivati?) — molto più costoso e fragile del
+semplice flag.
+
+- **Campo `QUESITO.attivo` (booleano), metadato.** Si scrive **in place**
+  (come `condivisa`), NON crea una nuova versione — quello vale solo per il
+  *contenuto* (testo/opzioni). `impostaAttivoQuesito(id, attivo)` opera sul
+  documento passato (in banca è sempre l'ultima versione per `baseId`).
+- **Regola di lettura: `attivo !== false`.** Un documento **senza** il campo —
+  tutti i quesiti creati prima di questa modifica — è trattato come attivo.
+  Mai `attivo === true` come filtro, escluderebbe silenziosamente lo storico.
+  Il filtro è **client-side** apposta: un `where("attivo", "!=", false)` su
+  Firestore salterebbe proprio i documenti senza il campo.
+- **`getQuesito(id)` non filtra** per `attivo` (né per `versione`): risolve
+  qualsiasi quesito per id esatto, così `QuizRisultati` mostra correttamente i
+  quiz storici anche se un loro quesito è stato disattivato nel frattempo.
+- **Ogni scrittura nuova** (`creaQuesito`, `salvaNuovaVersione`, `forkQuesito`)
+  nasce `attivo: true` — esplicito, ma coerente col filtro anche se omesso.
+  Creare una nuova versione di un quesito disattivato lo fa quindi ricomparire
+  in banca (è il segnale "ci sto rilavorando").
+- **In `CreaQuiz`**: la banca nasconde gli inattivi, con un toggle "Mostra
+  inattivi" che li rende visibili (attenuati, badge, azione "Riattiva",
+  niente "Aggiungi"). `getBancaDocente` prende un'opzione
+  `{ includiInattivi }` (default `false`); CreaQuiz carica tutto una volta
+  (`includiInattivi: true`) e filtra lato client col toggle.
+
 ## Stati del quiz
 
 **Enum `QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**

@@ -50,7 +50,8 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   creaQuiz, aggiornaQuizBozza, avviaQuiz, chiudiQuiz, riapriQuiz, eliminaQuiz,
   duplicaQuiz), `codiciAccessoRepository` (getQuizIdDaCodice, getCodiceQuiz,
   generaCodiceQuiz, normalizzaCodice), `quesitiRepository` (getBancaDocente,
-  getQuesito, creaQuesito, salvaNuovaVersione, forkQuesito), `corsiRepository`
+  getQuesito, creaQuesito, salvaNuovaVersione, forkQuesito,
+  impostaAttivoQuesito), `corsiRepository`
   (getCorso, getCorsiDocente), `utentiRepository` (getUtente),
   `risposteRepository` (saveAnswer, getRisposteQuiz, getRisposteStudente,
   ascoltaRisposteQuiz; getStatistichePer* → Fase 4/5)

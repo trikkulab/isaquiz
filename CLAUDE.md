@@ -167,6 +167,12 @@ ora si lavora con Tailwind puro.
   `quiz.quesiti` che le referenzia — mai in banca, mai in ricerca. Regola
   completa e motivazione in `DECISIONI_DESIGN.md`, "Versionamento dei
   quesiti".
+- **Un quesito si disattiva/riattiva, non si cancella** (campo `QUESITO.attivo`,
+  metadato scritto in place — non crea una versione). Un quesito disattivato
+  sparisce dalla banca ma resta risolvibile per id (quiz storici). **Filtro:
+  `attivo !== false`** — un documento senza il campo (dati pre-esistenti) è
+  attivo; MAI `attivo === true`. `getQuesito(id)` non filtra mai per `attivo`.
+  Vedi `DECISIONI_DESIGN.md`, "Disattivazione dei quesiti".
 - **`QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**
   `bozza` è modificabile e cancellabile (delete fisico). Dalla pubblicazione
   (`bozza → attivo`, generazione del QR) in poi il **contenuto è immutabile e
@@ -263,22 +269,26 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       client-side con micro-race accettata — vedi `DECISIONI_DESIGN.md`,
       "Codice di accesso ai quiz").
       Versionamento quesiti (id `baseId-vN`, campo `versione`): `getBancaDocente`
-      (ex `getQuesitiDocente`) raggruppa per `baseId` e ritorna solo l'ultima
-      versione; `getQuesito(id)` risolve qualsiasi versione esatta;
+      (ex `getQuesitiDocente`) raggruppa per `baseId`, ritorna solo l'ultima
+      versione, e filtra `attivo !== false` salvo `{ includiInattivi: true }`;
+      `getQuesito(id)` risolve qualsiasi versione esatta senza filtri;
       `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
-      +1), `forkQuesito` (baseId nuovo, autore corrente); `idProssimaVersione`
+      +1), `forkQuesito` (baseId nuovo, autore corrente) — tutte `attivo: true`;
+      `impostaAttivoQuesito(id, attivo)` (in place); `idProssimaVersione`
       (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `archiviaQuiz`,
       `getStatistichePerArgomento` / `getQuizPerArgomento` (Fase 4/5). Seed:
       un quiz per stato (`quiz-prova-rinascimento` attivo con 7 risposte di 2
       studenti + codice `TEST01`; `quiz-bozza-informatica`;
-      `quiz-chiuso-informatica` + codice `TEST02`).
+      `quiz-chiuso-informatica` + codice `TEST02`); 7 quesiti di cui 1 inattivo
+      (`seed-info-3`), gli altri senza il campo `attivo`.
 - [ ] `functions/calcolaPunteggio.js` resta uno stub: il calcolo di
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
 - [x] `CreaQuiz.jsx` — comporre un quiz: selettore corso, banca quesiti con
       ricerca (testo/opzioni), filtro (materia, argomento), ordinamento
-      (recenti / testo / argomento, verso invertibile via `BottoneVerso`) e
-      contenitore ridimensionabile, form
+      (recenti / testo / argomento, verso invertibile via `BottoneVerso`),
+      toggle "Mostra inattivi" (default off) con azione Disattiva/Riattiva per
+      card, e contenitore ridimensionabile, form
       quesito, aggiungi/rimuovi dal quiz. Nel form la `materia` è una `<select>`
       pre-selezionata sul corso corrente ma modificabile (opzioni: unione delle
       materie dei corsi del docente + di quelle già in banca, incluse annate

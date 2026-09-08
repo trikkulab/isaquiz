@@ -75,6 +75,7 @@ erDiagram
         string argomento
         string difficolta
         boolean condivisa
+        boolean attivo
         string fonte
     }
 
@@ -176,6 +177,11 @@ erDiagram
   `baseId`, i quiz esistenti referenziano l'id completo di versione
   specifica. Motivazione completa in `DECISIONI_DESIGN.md`, "Versionamento
   dei quesiti".
+- **`QUESITO.attivo`** (booleano): un quesito disattivato sparisce dalla banca
+  ma resta risolvibile per id (quiz storici). Metadato, si scrive in place
+  (non crea una nuova versione). **Regola di lettura: `attivo !== false`** —
+  un documento senza il campo (dati pre-esistenti) è attivo; mai
+  `attivo === true`. Vedi `DECISIONI_DESIGN.md`, "Disattivazione dei quesiti".
 - **`QUESITO.fonte`** è nello schema ma il suo significato non è ancora
   fissato: tutte le scritture attuali lo lasciano a `"manuale"`. Vedi
   `DECISIONI_DESIGN.md`, "Stati del quiz".

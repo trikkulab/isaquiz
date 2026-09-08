@@ -234,6 +234,20 @@ const quesiti = [
     spiegazione:
       "Gli array sono 0-based nella maggior parte dei linguaggi: il primo elemento ha indice 0, quindi l'ultimo ha indice N - 1.",
   },
+  {
+    // Disattivato: per provare il toggle "Mostra inattivi" nella banca.
+    // Gli altri quesiti seed NON hanno il campo `attivo` di proposito — devono
+    // comunque comparire (regola: `attivo !== false`).
+    id: "seed-info-3",
+    testo: "Domanda mal posta (esempio di quesito disattivato)",
+    opzioni: ["A", "B"],
+    indiceCorretto: 0,
+    materia: "Informatica",
+    argomento: "Strutture dati",
+    difficolta: "facile",
+    spiegazione: null,
+    attivo: false,
+  },
 ];
 
 // Risposte di prova a quiz-prova-rinascimento (corrette: 1, 2, 1, 1).
@@ -303,7 +317,9 @@ async function main() {
   console.log(`Seed completato su ${dove} (progetto ${PROJECT_ID}).`);
   console.log(`  config/current, utenti (1 docente + ${studenti.length} studenti), classi/3A`);
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
-  console.log(`  quesiti: ${quesiti.length} · risposte di prova: ${risposteProva.length}`);
+  console.log(
+    `  quesiti: ${quesiti.length} (di cui ${quesiti.filter((q) => q.attivo === false).length} inattivi) · risposte di prova: ${risposteProva.length}`,
+  );
   for (const q of quizzes) console.log(`  quiz: ${q.id} (${q.data.stato}) — /quiz/${q.id}`);
   for (const c of codiciAccesso) console.log(`  codice: ${c.id} -> ${c.quizId}`);
 }

@@ -18,6 +18,7 @@ import {
   creaQuesito,
   salvaNuovaVersione,
   forkQuesito,
+  impostaAttivoQuesito,
 } from "../../../data/quesitiRepository.js";
 import {
   creaQuiz,
@@ -104,6 +105,7 @@ export default function CreaQuiz() {
   const [filtri, setFiltri] = useState(FILTRI_VUOTI);
   const [ordineBanca, setOrdineBanca] = useState("recenti");
   const [bancaInverso, setBancaInverso] = useState(false);
+  const [mostraInattivi, setMostraInattivi] = useState(false);
 
   useEffect(() => {
     let attivo = true;
@@ -123,7 +125,8 @@ export default function CreaQuiz() {
       try {
         const [corsiDocente, quesitiDocente] = await Promise.all([
           getCorsiDocente(utente.id),
-          getBancaDocente(utente.id),
+          // include anche gli inattivi: il filtro visibilità è client-side (toggle)
+          getBancaDocente(utente.id, { includiInattivi: true }),
         ]);
         if (!attivo) return;
         setCorsi(corsiDocente);
@@ -183,10 +186,15 @@ export default function CreaQuiz() {
     [selezionati, banca, quesitiCaricati],
   );
 
-  // Quesiti non ancora nel quiz — base per i filtri della banca.
+  // Quesiti non ancora nel quiz — base per i filtri della banca. Gli inattivi
+  // (`attivo === false`; un quesito senza il campo è attivo) sono nascosti
+  // salvo toggle esplicito.
   const nonSelezionati = useMemo(
-    () => banca.filter((q) => !selezionati.includes(q.id)),
-    [banca, selezionati],
+    () =>
+      banca.filter(
+        (q) => !selezionati.includes(q.id) && (mostraInattivi || q.attivo !== false),
+      ),
+    [banca, selezionati, mostraInattivi],
   );
 
   const materieDisponibili = useMemo(
@@ -234,6 +242,19 @@ export default function CreaQuiz() {
 
   function rimuoviDalQuiz(id) {
     setSelezionati((prec) => prec.filter((x) => x !== id));
+  }
+
+  async function cambiaAttivo(q, attivo) {
+    setErrore(null);
+    try {
+      await impostaAttivoQuesito(q.id, attivo);
+      setBanca((prec) => prec.map((x) => (x.id === q.id ? { ...x, attivo } : x)));
+    } catch (err) {
+      setErrore(
+        attivo ? "Riattivazione non riuscita." : "Disattivazione non riuscita.",
+      );
+      console.error(err);
+    }
   }
 
   // --- form quesito (nuovo / nuova versione / duplica) ---------------------
@@ -346,7 +367,7 @@ export default function CreaQuiz() {
 
       // Banca riletta dalla fonte di verità (raggruppata per baseId): evita
       // ogni ricostruzione ottimistica di baseId/versione lato client.
-      setBanca(await getBancaDocente(utente.id));
+      setBanca(await getBancaDocente(utente.id, { includiInattivi: true }));
       nuovoQuesitoDaZero();
     } catch (err) {
       setErrore("Salvataggio del quesito non riuscito.");
@@ -636,11 +657,22 @@ export default function CreaQuiz() {
                   Azzera
                 </button>
               )}
+              <label className="ml-auto flex items-center gap-1.5 text-xs text-[#1e1b2e]/60">
+                <input
+                  type="checkbox"
+                  className="accent-primario"
+                  checked={mostraInattivi}
+                  onChange={(e) => setMostraInattivi(e.target.checked)}
+                />
+                Mostra inattivi
+              </label>
             </div>
 
             {nonSelezionati.length === 0 ? (
               <p className="text-sm text-[#1e1b2e]/50">
-                Nessun quesito disponibile. Creane uno qui sotto.
+                {!mostraInattivi && banca.some((q) => q.attivo === false)
+                  ? "Nessun quesito attivo. Spunta «Mostra inattivi» o creane uno qui sotto."
+                  : "Nessun quesito disponibile. Creane uno qui sotto."}
               </p>
             ) : bancaDisponibile.length === 0 ? (
               <p className="text-sm text-[#1e1b2e]/50">Nessun quesito corrisponde ai filtri.</p>
@@ -650,35 +682,66 @@ export default function CreaQuiz() {
                     solo desktop): la banca puo' essere lunga e ci si sfoglia
                     mentre si compone il quiz. Non persistita tra i reload. */}
                 <ul className="flex flex-col gap-2">
-                  {bancaDisponibile.map((q) => (
-                    <li
-                      key={q.id}
-                      className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 ${
-                        quesitoBase?.id === q.id
-                          ? "border-primario ring-1 ring-primario"
-                          : "border-bordo"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="min-w-0 flex-1 text-left"
-                        onClick={() => caricaNelForm(q)}
-                        title="Apri nel form per una nuova versione o una copia"
+                  {bancaDisponibile.map((q) => {
+                    const inattivo = q.attivo === false;
+                    return (
+                      <li
+                        key={q.id}
+                        className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 ${
+                          quesitoBase?.id === q.id
+                            ? "border-primario ring-1 ring-primario"
+                            : "border-bordo"
+                        } ${inattivo ? "opacity-60" : ""}`}
                       >
-                        <p className="text-sm">{q.testo}</p>
-                        <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
-                          {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
-                        </p>
-                      </button>
-                      <button
-                        type="button"
-                        className={BOTTONE_SECONDARIO}
-                        onClick={() => aggiungiAlQuiz(q.id)}
-                      >
-                        Aggiungi
-                      </button>
-                    </li>
-                  ))}
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() => caricaNelForm(q)}
+                          title="Apri nel form per una nuova versione o una copia"
+                        >
+                          <p className="text-sm">
+                            {inattivo && (
+                              <span className="mr-1.5 rounded bg-[#1e1b2e]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1e1b2e]/55">
+                                inattivo
+                              </span>
+                            )}
+                            {q.testo}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[#1e1b2e]/50">
+                            {[q.materia, q.argomento].filter(Boolean).join(" · ") || "—"}
+                          </p>
+                        </button>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          {inattivo ? (
+                            <button
+                              type="button"
+                              className={BOTTONE_SECONDARIO}
+                              onClick={() => cambiaAttivo(q, true)}
+                            >
+                              Riattiva
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className={BOTTONE_SECONDARIO}
+                                onClick={() => aggiungiAlQuiz(q.id)}
+                              >
+                                Aggiungi
+                              </button>
+                              <button
+                                type="button"
+                                className="text-xs font-medium text-[#1e1b2e]/45 hover:text-errore"
+                                onClick={() => cambiaAttivo(q, false)}
+                              >
+                                Disattiva
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

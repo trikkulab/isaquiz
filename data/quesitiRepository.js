@@ -12,12 +12,20 @@
 // La banca (getBancaDocente) mostra solo l'ultima versione per baseId; le
 // versioni precedenti restano su Firestore e sono raggiungibili solo per id
 // esatto (getQuesito), perché un quiz già somministrato le referenzia.
+//
+// Campo `attivo` (metadato, non contenuto — si scrive in place come `condivisa`,
+// NON crea una nuova versione): un quesito disattivato sparisce dalla banca ma
+// resta risolvibile per id (getQuesito) per i quiz storici. Regola di lettura:
+// `attivo !== false` (un documento senza il campo — dati pre-esistenti — è
+// attivo). Mai `attivo === true`. Vedi DECISIONI_DESIGN.md, "Disattivazione
+// dei quesiti".
 
 import { db } from "./firebaseClient.js";
 import {
   collection,
   doc,
   setDoc,
+  updateDoc,
   getDoc,
   getDocs,
   query,
@@ -43,7 +51,10 @@ function campiContenuto(q) {
 }
 
 async function scriviQuesito(id, dati) {
-  await setDoc(doc(db, "quesiti", id), { ...dati, creato: serverTimestamp() });
+  // Ogni quesito nuovo (creaQuesito / salvaNuovaVersione / forkQuesito) nasce
+  // attivo. Esplicito, ma coerente col filtro `attivo !== false` anche se
+  // omesso.
+  await setDoc(doc(db, "quesiti", id), { attivo: true, ...dati, creato: serverTimestamp() });
   return id;
 }
 
@@ -53,10 +64,12 @@ export function idProssimaVersione(quesito) {
   return `${quesito.baseId}-v${(quesito.versione ?? 0) + 1}`;
 }
 
-export async function getBancaDocente(docenteId) {
+export async function getBancaDocente(docenteId, { includiInattivi = false } = {}) {
   // Tutte le righe del docente, poi si tiene solo la versione più alta per
   // baseId (raggruppamento lato client — alla scala attuale niente indice
   // composto Firestore). Fallback difensivo per dati senza baseId/versione.
+  // Il filtro `attivo` è client-side apposta: un `where("attivo", "!=", false)`
+  // su Firestore escluderebbe i documenti senza il campo (dati storici).
   const snap = await getDocs(query(quesitiCol, where("autoreId", "==", docenteId)));
 
   const perBaseId = new Map();
@@ -67,12 +80,16 @@ export async function getBancaDocente(docenteId) {
     const attuale = perBaseId.get(baseId);
     if (!attuale || versione > (attuale.versione ?? 0)) perBaseId.set(baseId, q);
   }
-  return [...perBaseId.values()];
+
+  const ultime = [...perBaseId.values()];
+  return includiInattivi ? ultime : ultime.filter((q) => q.attivo !== false);
 }
 
 export async function getQuesito(quesitoId) {
-  // Risoluzione per id esatto — deve funzionare per QUALSIASI versione, non
-  // solo l'ultima (serve a QuizRisultati/QuesitoCard sui quiz già svolti).
+  // Risoluzione per id esatto — deve funzionare per QUALSIASI versione e
+  // QUALSIASI stato `attivo`, non solo l'ultima versione attiva: serve a
+  // QuizRisultati/QuesitoCard per mostrare correttamente i quiz storici.
+  // NON aggiungere qui filtri su `attivo` o `versione`.
   const snap = await getDoc(doc(db, "quesiti", quesitoId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
@@ -129,6 +146,14 @@ export async function forkQuesito(quesitoBase, modifiche, nuovoAutoreId) {
     condivisa: false,
     fonte: "manuale",
   });
+}
+
+export async function impostaAttivoQuesito(quesitoId, attivo) {
+  // Disattiva/riattiva un quesito. È un metadato: si scrive in place (come
+  // `condivisa`), NON crea una nuova versione. Opera sul documento passato
+  // (in banca è sempre l'ultima versione per baseId). Un quesito disattivato
+  // sparisce dalla banca ma resta risolvibile per id (quiz storici).
+  await updateDoc(doc(db, "quesiti", quesitoId), { attivo: Boolean(attivo) });
 }
 
 export async function condividiQuesito(quesitoId, condivisa) {
