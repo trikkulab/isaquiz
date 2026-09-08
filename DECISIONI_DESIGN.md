@@ -475,3 +475,21 @@ le danno gratis.
   `rel` prima di iniziare a usarlo attivamente.
 - Libreria di grafici per le statistiche (candidato: `recharts`, già nello stack).
 
+- **Chi crea `CORSO` e assegna `DOCENTE_CORSO`: self-service o admin-driven?**
+  L'idea di partenza è un modello decentralizzato, sul modello di Google
+  Classroom (il docente crea il proprio corso, senza intermediazione della
+  segreteria/admin) — coerente con "pochi passaggi dal contenuto della
+  lezione al quiz" e con l'assenza di un flusso di approvazione anche per il
+  ruolo admin (vedi "Amministratore: cruscotto minimale"). Da notare però che
+  in Classroom i corsi non sono condivisi tra docenti nello stesso modo in
+  cui `isaquiz` prevede una banca quesiti condivisa (Fase 4): il parallelo
+  regge per la creazione del corso, non necessariamente per tutto il resto.
+  Se self-service: `materia` resta testo libero fin dall'inizio, nessuna
+  lista "ufficiale" — coerente con la combobox editabile scelta per
+  `QUESITO.materia`. Se invece la creazione dei corsi finisse per essere
+  admin-driven (assegnazione cattedre), servirebbe rivalutare se anche
+  `materia` debba attingere a una lista d'istituto per evitare drift di
+  denominazione (es. "Informatica" vs "informatica" vs "Lab. Informatica").
+  Decisione rimandata: probabile da affrontare insieme alla Fase 2 (login
+  vero + `docentiAutorizzati`), quando si definisce comunque l'onboarding
+  del docente.

@@ -276,10 +276,15 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       giusto/sbagliato è ancora lato client, rischio noto e accettato per ora
       (vedi `DECISIONI_DESIGN.md`, "Flusso quiz studente")
 - [x] `CreaQuiz.jsx` — comporre un quiz: selettore corso, banca quesiti con
-      ricerca/filtro (materia, argomento) e contenitore ridimensionabile, form
-      quesito, aggiungi/rimuovi dal quiz. Click sulla card di un quesito → lo
-      carica nel form (contenuto editabile, materia/versione/autore in sola
-      lettura); i bottoni diventano "Salva nuova versione" + "Duplica come
+      ricerca (testo/opzioni), filtro (materia, argomento), ordinamento
+      (recenti / testo / argomento, verso invertibile via `BottoneVerso`) e
+      contenitore ridimensionabile, form
+      quesito, aggiungi/rimuovi dal quiz. Nel form la `materia` è una `<select>`
+      pre-selezionata sul corso corrente ma modificabile (opzioni: unione delle
+      materie dei corsi del docente + di quelle già in banca, incluse annate
+      passate — nessuna lettura extra). Click sulla card di un quesito → lo
+      carica nel form (contenuto editabile, versione/autore in sola lettura);
+      i bottoni diventano "Salva nuova versione" + "Duplica come
       nuovo quesito" (autore = utente) o "Duplica come mio quesito" (autore
       diverso — branch per ora irraggiungibile finché non c'è
       `getQuesitiCondivisi`, Fase 4). "Salva bozza" → pannello con "Pubblica e
@@ -294,7 +299,9 @@ Siamo alla **coda della Fase 0** (setup iniziale) del piano di sviluppo:
       (con avviso), coerente con "una bozza si compone dalla banca corrente".
       Blocca se il quiz non è più in bozza o è di un altro docente.
 - [x] `DocenteHome.jsx` (route `/docente`) — elenco dei propri quiz
-      (`getQuizDocente`) con badge di stato, "Crea nuovo quiz", e per riga:
+      (`getQuizDocente`) con badge di stato, ricerca (titolo), filtri (stato,
+      materia), ordinamento (recenti / titolo / stato, verso invertibile via
+      `BottoneVerso`), "Crea nuovo quiz", e per riga:
       bozza → "Pubblica e avvia" / "Modifica" (→ `crea-quiz/:id`) / "Elimina"
       (conferme inline); attivo → "Risultati" / "Link e QR" (`AccessoQuiz`) /
       "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri"; attivo/chiuso →

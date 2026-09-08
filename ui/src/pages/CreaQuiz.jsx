@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
+import BottoneVerso from "../components/BottoneVerso.jsx";
 import { getUtenteCorrente } from "../../../data/mockAuth.js";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
 import {
@@ -36,6 +37,25 @@ const FILTRO =
 
 const FILTRI_VUOTI = { materia: "", argomento: "", cerca: "" };
 
+const dataMs = (x) => x?.creato?.toMillis?.() ?? 0;
+const perTesto = (a, b) => (a.testo || "").localeCompare(b.testo || "", "it");
+
+// Ordinamento della banca quesiti + verso "naturale" di ciascun criterio
+// (quello che si applica prima di invertire con BottoneVerso).
+const VERSO_NATURALE_BANCA = { recenti: "desc", testo: "asc", argomento: "asc" };
+function comparatoreQuesiti(ordine) {
+  if (ordine === "testo") return perTesto;
+  if (ordine === "argomento") {
+    return (a, b) => {
+      const av = a.argomento || "";
+      const bv = b.argomento || "";
+      if (!av !== !bv) return av ? -1 : 1; // quesiti senza argomento in fondo
+      return av.localeCompare(bv, "it") || perTesto(a, b);
+    };
+  }
+  return (a, b) => dataMs(b) - dataMs(a); // "recenti"
+}
+
 const OPZIONI_MIN = 2;
 const OPZIONI_MAX = 6;
 
@@ -45,6 +65,7 @@ const FORM_VUOTO = {
   indiceCorretto: 0,
   argomento: "",
   spiegazione: "",
+  materia: "", // vuoto = usa quella del corso selezionato (default)
 };
 
 export default function CreaQuiz() {
@@ -81,6 +102,8 @@ export default function CreaQuiz() {
   const [errore, setErrore] = useState(null);
 
   const [filtri, setFiltri] = useState(FILTRI_VUOTI);
+  const [ordineBanca, setOrdineBanca] = useState("recenti");
+  const [bancaInverso, setBancaInverso] = useState(false);
 
   useEffect(() => {
     let attivo = true;
@@ -186,7 +209,7 @@ export default function CreaQuiz() {
 
   const bancaDisponibile = useMemo(() => {
     const cerca = filtri.cerca.trim().toLowerCase();
-    return nonSelezionati.filter((q) => {
+    const filtrati = nonSelezionati.filter((q) => {
       if (filtri.materia && q.materia !== filtri.materia) return false;
       if (filtri.argomento && q.argomento !== filtri.argomento) return false;
       if (cerca) {
@@ -196,7 +219,12 @@ export default function CreaQuiz() {
       }
       return true;
     });
-  }, [nonSelezionati, filtri]);
+    const cmp = comparatoreQuesiti(ordineBanca);
+    return filtrati.sort(bancaInverso ? (a, b) => -cmp(a, b) : cmp);
+  }, [nonSelezionati, filtri, ordineBanca, bancaInverso]);
+
+  const bancaDiscendente =
+    (VERSO_NATURALE_BANCA[ordineBanca] === "desc") !== bancaInverso;
 
   const filtriAttivi = Boolean(filtri.materia || filtri.argomento || filtri.cerca.trim());
 
@@ -210,10 +238,19 @@ export default function CreaQuiz() {
 
   // --- form quesito (nuovo / nuova versione / duplica) ---------------------
 
-  // Materia mostrata nel form: per un quesito caricato dalla banca è la sua
-  // (anche se diversa dal corso corrente); per un quesito nuovo è quella del
-  // corso selezionato. Sempre in sola lettura.
-  const materiaForm = quesitoBase ? quesitoBase.materia ?? "" : materiaCorso;
+  // Materia del quesito: pre-selezionata sulla materia del corso corrente
+  // (form.materia vuoto), ma il docente può cambiarla scegliendo tra le materie
+  // già note. Le opzioni sono l'unione (deduplicata, ordinata) delle materie
+  // dei corsi del docente e di quelle già presenti nella sua banca quesiti —
+  // incluse quelle di anni passati che restano in banca. Nessuna lettura extra.
+  const opzioniMateria = useMemo(() => {
+    const set = new Set();
+    for (const c of corsi) if (c.materia) set.add(c.materia);
+    for (const q of banca) if (q.materia) set.add(q.materia);
+    return [...set].sort((a, b) => a.localeCompare(b, "it"));
+  }, [corsi, banca]);
+
+  const materiaEffettiva = form.materia || materiaCorso;
   const autoreDiverso = Boolean(quesitoBase && quesitoBase.autoreId !== utente.id);
 
   function caricaNelForm(q) {
@@ -224,6 +261,7 @@ export default function CreaQuiz() {
       indiceCorretto: q.indiceCorretto ?? 0,
       argomento: q.argomento ?? "",
       spiegazione: q.spiegazione ?? "",
+      materia: q.materia ?? "",
     });
     setErrore(null);
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -273,7 +311,7 @@ export default function CreaQuiz() {
       testo: form.testo.trim(),
       opzioni: coppie.map((c) => c.testo),
       indiceCorretto: Math.max(0, coppie.findIndex((c) => c.corretta)),
-      materia: materiaForm || null,
+      materia: materiaEffettiva || null,
       argomento: form.argomento.trim() || null,
       spiegazione: form.spiegazione.trim() || null,
     };
@@ -572,6 +610,23 @@ export default function CreaQuiz() {
                   </option>
                 ))}
               </select>
+              <select
+                className={FILTRO}
+                value={ordineBanca}
+                onChange={(e) => {
+                  setOrdineBanca(e.target.value);
+                  setBancaInverso(false);
+                }}
+                aria-label="Ordina la banca"
+              >
+                <option value="recenti">Più recenti</option>
+                <option value="testo">Testo A–Z</option>
+                <option value="argomento">Argomento</option>
+              </select>
+              <BottoneVerso
+                discendente={bancaDiscendente}
+                onToggle={() => setBancaInverso((v) => !v)}
+              />
               {filtriAttivi && (
                 <button
                   type="button"
@@ -724,7 +779,20 @@ export default function CreaQuiz() {
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-[#1e1b2e]/60">Materia</span>
-                  <input className={`${CAMPO} bg-sfondo`} value={materiaForm} disabled readOnly />
+                  <select
+                    className={CAMPO}
+                    value={materiaEffettiva}
+                    onChange={(e) => setForm((f) => ({ ...f, materia: e.target.value }))}
+                  >
+                    {materiaEffettiva && !opzioniMateria.includes(materiaEffettiva) && (
+                      <option value={materiaEffettiva}>{materiaEffettiva}</option>
+                    )}
+                    {opzioniMateria.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 

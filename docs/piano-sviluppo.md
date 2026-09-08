@@ -40,7 +40,8 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
   (`saveAnswer` → collezione `risposte`)
 - Interfaccia docente: home con elenco dei propri quiz (`DocenteHome`,
   route `/docente`) — fatto: crea / modifica bozza / pubblica / chiudi ⇄
-  riapri / elimina bozza / duplica / link-QR / risultati
+  riapri / elimina bozza / duplica / link-QR / risultati; ricerca, filtri
+  (stato, materia) e ordinamento sulla lista
 - Cloud Function: calcolo del punteggio lato server — stub, calcolo ancora client
 - Interfaccia docente: risultati del quiz in tempo reale (`RisultatiDocente`,
   `ascoltaRisposteQuiz` → `onSnapshot`) — fatto: tabella studente × punteggio
