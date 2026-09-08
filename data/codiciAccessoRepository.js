@@ -9,27 +9,14 @@
 // Da non confondere con `CORSO.codiceAccesso`: quello serve a iscriversi a un
 // CORSO (per l'anno), questo a partecipare a una singola somministrazione.
 
-import { db } from "./firebaseClient.js";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  query,
-  where,
-  serverTimestamp,
-} from "firebase/firestore";
+import { db, functions } from "./firebaseClient.js";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
-// Crockford Base32: niente I, L, O, U (ambigui a occhio).
+// Crockford Base32: niente I, L, O, U (ambigui a occhio). Usato solo dalla
+// normalizzazione dell'input; la GENERAZIONE del codice (con la sua lunghezza)
+// vive lato server in functions/generaCodiceAccesso.js — sincronizzato a mano.
 const ALFABETO = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
-// UNICO punto in cui vive la lunghezza del codice: la usa solo la generazione.
-// Il resto del codice (normalizzazione, validazione input, lookup) è
-// length-agnostic: un codice è valido se, normalizzato, corrisponde a un
-// documento di `codici_accesso`. Cambiare questo numero non richiede altre
-// modifiche (i codici già emessi restano validi con la loro lunghezza).
-const LUNGHEZZA_GENERAZIONE = 6;
 
 const codiciCol = collection(db, "codici_accesso");
 
@@ -54,13 +41,6 @@ export function normalizzaCodice(input) {
   return out;
 }
 
-function generaCodiceCasuale() {
-  const bytes = crypto.getRandomValues(new Uint8Array(LUNGHEZZA_GENERAZIONE));
-  let out = "";
-  for (const b of bytes) out += ALFABETO[b % 32]; // 256 % 32 === 0 -> nessun bias
-  return out;
-}
-
 export async function getQuizIdDaCodice(codice) {
   const norm = normalizzaCodice(codice);
   if (!norm) return null; // stringa vuota (o solo caratteri non validi)
@@ -82,21 +62,15 @@ export async function getCodiceQuiz(quizId) {
   return snap.empty ? null : snap.docs[0].id;
 }
 
-export async function generaCodiceQuiz(quizId) {
-  // Idempotente: se un codice per questo quiz c'è già, lo riusa (il codice è
-  // stabile per tutta la vita del quiz, chiudi/riapri non lo cambiano).
-  const esistente = await getCodiceQuiz(quizId);
-  if (esistente) return esistente;
+// Genera (o riusa, se già presente) il codice di accesso di un quiz. La
+// generazione vera è lato server (Cloud Function callable `generaCodiceAccesso`,
+// transazione + retry): chiude la micro-race del vecchio check-then-create
+// client-side e verifica che il chiamante sia l'autore del quiz. Idempotente.
+// Il client non scrive più direttamente su `codici_accesso` (vietato dalle
+// security rules). Vedi DECISIONI_DESIGN.md, "Codice di accesso ai quiz".
+const _generaCodiceAccesso = httpsCallable(functions, "generaCodiceAccesso");
 
-  // Check-then-create. Micro-race accettata PER ORA (un docente pubblica un
-  // quiz alla volta) — da sostituire con una transazione / Cloud Function
-  // quando arrivano auth e functions (Fase 2). Vedi DECISIONI_DESIGN.md.
-  for (let tentativo = 0; tentativo < 5; tentativo++) {
-    const codice = generaCodiceCasuale();
-    const ref = doc(db, "codici_accesso", codice);
-    if ((await getDoc(ref)).exists()) continue;
-    await setDoc(ref, { quizId, creato: serverTimestamp() });
-    return codice;
-  }
-  throw new Error("Impossibile generare un codice di accesso univoco.");
+export async function generaCodiceQuiz(quizId) {
+  const { data } = await _generaCodiceAccesso({ quizId });
+  return data.codice;
 }
