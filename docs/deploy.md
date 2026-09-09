@@ -167,9 +167,27 @@ usare il proprio account Google invece di utenti creati a mano).
 2. **Sign-in method → Google → Enable.** Support email: quella dell'istituto/tua.
 3. **Settings → Authorized domains**: devono esserci `localhost` e
    **`isaquiz.trikkulab.it`** (aggiungilo).
-4. Se l'istituto ha Google Workspace: l'OAuth consent screen (Google Cloud
-   Console → APIs & Services → OAuth consent screen) può restare **Internal**,
-   così solo gli account del dominio possono autorizzare l'app.
+4. **OAuth consent screen** (GCP Console → API e servizi → Schermata consenso):
+   - progetto dentro l'organizzazione Google Cloud dell'istituto → **Internal**;
+   - progetto su account privato (stato attuale) → solo **External** possibile.
+     Modalità "Testing" + test users a mano per il dogfooding; scope solo
+     `email`/`profile` → nessuna verifica Google richiesta. La restrizione al
+     dominio la fanno comunque `hd` + `authProvider` + `isDominio()` nelle rules.
+5. **Autorizzazione lato Workspace (serve il super-admin dell'istituto).** Molti
+   Workspace (Education, account minorenni) bloccano di default le app OAuth di
+   terze parti: l'admin deve rendere **"Trusted"** l'OAuth Client ID di isaquiz
+   in *Admin console → Sicurezza → Controlli API → Controllo accesso alle app*.
+   Il Client ID è in GCP Console → API e servizi → Credenziali (compare dopo aver
+   abilitato il provider Google al punto 2). Serve **già per il dogfooding** se
+   si accede con un account della scuola.
+
+> **Prima della Fase 5 (pilota con studenti)** il progetto Firebase va ricreato
+> nell'organizzazione Google Cloud dell'istituto (owner + billing istituzionali):
+> un progetto su account privato non regge la nomina a responsabile del
+> trattamento e la DPIA (`docs/analisi-gdpr.md`). Nessuna migrazione dati — si
+> rifà il setup e `SEED_TARGET=prod npm run seed`. Vedi `DECISIONI_DESIGN.md`,
+> "Progetto Firebase: account privato ora, organizzazione dell'istituto prima
+> del pilota".
 
 ### B. Firestore — `config`
 

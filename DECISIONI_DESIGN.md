@@ -226,6 +226,45 @@ nella memory `project_rules_firestore_da_rafforzare`):
 
 Il rafforzamento è un lavoro a parte, non un blocco per il primo uso.
 
+## Progetto Firebase: account privato ora, organizzazione dell'istituto prima del pilota
+
+**Stato attuale (settembre 2026): il progetto Firebase è su un account Google
+privato dell'autore.** Va bene per il dogfooding, **non** per la
+sperimentazione con studenti (Fase 5).
+
+**Cosa comporta un progetto su account privato:**
+
+- La schermata di consenso OAuth può essere solo **"External"**, mai
+  "Internal" (che richiede il progetto dentro l'organizzazione Google Cloud
+  dell'istituto). Non è un problema *funzionale*: la restrizione al dominio la
+  fanno comunque l'hint `hd`, il controllo in `data/authProvider.js` e
+  `isDominio()` nelle rules. In modalità "Testing" bastano pochi *test users*
+  aggiunti a mano; con scope non sensibili (`email`/`profile`) non serve la
+  verifica di Google.
+- **Il contratto con Google (Firebase ToS) e la fatturazione Blaze** (necessaria
+  per le Cloud Functions) sono a nome dell'account privato. Questo è
+  incompatibile con la nomina dell'autore a **responsabile del trattamento**
+  (art. 28) e con la DPIA descritte in `docs/analisi-gdpr.md`: i dati di
+  studenti minori non possono stare su un progetto la cui titolarità
+  contrattuale è di un privato.
+
+**Decisione: prima della Fase 5 il progetto va ricreato dentro l'organizzazione
+Google Cloud dell'istituto**, con owner e billing istituzionali. Non si "migra"
+il progetto esistente: non c'è nulla di reale da conservare e `scripts/seed.mjs`
+sa già ripopolare (`SEED_TARGET=prod`) — coerente con il principio "nessuna
+migrazione" del progetto. Serve l'intervento del super-admin Workspace
+dell'istituto per creare il progetto nell'organizzazione (o concedere il
+permesso di crearlo lì).
+
+**Indipendente da questo, e comunque necessario:** molti Workspace (soprattutto
+edizione Education, e per gli account di minorenni) **bloccano di default le app
+OAuth di terze parti non configurate**. Il super-admin deve rendere
+**"attendibile" (Trusted)** l'OAuth Client ID di isaquiz in *Admin console →
+Sicurezza → Controlli API → Controllo dell'accesso alle app*, altrimenti anche
+un login perfettamente configurato viene bloccato. Vale già per il dogfooding
+se si usa un account della scuola. Vedi runbook in `docs/deploy.md`, "Fase 2 —
+abilitare il login".
+
 ## Flusso quiz studente
 
 - **Solo avanti, niente tasto indietro.** Coerente con "verifica immediata", non
