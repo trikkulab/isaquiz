@@ -799,7 +799,10 @@ voce corrispondente in "Non ancora deciso".
 
 ## Stati del quiz
 
-**Enum `QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**
+**Enum `QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` ⇄ `archiviato`.** `stato` è
+metadato mutabile: tutte le transizioni dopo `bozza` sono reversibili tranne
+l'uscita da `bozza` (una volta pubblicato, il *contenuto* è permanente). Il
+delete fisico è possibile solo in `bozza`.
 
 - **`bozza`**: modificabile liberamente (aggiungere/togliere quesiti, cambiare
   titolo/corso) e cancellabile per davvero (delete fisico) — non è mai
@@ -823,9 +826,20 @@ voce corrispondente in "Non ancora deciso".
   saranno reali, il server rifiuterà le scritture su un quiz non `attivo`.
   Chiusura automatica a tempo: possibile in futuro (un `chiudeAlle`), non
   ancora.
-- **`archiviato`** (eventuale, non necessario per l'MVP): non toglie il quiz
-  dal database, lo toglie solo dalle liste attive del docente. Il riferimento
-  resta intatto per `RISPOSTA` e `QuizRisultati`.
+- **`archiviato`** (fatto): `chiuso → archiviato` (`archiviaQuiz`),
+  **reversibile** con `ripristinaQuiz` (`archiviato → chiuso`) — stessa natura
+  di `attivo ⇄ chiuso` e del flag `attivo` sui quesiti. Non tocca niente del
+  contenuto né il codice di accesso: toglie solo il quiz dalle liste attive del
+  docente. I risultati restano consultabili, il riferimento intatto per
+  `RISPOSTA`/`QuizRisultati`.
+  - **`DocenteHome`**: come "Mostra inattivi" per i quesiti in `CreaQuiz`, gli
+    archiviati sono nascosti salvo spunta **"Mostra archiviati"**; la riga
+    archiviata offre "Ripristina", "Risultati", "Duplica" (niente "Link e QR").
+  - **Il codice di accesso NON viene liberato** (né archiviando né
+    ripristinando): la scrittura su `codici_accesso` è solo lato server e non
+    vale una Cloud Function per un codice orfano innocuo (`QuizStudente` blocca
+    comunque un quiz archiviato). Eventuale pulizia: fetta separata, forse un
+    giorno.
 
 **Duplicazione, non modifica, per riusare un quiz attivo.** Per somministrare
 lo stesso quiz a un'altra classe, o una variante leggermente diversa, si
@@ -853,16 +867,18 @@ d'uso principale oggi).
 mostra QR + link `/quiz/{id}`. `DocenteHome.jsx` (route `/docente`) elenca i
 quiz del docente; per riga: bozza → pubblica / **modifica**
 (`/docente/crea-quiz/:quizId` → `aggiornaQuizBozza`) / elimina (`eliminaQuiz`,
-delete fisico); attivo/chiuso → **risultati** (`RisultatiDocente`, route
-`/docente/quiz/:quizId/risultati`) / link-QR; attivo → **chiudi**
-(`chiudiQuiz`); chiuso → **riapri** (`riapriQuiz`); attivo/chiuso → **duplica**
-(`duplicaQuiz` → nuova bozza, si apre subito in modifica). `aggiornaQuizBozza`,
-`eliminaQuiz` sono consentite SOLO finché `stato: bozza`. In modifica, i
-quesiti del quiz sono "aggiornati" all'ultima versione del loro `baseId` (una
-bozza si compone sempre dalla banca corrente). Lo studente apre solo quiz
-`attivo` (`QuizStudente` blocca `bozza`/`chiuso`/`archiviato`). Non ancora
-fatti: `archiviaQuiz`, chiusura automatica a tempo, i risultati in tempo reale
-(onSnapshot).
+delete fisico); non-bozza → **risultati** (`RisultatiDocente`, route
+`/docente/quiz/:quizId/risultati`); attivo/chiuso → link-QR; attivo → **chiudi**
+(`chiudiQuiz`); chiuso → **riapri** (`riapriQuiz`) / **archivia** (`archiviaQuiz`);
+archiviato → **ripristina** (`ripristinaQuiz`, nascosto salvo "Mostra
+archiviati"); non-bozza → **duplica** (`duplicaQuiz` → nuova bozza, si apre
+subito in modifica). `aggiornaQuizBozza`, `eliminaQuiz` sono consentite SOLO
+finché `stato: bozza`. In modifica, i quesiti del quiz sono "aggiornati"
+all'ultima versione del loro `baseId` (una bozza si compone sempre dalla banca
+corrente). Lo studente apre solo quiz `attivo` (`QuizStudente` blocca
+`bozza`/`chiuso`/`archiviato` con un messaggio + link alla home). Non ancora
+fatti: chiusura automatica a tempo (`chiudeAlle`), i risultati in tempo reale
+lato `QuizRisultati` (onSnapshot).
 
 
 ## Codice di accesso ai quiz
@@ -899,7 +915,8 @@ aprire il link lungo — è la via comoda per l'uso in classe.
   tutta la vita del quiz**: `chiudi`/`riapri` non lo rigenerano, così il
   docente riapre per i ritardatari *con lo stesso codice*. Mai riusato per un
   altro quiz. `generaCodiceQuiz` è idempotente (self-heal per quiz attivi
-  senza codice). `archiviaQuiz`, quando ci sarà, potrà liberarlo.
+  senza codice). `archiviaQuiz` (fatto) **non** libera il codice — resta
+  orfano ma innocuo; eventuale pulizia = fetta separata, forse un giorno.
 - **Generazione lato server (Fase 2).** `data/codiciAccessoRepository.js`
   `generaCodiceQuiz` invoca la callable `functions/generaCodiceAccesso.js`:
   verifica che il chiamante sia l'autore del quiz e che il quiz sia `attivo`,

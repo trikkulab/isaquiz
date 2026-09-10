@@ -204,15 +204,15 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
   `attivo !== false`** — un documento senza il campo (dati pre-esistenti) è
   attivo; MAI `attivo === true`. `getQuesito(id)` non filtra mai per `attivo`.
   Vedi `DECISIONI_DESIGN.md`, "Disattivazione dei quesiti".
-- **`QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` → (eventuale) `archiviato`.**
-  `bozza` è modificabile e cancellabile (delete fisico). Dalla pubblicazione
-  (`bozza → attivo`, generazione del QR) in poi il **contenuto è immutabile e
-  permanente** — coerente con "nessuna riga storica si sovrascrive". `attivo`
-  accetta risposte; `chiuso` no ma è **reversibile** (`riapriQuiz`, per i
-  ritardatari) — è l'unica differenza tra i due, il contenuto resta bloccato.
-  Lo studente apre solo quiz `attivo`. Per riusare un quiz (altra classe,
-  variante) si **duplica** in una nuova bozza, mai si modifica l'originale.
-  Regola completa in `DECISIONI_DESIGN.md`, "Stati del quiz".
+- **`QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` ⇄ `archiviato`.** `stato` è
+  metadato mutabile e tutte le transizioni dopo `bozza` sono reversibili
+  (`riapriQuiz`, `ripristinaQuiz`); solo `bozza` è modificabile e cancellabile
+  (delete fisico). Dalla pubblicazione (`bozza → attivo`, generazione del QR) in
+  poi il **contenuto è immutabile e permanente** — coerente con "nessuna riga
+  storica si sovrascrive". `attivo` accetta risposte; `chiuso` no; `archiviato`
+  esce dalle liste attive (i risultati restano). Lo studente apre solo quiz
+  `attivo`. Per riusare un quiz si **duplica** in una nuova bozza, mai si
+  modifica l'originale. Regola completa in `DECISIONI_DESIGN.md`, "Stati del quiz".
 
 ## Stato attuale del progetto
 
@@ -260,10 +260,12 @@ Fase 0 — setup:
       puro"): riceve `quiz` + `risposte` come **prop** (niente più
       `useLocation` interno).
 - [x] `ui/src/pages/QuizRisultatiPagina.jsx` — contenitore (route
-      `/quiz/:quizId/risultati`): usa lo `state` di navigazione se presente,
-      altrimenti rilegge da Firestore (`getQuizConQuesiti` +
-      `getRisposteStudente`) per link diretto / refresh. Monta
-      `components/CreditoTecnico.jsx`.
+      `/quiz/:quizId/risultati`, fuori dal guscio): usa lo `state` di
+      navigazione se presente, altrimenti rilegge da Firestore
+      (`getQuizConQuesiti` + `getRisposteStudente`) per link diretto / refresh.
+      Incornicia `QuizRisultati` con `BarraQuiz` in stato `completato` (stessa
+      intestazione del test: avatar/livello/materia — continuità visiva), un
+      bottone "Torna alla home" (`/studente`) e `PiePagina`.
 - [x] `ui/src/pages/RisultatiDocente.jsx` (route
       `/docente/quiz/:quizId/risultati`) — tabella studente × punteggio +
       "per quesito" (corrette/risposte), **in tempo reale**
@@ -271,10 +273,11 @@ Fase 0 — setup:
       nomi studenti in cache; guardia anti-race tra update ravvicinati.
 - [x] `QuizStudente.jsx` cablato su Firestore (`getQuizConQuesiti(quizId)`),
       niente più `QUIZ_MOCK`. Stati loading / "non trovato" / "non ancora
-      avviato" (`bozza`) / "chiuso" (`chiuso`) / "non più disponibile"
-      (`archiviato`) / "senza quesiti". `saveAnswer` scrive davvero su
-      `risposte` (fire-and-forget). `BarraQuiz`/`QuizRisultati` mostrano
-      `materia · docente` solo se presenti.
+      avviato" (`bozza`) / "chiuso" / "non più disponibile" (`archiviato`) /
+      "senza quesiti" — mostrati con lo stesso stile di "Area riservata"
+      (`RichiediAuth`): messaggio + link "Torna alla home" (`/studente`).
+      `saveAnswer` scrive davvero su `risposte` (fire-and-forget).
+      `BarraQuiz`/`QuizRisultati` mostrano `materia · docente` solo se presenti.
 - [x] `ui/src/pages/StudenteHome.jsx` (route `/studente`) — pagina post-login
       dello studente: "Partecipa a un quiz" → campo codice (`normalizzaCodice`
       live, **nessun controllo di lunghezza**: basta non vuoto) →
@@ -309,8 +312,10 @@ Fase 0 — setup:
       `creaQuesito` (baseId nuovo, v0), `salvaNuovaVersione` (stesso baseId,
       +1), `forkQuesito` (baseId nuovo, autore corrente) — tutte `attivo: true`;
       `impostaAttivoQuesito(id, attivo)` (in place); `idProssimaVersione`
-      (pura). Tutte scrivono `fonte: "manuale"`. Restano stub: `archiviaQuiz`,
-      `getStatistichePerArgomento` / `getQuizPerArgomento` (Fase 4/5). Seed:
+      (pura). Tutte scrivono `fonte: "manuale"`. `archiviaQuiz` /
+      `ripristinaQuiz` (`chiuso ⇄ archiviato`, reversibile; non toccano il
+      codice). Restano stub: `getStatistichePerArgomento` / `getQuizPerArgomento`
+      (Fase 4/5). Seed:
       un quiz per stato (`quiz-prova-rinascimento` attivo con 7 risposte di 2
       studenti + codice `TEST01`; `quiz-bozza-informatica`;
       `quiz-chiuso-informatica` + codice `TEST02`); 7 quesiti di cui 1 inattivo
@@ -349,8 +354,10 @@ Fase 0 — setup:
       `BottoneVerso`), "Crea nuovo quiz", e per riga:
       bozza → "Pubblica e avvia" / "Modifica" (→ `crea-quiz/:id`) / "Elimina"
       (conferme inline); attivo → "Risultati" / "Link e QR" (`AccessoQuiz`) /
-      "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri"; attivo/chiuso →
-      "Duplica" (→ modifica subito la copia).
+      "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri" / "Archivia";
+      archiviato → "Ripristina" / "Risultati"; non-bozza → "Duplica". Gli
+      archiviati sono nascosti salvo spunta "Mostra archiviati" (come "Mostra
+      inattivi" per i quesiti in `CreaQuiz`).
 - [x] `ui/src/pages/GestioneCorsi.jsx` (route `/docente/corsi`) — elenco dei
       propri corsi + form "Nuovo corso" (materia/classe via
       `components/CampoCombobox.jsx` — `<input list>`+`<datalist>` nativi,
@@ -371,8 +378,8 @@ Fase 0 — setup:
       `/admin/corsi|docenti|impostazioni`. Scritture admin (editare la lista
       docenti da UI) → rimandate (serve regola su `config` legata a `isAdmin`).
 - [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
-      `archiviaQuiz`; la pagina statistiche vera (per-argomento, adattiva —
-      Fase 4/5); modifica/disattivazione di un corso (oggi solo creazione).
+      la pagina statistiche vera (per-argomento, adattiva — Fase 4/5);
+      modifica/disattivazione di un corso (oggi solo creazione).
 - [x] **Codice di accesso senza race (Fase 2)**: `functions/generaCodiceAccesso.js`
       (callable, transazione + verifica autore); `data/codiciAccessoRepository.js`
       `generaCodiceQuiz` la invoca. Il client non scrive più su `codici_accesso`.

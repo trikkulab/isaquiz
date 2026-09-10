@@ -18,6 +18,8 @@ import {
   riapriQuiz,
   eliminaQuiz,
   duplicaQuiz,
+  archiviaQuiz,
+  ripristinaQuiz,
 } from "../../../data/quizRepository.js";
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
@@ -75,6 +77,12 @@ const AZIONI_CONFERMA = {
     conferma: "Sì, elimina",
     fn: eliminaQuiz,
   },
+  archivia: {
+    testo:
+      "Il quiz esce dalle liste attive (i risultati restano consultabili). L'archiviazione è definitiva.",
+    conferma: "Sì, archivia",
+    fn: archiviaQuiz,
+  },
 };
 
 export default function DocenteHome() {
@@ -93,23 +101,34 @@ export default function DocenteHome() {
   const [filtroMateria, setFiltroMateria] = useState("");
   const [ordine, setOrdine] = useState("recenti");
   const [ordineInverso, setOrdineInverso] = useState(false);
+  // Come "Mostra inattivi" per i quesiti (CreaQuiz): gli archiviati escono
+  // dalle liste attive salvo spunta esplicita.
+  const [mostraArchiviati, setMostraArchiviati] = useState(false);
+
+  const ciSonoArchiviati = useMemo(() => quiz.some((q) => q.stato === "archiviato"), [quiz]);
+  // Base su cui lavorano filtri, ordinamenti e conteggi: quiz meno gli
+  // archiviati (a meno del toggle).
+  const quizBase = useMemo(
+    () => (mostraArchiviati ? quiz : quiz.filter((q) => q.stato !== "archiviato")),
+    [quiz, mostraArchiviati],
+  );
 
   const materieDisponibili = useMemo(
-    () => [...new Set(quiz.map((q) => q.materia).filter(Boolean))].sort(),
-    [quiz],
+    () => [...new Set(quizBase.map((q) => q.materia).filter(Boolean))].sort(),
+    [quizBase],
   );
   const statiPresenti = useMemo(
     () =>
-      [...new Set(quiz.map((q) => q.stato))].sort(
+      [...new Set(quizBase.map((q) => q.stato))].sort(
         (a, b) => (ORDINE_STATO[a] ?? 9) - (ORDINE_STATO[b] ?? 9),
       ),
-    [quiz],
+    [quizBase],
   );
 
   const quizVisibili = useMemo(() => {
     const cerca = ricerca.trim().toLowerCase();
     const cmp = comparatoreQuiz(ordine);
-    return quiz
+    return quizBase
       .filter((q) => {
         if (filtroStato && q.stato !== filtroStato) return false;
         if (filtroMateria && q.materia !== filtroMateria) return false;
@@ -117,7 +136,7 @@ export default function DocenteHome() {
         return true;
       })
       .sort(ordineInverso ? (a, b) => -cmp(a, b) : cmp);
-  }, [quiz, ricerca, filtroStato, filtroMateria, ordine, ordineInverso]);
+  }, [quizBase, ricerca, filtroStato, filtroMateria, ordine, ordineInverso]);
 
   const ordineDiscendente = (VERSO_NATURALE_QUIZ[ordine] === "desc") !== ordineInverso;
 
@@ -167,7 +186,7 @@ export default function DocenteHome() {
           I miei quiz{" "}
           {filtriAttivi && (
             <span className="text-sm font-normal text-inchiostro/50">
-              ({quizVisibili.length} di {quiz.length})
+              ({quizVisibili.length} di {quizBase.length})
             </span>
           )}
         </h1>
@@ -242,6 +261,17 @@ export default function DocenteHome() {
               Azzera
             </button>
           )}
+          {(ciSonoArchiviati || mostraArchiviati) && (
+            <label className="ml-auto flex items-center gap-1.5 text-xs text-inchiostro/60">
+              <input
+                type="checkbox"
+                className="accent-primario"
+                checked={mostraArchiviati}
+                onChange={(e) => setMostraArchiviati(e.target.checked)}
+              />
+              Mostra archiviati
+            </label>
+          )}
         </div>
       )}
 
@@ -257,7 +287,9 @@ export default function DocenteHome() {
         </div>
       ) : quizVisibili.length === 0 ? (
         <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
-          Nessun quiz corrisponde ai filtri.
+          {!mostraArchiviati && ciSonoArchiviati && !filtriAttivi
+            ? "Tutti i tuoi quiz sono archiviati. Spunta «Mostra archiviati» per vederli."
+            : "Nessun quiz corrisponde ai filtri."}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -313,23 +345,24 @@ export default function DocenteHome() {
                     </>
                   )}
 
+                  {q.stato !== "bozza" && (
+                    <button
+                      type="button"
+                      className={BOTTONE_SECONDARIO}
+                      onClick={() => navigate(`/docente/quiz/${q.id}/risultati`)}
+                    >
+                      Risultati
+                    </button>
+                  )}
+
                   {(q.stato === "attivo" || q.stato === "chiuso") && (
-                    <>
-                      <button
-                        type="button"
-                        className={BOTTONE_SECONDARIO}
-                        onClick={() => navigate(`/docente/quiz/${q.id}/risultati`)}
-                      >
-                        Risultati
-                      </button>
-                      <button
-                        type="button"
-                        className={BOTTONE_SECONDARIO}
-                        onClick={() => setLinkAperto((v) => (v === q.id ? null : q.id))}
-                      >
-                        {linkAperto === q.id ? "Nascondi link" : "Link e QR per gli studenti"}
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      className={BOTTONE_SECONDARIO}
+                      onClick={() => setLinkAperto((v) => (v === q.id ? null : q.id))}
+                    >
+                      {linkAperto === q.id ? "Nascondi link" : "Link e QR per gli studenti"}
+                    </button>
                   )}
 
                   {q.stato === "attivo" && (
@@ -343,13 +376,33 @@ export default function DocenteHome() {
                   )}
 
                   {q.stato === "chiuso" && (
+                    <>
+                      <button
+                        type="button"
+                        className={BOTTONE_PRIMARIO}
+                        disabled={azioneInCorso}
+                        onClick={() => esegui(() => riapriQuiz(q.id))}
+                      >
+                        Riapri
+                      </button>
+                      <button
+                        type="button"
+                        className={BOTTONE_SECONDARIO}
+                        onClick={() => setConferma({ tipo: "archivia", id: q.id })}
+                      >
+                        Archivia
+                      </button>
+                    </>
+                  )}
+
+                  {q.stato === "archiviato" && (
                     <button
                       type="button"
-                      className={BOTTONE_PRIMARIO}
+                      className={BOTTONE_SECONDARIO}
                       disabled={azioneInCorso}
-                      onClick={() => esegui(() => riapriQuiz(q.id))}
+                      onClick={() => esegui(() => ripristinaQuiz(q.id))}
                     >
-                      Riapri
+                      Ripristina
                     </button>
                   )}
 

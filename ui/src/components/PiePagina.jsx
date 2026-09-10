@@ -28,11 +28,9 @@ export default function PiePagina() {
   }, []);
 
   return (
-    <footer>
+    <footer className="mt-8 flex flex-col items-center gap-0.5 px-4 pb-5 text-center">
       {nomeIstituto && (
-        <p className="mt-8 text-center text-xs font-medium text-inchiostro/45">
-          {nomeIstituto}
-        </p>
+        <p className="text-xs font-medium text-inchiostro/45">{nomeIstituto}</p>
       )}
       <CreditoTecnico />
     </footer>

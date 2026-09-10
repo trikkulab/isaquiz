@@ -170,8 +170,37 @@ export async function eliminaQuiz(quizId) {
 }
 
 export async function archiviaQuiz(quizId) {
-  // TODO fetta successiva (opzionale, non MVP): stato "attivo" -> "archiviato".
-  // Non cancella nulla: toglie solo il quiz dalle liste attive del docente,
-  // il riferimento resta intatto per RISPOSTA/QuizRisultati. Qui si potrà
-  // anche liberare il codice di accesso (delete di codici_accesso/{codice}).
+  // "chiuso" -> "archiviato": il quiz esce dalle liste attive del docente ma
+  // resta risolvibile per RISPOSTA/QuizRisultati e per i risultati. Il contenuto
+  // è già immutabile da "attivo". `stato` è metadato mutabile: reversibile con
+  // ripristinaQuiz (come `attivo` <-> `chiuso`, e come `attivo` sui quesiti).
+  // Vedi DECISIONI_DESIGN.md, "Stati del quiz".
+  //
+  // NON libera il codice di accesso (`codici_accesso/{codice}` resta): la
+  // scrittura su quella collezione è solo lato server e non vale una Cloud
+  // Function per un codice orfano innocuo (QuizStudente blocca comunque un quiz
+  // archiviato). Eventuale pulizia = fetta separata, forse, un giorno.
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Quiz non trovato.");
+  if (snap.data().stato !== "chiuso") {
+    throw new Error("Solo un quiz chiuso può essere archiviato.");
+  }
+  await updateDoc(ref, { stato: "archiviato", archiviato: serverTimestamp() });
+  return "archiviato";
+}
+
+export async function ripristinaQuiz(quizId) {
+  // "archiviato" -> "chiuso": annulla l'archiviazione, il quiz torna nelle liste
+  // attive. Nessun effetto collaterale (il contenuto non cambia, il codice non
+  // era stato liberato). Da qui il docente può eventualmente riaprire alle
+  // risposte con riapriQuiz.
+  const ref = doc(db, "quiz", quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Quiz non trovato.");
+  if (snap.data().stato !== "archiviato") {
+    throw new Error("Solo un quiz archiviato può essere ripristinato.");
+  }
+  await updateDoc(ref, { stato: "chiuso", ripristinato: serverTimestamp() });
+  return "chiuso";
 }

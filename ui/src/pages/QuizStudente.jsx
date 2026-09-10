@@ -13,7 +13,7 @@
 // concretamente, non preventivamente.
 
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import BarraQuiz from "../components/BarraQuiz.jsx";
 import QuesitoCard from "../components/QuesitoCard.jsx";
@@ -69,9 +69,16 @@ export default function QuizStudente() {
   }
 
   if (errore) {
+    // Stessa forma di "Area riservata" (auth/RichiediAuth): messaggio + via
+    // d'uscita. Serve per tutti gli stati bloccanti — non trovato, non avviato,
+    // chiuso, archiviato, senza quesiti, errore di rete.
     return (
-      <div className="mx-auto flex min-h-screen max-w-[560px] items-center px-4 text-center">
-        <p className="text-inchiostro/70">{errore}</p>
+      <div className="mx-auto flex min-h-screen max-w-[420px] flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="font-titoli text-lg font-bold">Quiz non disponibile</p>
+        <p className="text-sm text-inchiostro/70">{errore}</p>
+        <Link to="/studente" className="text-sm font-medium text-primario">
+          Torna alla home
+        </Link>
       </div>
     );
   }
