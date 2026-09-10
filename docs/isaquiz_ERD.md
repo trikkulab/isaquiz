@@ -147,15 +147,17 @@ erDiagram
   client (spetta a `functions/calcolaPunteggio.js` — stub: per ora il
   giusto/sbagliato è calcolato lato client).
 - **`UTENTE` è una tabella sola** per studenti, docenti e amministratore. Il
-  campo `ruolo` è solo la cache per la dashboard di default al login — la
-  fonte di verità per un contesto specifico (un corso, una classe) è sempre
-  la riga di collegamento (`ISCRIZIONE_CORSO`, `DOCENTE_CORSO`,
-  `DOCENTE_CLASSE`), mai questo campo. Id documento = uid di Firebase Auth. Dal
-  login reale (Fase 2) il documento è creato/aggiornato dal provisioning in
-  `data/authProvider.js`: `email/nome/cognome/photoURL` da Google, `ruolo`
-  ricalcolato ogni volta da `docentiAutorizzati`, `nickname/avatarEmoji/livello`
-  default deterministici (solo se assenti). Vedi `DECISIONI_DESIGN.md`,
-  "Autenticazione e provisioning utente".
+  campo `ruolo` è **solo-DB** (scritto unicamente da console / Admin SDK, mai
+  dal client): designa l'amministratore (`ruolo === 'admin'`) e per gli altri
+  di norma non è presente. Essere **docente** si deriva a runtime da
+  `config/current.docentiAutorizzati`, non da questo campo. Il ruolo in un
+  contesto specifico (un corso, una classe) è sempre la riga di collegamento
+  (`DOCENTE_CORSO`, ecc.). Id documento = uid di Firebase Auth. Dal login reale
+  (Fase 2) il documento è creato/aggiornato dal provisioning in
+  `data/authProvider.js`: `email/nome/cognome/photoURL` da Google,
+  `nickname/avatarEmoji/livello` default deterministici (solo se assenti) —
+  `ruolo` **non** toccato. Vedi `DECISIONI_DESIGN.md`, "Autenticazione e
+  provisioning utente" e "Amministratore".
 - **`config/istituto`** (sotto-documento a parte, non nel diagramma):
   `{ dominioIstituzionale, nomeIstituto }`, **leggibile senza login** — serve
   alla pagina `/accedi`. Il resto di CONFIG (incl. `docentiAutorizzati`) sta in

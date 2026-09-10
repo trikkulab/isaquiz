@@ -88,7 +88,7 @@ export default function AppLayout() {
           </button>
 
           <NavLink
-            to={areaHome(utente.ruolo)}
+            to={areaHome({ isDocente, isAdmin })}
             className="font-titoli text-lg font-bold text-primario"
           >
             isaquiz

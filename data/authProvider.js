@@ -6,14 +6,16 @@
 //  - accediConGoogle(): popup Google, con hint `hd` sul dominio; se l'email
 //    non è del dominio istituzionale -> signOut + ErroreDominio.
 //  - ascoltaUtenteCorrente(cb): wrapper su onAuthStateChanged. A ogni login
-//    (anche al refresh, sessione persistita) RICONTROLLA il ruolo contro
-//    CONFIG.docentiAutorizzati e fa l'upsert di `utenti/{uid}`, poi emette
-//    l'utente completo (o null allo sign-out).
+//    (anche al refresh, sessione persistita) fa l'upsert di `utenti/{uid}` coi
+//    dati Google e RICALCOLA `isDocente` da CONFIG.docentiAutorizzati, poi
+//    emette l'utente (con isDocente/isAdmin) o null allo sign-out.
 //  - esci(): signOut.
 //
-// Il ruolo docente NON è mai autoregistrazione: dipende solo dalla lista in
-// CONFIG, riletta a ogni login (togliere un'email -> al login successivo la
-// persona torna studente). Vedi CLAUDE.md, "Modello dati: ruoli e corsi".
+// L'area docente NON è mai autoregistrazione: `isDocente` dipende solo dalla
+// lista in CONFIG, riletta a ogni login (togliere un'email -> al login
+// successivo la persona non vede più l'area docente). Il campo `utenti.ruolo`
+// (che designa l'admin) non è mai scritto da qui — solo da console. Vedi
+// CLAUDE.md, "Modello dati: ruoli e corsi".
 
 import {
   GoogleAuthProvider,
@@ -102,18 +104,20 @@ export function esci() {
   return signOut(auth);
 }
 
-// Provisioning: ricontrolla ruolo/capability e allinea utenti/{uid}. Ritorna
-// l'utente completo ({ id, ...campi }) con in più `isDocente` / `isAdmin` —
-// campi CALCOLATI in memoria, non scritti su Firestore.
+// Provisioning: allinea utenti/{uid} coi dati Google e calcola le capability
+// delle aree. Ritorna l'utente ({ id, ...campi }) con in più `isDocente` /
+// `isAdmin` — campi CALCOLATI in memoria, non scritti su Firestore.
 //
-// Modello a tre aree indipendenti (vedi DECISIONI_DESIGN.md, "Amministratore:
-// cruscotto minimale" e "Navigazione e layout"):
+// Modello a tre aree indipendenti (vedi DECISIONI_DESIGN.md, "Amministratore" e
+// "Navigazione e layout"):
 //  - Studente: baseline, ogni utente autenticato;
-//  - Docente:  isDocente = email in config/current.docentiAutorizzati;
-//  - Admin:    isAdmin = ruolo === 'admin', assegnato SOLO da console.
-// `ruolo` è una stringa singola (studente|docente|admin): serve a scegliere
-// l'area di atterraggio dopo il login ed è la fonte di verità per l'area Admin.
-// Un 'admin' già assegnato NON viene mai declassato dal provisioning.
+//  - Docente:  isDocente = email in config/current.docentiAutorizzati — calcolato
+//              a OGNI login, mai memorizzato;
+//  - Admin:    isAdmin = utenti/{uid}.ruolo === 'admin', campo scritto SOLO da
+//              console (mai dal client — le security rules lo vietano).
+// Il provisioning NON scrive `ruolo`: la sua gestione resta sul DB, a chi
+// amministra. L'atterraggio dopo il login si deriva dai due booleani (areaHome
+// in ui/src/config/navigazione.js).
 async function provisionUtente(user) {
   const email = (user.email || "").toLowerCase();
   const [autorizzati, esistente] = await Promise.all([
@@ -123,7 +127,6 @@ async function provisionUtente(user) {
 
   const isDocente = autorizzati.includes(email);
   const isAdmin = esistente?.ruolo === "admin";
-  const ruolo = isAdmin ? "admin" : isDocente ? "docente" : "studente";
   const { nome, cognome } = separaNome(user.displayName, email);
 
   const dati = {
@@ -131,7 +134,6 @@ async function provisionUtente(user) {
     nome,
     cognome,
     photoURL: user.photoURL || null,
-    ruolo, // ricontrollato a ogni login (admin preservato)
   };
   // Campi "di comodo" per la UI studente: solo se non già impostati, così un
   // eventuale nickname/avatar scelto in futuro non viene sovrascritto.

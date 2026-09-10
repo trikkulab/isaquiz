@@ -116,23 +116,21 @@ sono livelli progressivi né mutuamente esclusivi:
 | Admin | `isAdmin` = `UTENTE.ruolo === 'admin'` | flag, solo da console |
 
 Docente e Admin si combinano liberamente: un amministratore può **non** essere
-docente (tecnico/segreteria) e viceversa. `UTENTE.ruolo` resta **una stringa
-singola** (`studente | docente | admin`): serve solo a (1) scegliere l'area di
-atterraggio dopo il login (`admin > docente > studente`, funzione
-`areaHome` in `ui/src/config/navigazione.js`) e (2) fare da fonte di verità per
-l'area Admin. L'accesso all'area **Docente non guarda `ruolo`** ma la lista, così
-un admin che insegna vede comunque l'area Docente.
+docente (tecnico/segreteria) e viceversa.
+
+**`UTENTE.ruolo` è un campo *solo-DB*** — scritto unicamente da console / Admin
+SDK, **mai** dal client (il provisioning non lo tocca; le security rules lo
+vietano). In pratica vale `'admin'` per gli amministratori e non è presente per
+gli altri: è la designazione dell'admin, nient'altro. L'appartenenza all'area
+**Docente non passa da `ruolo`** ma dalla lista, calcolata a ogni login.
 
 **`isDocente` / `isAdmin`** sono calcolati nel provisioning
-(`data/authProvider.js`) ed esposti da `ui/src/auth/AuthContext.jsx` — **campi in
-memoria, non su Firestore** (`isDocente` è derivabile dalla lista, `isAdmin` da
-`ruolo`). `RichiediAuth` prende una prop `area` (`"docente"` / `"admin"` /
-assente) e verifica la capability corrispondente.
-
-**Provisioning: `admin` non viene mai declassato.** A ogni login
-`provisionUtente` ricalcola `ruolo`, ma se il documento ha già `ruolo: 'admin'`
-lo conserva (l'admin si mette e si toglie solo da console). Le security rules su
-`utenti` sono state ampliate di conseguenza (vedi "Security rules").
+(`data/authProvider.js`), **campi in memoria non su Firestore**, ed esposti da
+`ui/src/auth/AuthContext.jsx`: `isDocente` = email in `docentiAutorizzati`,
+`isAdmin` = `esistente?.ruolo === 'admin'`. `RichiediAuth` prende una prop
+`area` (`"docente"` / `"admin"` / assente) e verifica la capability. L'atterraggio
+dopo il login (`areaHome` in `ui/src/config/navigazione.js`, priorità
+`admin > docente > studente`) si deriva da questi due booleani.
 
 **In questa fase l'area Admin è in sola lettura.** Le *scritture* admin —
 editare `docentiAutorizzati` dalla UI — richiederebbero una regola di scrittura
@@ -204,16 +202,24 @@ consapevole.
 
 **Provisioning a ogni login, non solo al primo.** `ascoltaUtenteCorrente`, a
 ogni `onAuthStateChanged` con utente:
-1. rilegge `docentiAutorizzati`;
-2. `ruolo = lista.include(email) ? "docente" : "studente"` — **ricalcolato ogni
-   volta**: togliere un'email dalla lista fa tornare studente al login
-   successivo, senza azioni sull'utente;
-3. `upsert` di `utenti/{uid}` (merge) con `email/nome/cognome/photoURL` da
-   Google + `ruolo`. `uid` di Firebase Auth = id del documento.
+1. `upsert` di `utenti/{uid}` (merge) con `email/nome/cognome/photoURL` da
+   Google (`uid` di Firebase Auth = id del documento);
+2. rilegge `docentiAutorizzati` e calcola **`isDocente`** (email in lista) —
+   **ogni volta, in memoria, mai scritto su Firestore**: togliere un'email fa
+   sparire l'area docente al login successivo senza toccare il documento;
+3. calcola **`isAdmin`** = `utenti/{uid}.ruolo === 'admin'`.
 
-Il ruolo `admin` non è mai scrivibile dall'app (rules: `ruolo in
-['studente','docente']`), solo da console — coerente con "Amministratore:
-cruscotto minimale".
+**Il provisioning NON scrive `utenti/{uid}.ruolo`.** Quel campo è gestito solo
+sul DB, da chi amministra (console / Admin SDK): in pratica vale `'admin'` per
+gli amministratori e non è presente per gli altri. Le security rules vietano al
+client qualsiasi scrittura di `ruolo` (`request.resource.data.get('ruolo', null)`
+deve restare uguale al valore esistente). `AuthContext` espone `isDocente` /
+`isAdmin`; l'atterraggio dopo il login si deriva da questi due (`areaHome`).
+
+Perché non tenere `ruolo` come "cache" riscritta a ogni login (come faceva la
+Fase 2 iniziale): l'unico vantaggio era l'auto-declassamento, ma `isDocente`
+essendo calcolato al volo lo copre già; in cambio si evita un campo scritto dal
+client che confonde e si semplifica la regola su `utenti`.
 
 **`nickname` / `avatarEmoji` / `livello`: default deterministici, non
 onboarding.** Passando dall'utente mock (che aveva questi campi) all'account
@@ -347,12 +353,10 @@ coprono i casi che contano davvero:
 - `corretta` su `RISPOSTA` non scrivibile dal client (create senza il campo;
   update solo su `rispostaData`/`timestamp`);
 - risposte solo del proprio `studenteId`, solo su quiz `attivo`;
-- niente escalation di ruolo: il client può scrivere `ruolo` solo
-  `studente`/`docente` (`docente` solo se in lista), **oppure** lasciarlo
-  invariato rispetto al documento esistente — questo permette al provisioning di
-  conservare un `admin` assegnato da console, senza che il client possa mai
-  *diventare* admin (non c'è un documento admin preesistente da cui "copiare" il
-  valore);
+- niente escalation di ruolo: il client **non può toccare `utenti/{uid}.ruolo`**
+  (`request.resource.data.get('ruolo', null)` deve restare uguale al valore
+  esistente). Il campo è scritto solo da console: designa l'admin. Il
+  provisioning non lo scrive affatto;
 - `corsi`/`docenti_corso`: `create` da un docente autorizzato (forma +
   `annoScolastico` verificati); `update`/`delete` vietati;
 - quiz e quesiti scrivibili solo da chi si dichiara autore;

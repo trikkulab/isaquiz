@@ -19,6 +19,11 @@ rules_version = '2';
 // corso esistente creato dallo stesso docente (i due write sono un batch
 // atomico lato client, ma le rules li valutano separatamente).
 //
+// Ruoli/aree: il client non scrive MAI `utenti/{uid}.ruolo` — è un campo
+// gestito solo da console (designa l'admin). L'appartenenza all'area Docente si
+// deriva a runtime da `config/current.docentiAutorizzati`. Vedi
+// DECISIONI_DESIGN.md, "Amministratore" e "Autenticazione e provisioning utente".
+//
 // Dominio istituzionale: COSTANTE qui sotto. Un'installazione = un istituto
 // (vedi DECISIONI_DESIGN.md, "Multi-istituto"). Cambiarlo = modificare qui,
 // allineare `config/current.dominioIstituzionale`, e ripubblicare le regole.
@@ -72,22 +77,17 @@ service cloud.firestore {
     // ── utenti ────────────────────────────────────────────────────────────
     // Lettura larga (dominio): student legge il nome del docente del quiz,
     // docente legge i nomi degli studenti nei risultati. DA RESTRINGERE.
-    // Scrittura: solo il proprio documento, email = quella del token, e
-    //  - ruolo 'studente'/'docente' ('docente' solo se in lista); oppure
-    //  - ruolo INVARIATO rispetto al documento esistente: serve al provisioning
-    //    per conservare un 'admin' assegnato da console. Il client non può MAI
-    //    diventare admin — senza un doc admin preesistente da cui copiare, la
-    //    seconda clausola non si applica e la prima esclude 'admin'.
+    // Scrittura: solo il proprio documento, email = quella del token, e il
+    // client NON tocca MAI `ruolo` (campo gestito solo da console/Admin SDK —
+    // designa l'admin). "Sei docente?" è calcolato al volo da `docentiAutorizzati`
+    // (vedi data/authProvider.js), non memorizzato qui.
     match /utenti/{uid} {
       allow read: if isDominio();
       allow write: if isDominio()
         && request.auth.uid == uid
         && request.resource.data.email.lower() == request.auth.token.email.lower()
-        && (
-             request.resource.data.ruolo in ['studente', 'docente']
-             || (resource != null && request.resource.data.ruolo == resource.data.ruolo)
-           )
-        && (request.resource.data.ruolo != 'docente' || isDocenteAutorizzato());
+        && request.resource.data.get('ruolo', null) ==
+             (resource == null ? null : resource.data.get('ruolo', null));
     }
 
     // ── corsi / collegamenti docente ──────────────────────────────────────

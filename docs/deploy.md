@@ -212,8 +212,8 @@ aggiungere un collega docente:
    all'array `docentiAutorizzati`. (In alternativa, ri-seed con
    `SEED_TARGET=prod` — ma il seed *sovrascrive* l'array con la sola
    `SEED_DOCENTE_EMAIL`, quindi in prod conviene la modifica manuale.)
-2. Il docente fa login almeno una volta → il provisioning gli assegna
-   `ruolo: "docente"` e lui atterra su `/docente`.
+2. Il docente fa login almeno una volta → risulta `isDocente` (calcolato dalla
+   lista, non un campo) e atterra su `/docente`.
 3. Da lì crea da sé i propri corsi (`/docente/corsi`) — non serve nessun
    intervento admin per i corsi. Vedi `DECISIONI_DESIGN.md`, "Onboarding docente
    e creazione corsi".
@@ -226,7 +226,8 @@ Il ruolo `admin` si assegna **solo** da console (mai dall'app), e **dopo** che
 la persona ha fatto login almeno una volta (così esiste `utenti/{uid}`):
 
 1. Console Firestore → `utenti/{uid}` della persona → campo `ruolo` = `admin`.
-2. Al login successivo il provisioning **conserva** `admin` (non lo declassa).
+2. Al login successivo il provisioning legge quel campo (non lo scrive mai) e la
+   persona risulta `isAdmin`.
 3. La persona vede l'area Admin (sola lettura: corsi dell'istituto, elenco
    docenti autorizzati, impostazioni) oltre a Studente. Vede anche Docente solo
    se la sua email è pure in `docentiAutorizzati` — le due cose sono
@@ -242,7 +243,7 @@ Per togliere l'admin: reimpostare `ruolo` a `docente`/`studente` da console.
 > (`onAuthStateChanged` rifà `provisionUtente` solo al reload / logout-login).
 
 > ⚠️ Le regole in `firestore.rules` sono cambiate (il write su `utenti` ora
-> ammette di conservare un `admin`): al deploy va rieseguito
+> vieta al client di toccare `ruolo`): al deploy va rieseguito
 > `firebase deploy --only firestore:rules` (vedi §D).
 
 ### C. Costante del dominio in `firestore.rules`

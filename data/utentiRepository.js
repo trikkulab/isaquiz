@@ -1,7 +1,9 @@
 // Unico punto di accesso alla collezione "utenti" (tabella UTENTE unica:
 // studenti, docenti, admin — vedi CLAUDE.md, "Modello dati: ruoli e corsi").
-// Il campo `ruolo` qui è solo cache di comodo; il ruolo in un contesto
-// specifico si legge sempre dalla riga di collegamento, mai da qui.
+// Il campo `ruolo` NON è scritto dal client (solo da console): designa l'admin
+// (`ruolo === 'admin'`). "Sei docente?" si deriva a runtime dalla lista
+// `config/current.docentiAutorizzati`, non da qui. Il ruolo in un corso
+// specifico si legge sempre dalla riga di collegamento (DOCENTE_CORSO).
 
 import { db } from "./firebaseClient.js";
 import { doc, getDoc, setDoc } from "firebase/firestore";

@@ -72,14 +72,18 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
 ## Modello dati: ruoli e corsi (leggere prima di toccare auth/permessi)
 
 - **Tabella `UTENTE` unica**, niente `STUDENTE`/`DOCENTE` separate. Contiene
-  email, nome, cognome, un campo `ruolo` (cache di comodo per la dashboard di
-  default) e `classeId` (rilevante solo se studente).
-- **Il campo `ruolo` su `UTENTE` non è mai la fonte di verità per un corso
-  specifico.** Per sapere cosa è una persona in un dato corso, si legge sempre
-  la riga di collegamento pertinente: `ISCRIZIONE_CORSO` (studente),
-  `DOCENTE_CORSO` con `ruolo: titolare|assistente` (docente in quel corso),
-  `DOCENTE_CLASSE` con `ruolo: coordinatore`. Non dedurre mai il ruolo in un
-  contesto specifico dal campo generale su `UTENTE`.
+  email, nome, cognome, `classeId` (rilevante solo se studente) e un campo
+  `ruolo`.
+- **`UTENTE.ruolo` è un campo *solo-DB*: lo scrive SOLO la console (Admin SDK),
+  MAI il client** (il provisioning non lo tocca, le rules lo vietano). Designa
+  l'amministratore (`ruolo === 'admin'`) e basta — per gli altri utenti di
+  norma non è nemmeno presente. Essere **docente** si deriva a runtime da
+  `config/current.docentiAutorizzati` (`isDocente`), non da questo campo.
+- **`ruolo` non è mai la fonte di verità per un corso specifico.** Per sapere
+  cosa è una persona in un dato corso, si legge sempre la riga di collegamento:
+  `ISCRIZIONE_CORSO` (studente), `DOCENTE_CORSO` con `ruolo: titolare|assistente`,
+  `DOCENTE_CLASSE` con `ruolo: coordinatore`. (Il campo `ruolo` su quelle righe
+  è un'altra cosa: il ruolo *nel collegamento*, non su `UTENTE`.)
 - **`CORSO`, non `CLASSE`, è il contenitore dei quiz.** Un corso è per
   combinazione materia+classe+anno scolastico (es. "Informatica 3AINF
   2025/26"), con proprio `codiceAccesso`. `CLASSE` esiste come entità
@@ -132,20 +136,20 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
   istituzionale. Layer in `data/authProvider.js` (`accediConGoogle`, `esci`,
   `ascoltaUtenteCorrente`): nessun componente `ui/` tocca Firebase Auth
   direttamente. Al login (ogni volta, non solo il primo) si fa provisioning di
-  `utenti/{uid}` e si ricalcola `ruolo` da `config/current.docentiAutorizzati`
-  (un `ruolo: 'admin'` già presente NON viene declassato — si mette/toglie solo
-  da console). In UI: `ui/src/auth/AuthContext.jsx`
-  (`useUtenteCorrente`/`useAuth`, che espone anche `isDocente`/`isAdmin`) +
-  `RichiediAuth` sulle route. Mai reintrodurre un flusso "diventa docente".
-  `data/mockAuth.js` non esiste più.
+  `utenti/{uid}` coi dati Google e si **calcola** (in memoria, non su Firestore)
+  `isDocente` da `config/current.docentiAutorizzati` e `isAdmin` da
+  `utenti/{uid}.ruolo === 'admin'`. Il provisioning **non scrive `ruolo`**. In
+  UI: `ui/src/auth/AuthContext.jsx` (`useUtenteCorrente`/`useAuth`, che espone
+  `isDocente`/`isAdmin`) + `RichiediAuth` sulle route. Mai reintrodurre un
+  flusso "diventa docente". `data/mockAuth.js` non esiste più.
 - **Tre aree indipendenti (Studente / Docente / Admin), non una gerarchia.**
   Studente = ogni utente autenticato; Docente = `isDocente` (email in
-  `docentiAutorizzati`); Admin = `isAdmin` (`ruolo === 'admin'`). Combinabili
-  liberamente. `UTENTE.ruolo` (stringa `studente|docente|admin`) serve solo
-  all'atterraggio dopo login (`areaHome`, `ui/src/config/navigazione.js`) e come
-  fonte per l'area Admin — **l'accesso all'area Docente guarda la lista, non
-  `ruolo`**. Guscio unico `ui/src/components/AppLayout.jsx` (menù a due livelli:
-  aree + pagine dell'area); `RichiediAuth` prende una prop `area`. Nomi `is*`:
+  `docentiAutorizzati`, calcolato a runtime); Admin = `isAdmin`
+  (`utenti/{uid}.ruolo === 'admin'`, campo scritto solo da console). Combinabili
+  liberamente. L'atterraggio dopo il login (`areaHome`,
+  `ui/src/config/navigazione.js`, `admin > docente > studente`) si deriva dai
+  due booleani. Guscio unico `ui/src/components/AppLayout.jsx` (menù a due
+  livelli: aree + pagine); `RichiediAuth` prende una prop `area`. Nomi `is*`:
   eccezione ammessa all'italiano (vedi `DECISIONI_DESIGN.md`,
   "Internazionalizzazione"). Area Admin: **sola lettura** in questa fase.
 - **Il campo `corretta` su una risposta non si scrive mai dal client.** Il

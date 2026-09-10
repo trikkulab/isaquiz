@@ -1,9 +1,9 @@
 // Pagina di accesso (route /accedi). Unico modo per entrare: account Google
 // istituzionale. Dopo il login:
 //  - se c'è ?next= (impostato da RichiediAuth) -> torna lì;
-//  - altrimenti dashboard per ruolo (docente -> /docente, studente -> /studente).
+//  - altrimenti l'area di atterraggio (admin > docente > studente), via areaHome.
 //
-// Il ruolo docente dipende solo da CONFIG.docentiAutorizzati (ricontrollato a
+// L'area docente dipende solo da CONFIG.docentiAutorizzati (ricontrollata a
 // ogni login in data/authProvider.js): nessun flusso "diventa docente" qui.
 
 import { useState } from "react";
@@ -14,7 +14,7 @@ import { areaHome } from "../config/navigazione.js";
 import { ErroreDominio } from "../../../data/authProvider.js";
 
 export default function Accedi() {
-  const { utente, caricamento, accedi } = useAuth();
+  const { utente, caricamento, accedi, isDocente, isAdmin } = useAuth();
   const [params] = useSearchParams();
   const [errore, setErrore] = useState(null);
   const [inCorso, setInCorso] = useState(false);
@@ -22,7 +22,7 @@ export default function Accedi() {
   const next = params.get("next");
 
   if (!caricamento && utente) {
-    return <Navigate to={next || areaHome(utente.ruolo)} replace />;
+    return <Navigate to={next || areaHome({ isDocente, isAdmin })} replace />;
   }
 
   async function entra() {

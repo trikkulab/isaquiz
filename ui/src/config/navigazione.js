@@ -43,10 +43,12 @@ export const AREE = [
   },
 ];
 
-// Area di atterraggio dopo il login, in base al campo `ruolo` (cache di comodo:
-// admin > docente > studente). Usata da Indirizza (route "/") e da Accedi.
-export function areaHome(ruolo) {
-  if (ruolo === "admin") return "/admin/corsi";
-  if (ruolo === "docente") return "/docente";
+// Area di atterraggio dopo il login, dalle capability (priorità admin > docente
+// > studente). Usata da Indirizza (route "/"), Accedi e dal wordmark di
+// AppLayout. Non legge un campo memorizzato: `isDocente`/`isAdmin` arrivano dal
+// contesto auth (calcolati nel provisioning).
+export function areaHome({ isDocente = false, isAdmin = false } = {}) {
+  if (isAdmin) return "/admin/corsi";
+  if (isDocente) return "/docente";
   return "/studente";
 }

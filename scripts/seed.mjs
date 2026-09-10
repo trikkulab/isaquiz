@@ -104,20 +104,22 @@ const configIstituto = {
   data: { dominioIstituzionale: DOMINIO, nomeIstituto: NOME_ISTITUTO },
 };
 
+// Nota: `utenti.ruolo` NON è più scritto dal provisioning (vedi
+// data/authProvider.js) — è un campo solo-DB che designa l'admin. Il docente lo
+// è perché la sua email è in `docentiAutorizzati`, non per un campo qui.
 const utente = {
   ref: db.doc(`utenti/${DOCENTE_ID}`),
   data: {
     email: DOCENTE_EMAIL,
     nome: "Mario",
     cognome: "Rossi",
-    ruolo: "docente",
     classeId: "3A",
   },
 };
 
-// Utente demo di sola amministrazione: ruolo "admin" (in prod si assegna a mano
-// da console — qui è nel seed per provare l'area Admin in emulatore). NON è in
-// docentiAutorizzati: vede quindi Studente + Admin, non Docente.
+// Utente demo di sola amministrazione: `ruolo: "admin"` (in prod si assegna a
+// mano da console — qui è nel seed per provare l'area Admin in emulatore). NON è
+// in docentiAutorizzati: vede quindi Studente + Admin, non Docente.
 const ADMIN_ID = "mock-admin-1";
 const ADMIN_EMAIL = `admin@${DOMINIO}`;
 const admin = {
@@ -140,7 +142,6 @@ const studenti = [
     email: s.email,
     nome: s.nome,
     cognome: s.cognome,
-    ruolo: "studente",
     classeId: "3A",
   },
 }));

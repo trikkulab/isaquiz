@@ -1,7 +1,7 @@
 // Route "/" — smista in base allo stato di autenticazione:
 //  - auth in caricamento -> schermata d'attesa;
 //  - non autenticato     -> /accedi;
-//  - autenticato         -> dashboard del ruolo (docente/studente).
+//  - autenticato         -> area di atterraggio (admin > docente > studente).
 //
 // Stessa logica di destinazione già in Accedi.jsx dopo il login: qui serve per
 // chi arriva sulla radice (link, bookmark, digitazione manuale).
@@ -12,7 +12,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { areaHome } from "../config/navigazione.js";
 
 export default function Indirizza() {
-  const { utente, caricamento } = useAuth();
+  const { utente, caricamento, isDocente, isAdmin } = useAuth();
 
   if (caricamento) {
     return (
@@ -24,5 +24,5 @@ export default function Indirizza() {
 
   if (!utente) return <Navigate to="/accedi" replace />;
 
-  return <Navigate to={areaHome(utente.ruolo)} replace />;
+  return <Navigate to={areaHome({ isDocente, isAdmin })} replace />;
 }
