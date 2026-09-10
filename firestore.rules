@@ -22,7 +22,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function dominioIstituzionale() {
-      return 'istituto.example';
+      return 'isarome.it';
     }
 
     function isSignedIn() {

@@ -57,11 +57,12 @@ npm run seed    # radice: popola i dati di prova E gli utenti Auth dell'emulator
 cd ui && npm run dev
 ```
 
-`npm run seed` crea nell'emulatore gli account Auth `rossi@istituto.example`
-(docente), `giulia.bianchi@istituto.example` e `luca.verdi@istituto.example`
-(studenti). Nella pagina `/accedi` si "accede" con uno di questi tramite il
-selettore dell'emulatore Auth. Per intestare i dati demo a un altro account:
-`SEED_DOCENTE_EMAIL=tua@istituto.example npm run seed`.
+`npm run seed` crea nell'emulatore gli account Auth `rossi@isarome.it`
+(docente), `giulia.bianchi@isarome.it` e `luca.verdi@isarome.it` (studenti) —
+`isarome.it` è il dominio istituzionale (costante in `firestore.rules`, override
+locale con `SEED_DOMINIO`). Nella pagina `/accedi` si "accede" con uno di questi
+tramite il selettore dell'emulatore Auth. Per intestare i dati demo a un altro
+account: `SEED_DOCENTE_EMAIL=tua@isarome.it npm run seed`.
 
 ## Deploy
 

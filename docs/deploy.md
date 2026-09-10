@@ -47,10 +47,10 @@ non serve autenticarla ora). Regione Firestore scelta: **`europe-west8` (Milano)
 incollarle a mano una prima volta (Console Firestore → **Regole** → Pubblica),
 ma dalla Fase 2 conviene il deploy via CLI: vedi "Fase 2 — abilitare il login".
 
-> **Allinea la costante del dominio**: in `firestore.rules`, la funzione
-> `dominioIstituzionale()` ritorna `'istituto.example'`. Sostituiscilo col
-> dominio Google Workspace reale **prima** di pubblicare, e tienilo uguale a
-> `config/istituto.dominioIstituzionale`.
+> **Dominio istituzionale**: in `firestore.rules`, `dominioIstituzionale()`
+> ritorna `'isarome.it'` (il dominio Google Workspace di questo istituto). Se
+> cambia, aggiornalo qui, in `scripts/seed.mjs` (`DOMINIO`) e in
+> `config/current` + `config/istituto` su Firestore, poi ripubblica le regole.
 
 ### 4. Web app + config
 
@@ -94,18 +94,22 @@ cambiare progetto senza toccare il codice, non perché siano segrete.
    SEED_PROJECT_ID=<project-id> \
    GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json \
    SEED_CONFIRM=<project-id> \
+   SEED_DOCENTE_EMAIL=<tua email @isarome.it> \
+   SEED_NOME_ISTITUTO="<nome esteso dell'istituto>" \
    npm run seed
    ```
-   Popola `config`, `utenti`, `classi`, `corsi`, `docenti_corso`, `quesiti`, i 3
-   quiz di prova + codici `TEST01`/`TEST02` (stessi dati dell'emulatore).
+   Popola `config`/`config/istituto`, `utenti`, `classi`, `corsi`,
+   `docenti_corso`, `quesiti`, i 3 quiz di prova + codici `TEST01`/`TEST02`.
+   `SEED_DOCENTE_EMAIL` intesta i quiz/quesiti demo al tuo account (devi aver
+   fatto login almeno una volta, così l'account esiste) e ti mette in
+   `docentiAutorizzati`.
 3. **Revoca la chiave** dalla console quando hai finito (o tienila al sicuro per i
    re-seed). Il seed è idempotente: puoi rilanciarlo.
 
-> I dati di `config` sono di esempio (`IIS Esempio`, dominio `istituto.example`,
-> docente `rossi@istituto.example`). Col login reale vanno messi valori veri:
-> vedi "Fase 2 — abilitare il login", punto B. Per intestare i quiz/quesiti demo
-> al tuo account: `SEED_DOCENTE_EMAIL=<tua email> …` (dopo che hai fatto login
-> almeno una volta, così l'account esiste).
+> `DOMINIO` di default è `isarome.it` (override con `SEED_DOMINIO`); il nome
+> istituto di default resta `IIS Esempio` finché non passi `SEED_NOME_ISTITUTO`.
+> `annoScolasticoCorrente` e `codiceMeccanografico` in `config/current` vanno
+> comunque controllati a mano in console.
 
 ### 8. Primo deploy
 
@@ -236,7 +240,7 @@ variabile per l'auth.
 
 ### Note
 
-- I quiz demo del seed sono intestati a `rossi@istituto.example` (o a
+- I quiz demo del seed sono intestati a `rossi@isarome.it` (o a
   `SEED_DOCENTE_EMAIL`). In prod il docente vero, al primo login, ottiene un
   `utenti/{uid}` con ruolo docente ma **nessun corso**: non c'è ancora UI per
   creare un `CORSO`, quindi i `corsi`/`docenti_corso` vanno creati per il suo

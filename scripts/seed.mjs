@@ -53,11 +53,11 @@ const db = getFirestore();
 const auth = getAuth();
 
 const ANNO = "2025/26";
-// Dominio istituzionale fittizio per lo sviluppo: tutte le email seed (docente
-// e studenti) ne fanno parte, così il gate di dominio (client + rules) le
-// accetta in emulatore. In produzione va sostituito col dominio Google
-// Workspace reale — vedi docs/deploy.md e la costante in firestore.rules.
-const DOMINIO = "istituto.example";
+// Dominio istituzionale: tutte le email seed (docente e studenti) ne fanno
+// parte, così il gate di dominio (client + rules) le accetta. Deve combaciare
+// con la costante `dominioIstituzionale()` in firestore.rules. Override con
+// SEED_DOMINIO (es. per un'istanza demo con un dominio diverso).
+const DOMINIO = (process.env.SEED_DOMINIO || "isarome.it").toLowerCase();
 
 // Email del docente demo. Override con SEED_DOCENTE_EMAIL per intestare i dati
 // demo all'account con cui si fa davvero login (utile in locale col login reale,
@@ -84,7 +84,7 @@ try {
 
 // --- documenti a id fisso (idempotenti) ---------------------------------------
 
-const NOME_ISTITUTO = "IIS Esempio";
+const NOME_ISTITUTO = process.env.SEED_NOME_ISTITUTO || "IIS Esempio";
 
 const config = {
   ref: db.doc("config/current"),
