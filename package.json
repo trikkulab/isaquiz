@@ -4,7 +4,7 @@
   "description": "Tooling di sviluppo (emulatore Firestore, seed). ui/, data/ e functions/ hanno i propri package.json.",
   "type": "module",
   "scripts": {
-    "emu": "firebase emulators:start --only firestore,auth,functions --import=./.emulator-data --export-on-exit",
+    "emu": "firebase emulators:start --project demo-isaquiz --only firestore,auth,functions --import=./.emulator-data --export-on-exit",
     "seed": "node scripts/seed.mjs"
   },
   "devDependencies": {
