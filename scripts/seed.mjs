@@ -372,7 +372,10 @@ async function main() {
   batch.set(config.ref, config.data);
   batch.set(configIstituto.ref, configIstituto.data);
   batch.set(utente.ref, utente.data);
-  batch.set(admin.ref, admin.data);
+  // L'admin demo serve solo a provare l'area Admin in emulatore: in prod
+  // creerebbe un `utenti/mock-admin-1` con `ruolo: admin` senza account Auth —
+  // orfano e fuorviante. Il ruolo admin, in prod, si assegna a mano da console.
+  if (TARGET !== "prod") batch.set(admin.ref, admin.data);
   batch.set(classe.ref, classe.data);
   for (const s of studenti) batch.set(s.ref, s.data);
 
@@ -412,7 +415,7 @@ async function main() {
   const dove = TARGET === "prod" ? "progetto REALE" : `emulatore ${process.env.FIRESTORE_EMULATOR_HOST}`;
   console.log(`Seed completato su ${dove} (progetto ${PROJECT_ID}).`);
   console.log(
-    `  config/current, utenti (1 docente + 1 admin + ${studenti.length} studenti), classi/3A`,
+    `  config/current, utenti (1 docente${TARGET !== "prod" ? " + 1 admin" : ""} + ${studenti.length} studenti), classi/3A`,
   );
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
   console.log(
