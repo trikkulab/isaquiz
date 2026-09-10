@@ -216,8 +216,11 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
 
 ## Stato attuale del progetto
 
-**Fase 1 (MVP somministrazione) e Fase 2 (login vero) completate.** Prossimo:
-coda Fase 0 (primo deploy end-to-end su progetto reale) e/o Fase 3 (IA).
+**Fase 1 (MVP somministrazione) e Fase 2 (login vero) completate. Fase 0
+(deploy) chiusa: l'app è online** su `isaquiz.trikkulab.it` (progetto Firebase
+su account privato dell'autore), in uso per il dogfooding coi colleghi docenti.
+Prossimo: onboarding colleghi (lista `docentiAutorizzati`), poi Fase 3 (IA) e/o
+la ricreazione del progetto Firebase nell'org dell'istituto prima della Fase 5.
 
 Fase 0 — setup:
 
@@ -230,21 +233,20 @@ Fase 0 — setup:
       `VITE_USE_FIRESTORE_EMULATOR=true` in `ui/.env`. `npm run seed` di default
       resta sull'emulatore (`demo-isaquiz`); `SEED_TARGET=prod` + key lo punta
       al DB reale (vedi `docs/deploy.md`).
-- [~] Hosting statico su **GitHub Pages** (repo `trikkulab/isaquiz`), dominio
-      custom **`isaquiz.trikkulab.it`** (`ui/public/CNAME`, `VITE_BASE=/`).
-      Workflow `.github/workflows/deploy.yml`: build `ui/` + deploy ad ogni push
-      su `rel`. Routing **HashRouter** (`main.jsx`, niente `404.html`). Dettagli
-      in `docs/deploy.md`.
-- [~] **Progetto Firebase reale** — deciso: Firestore region **`europe-west8`
-      (Milano)**, permanente (dati in Italia, cfr. `docs/analisi-gdpr.md`).
-      `firestore.rules` ora sono **reali** (Fase 2: legate a `request.auth`,
-      minime ma reali — vedi il commento in testa al file e
-      `DECISIONI_DESIGN.md`, "Security rules", per cosa resta da rafforzare).
-      `scripts/seed.mjs` sa puntare al DB reale con `SEED_TARGET=prod` +
-      service-account key (guardia `SEED_CONFIRM`). Restano i passi manuali da
-      console/GitHub nel runbook `docs/deploy.md` (creare progetto, Firestore,
-      abilitare Google Auth + authorized domains, 6 secret `VITE_FIREBASE_*`,
-      `firebase deploy --only firestore:rules,functions`, Pages, seed, deploy).
+- [x] Hosting UI su **GitHub Pages** (repo `trikkulab/isaquiz`), dominio custom
+      **`isaquiz.trikkulab.it`** (`ui/public/CNAME`, `VITE_BASE=/`). Workflow
+      `.github/workflows/deploy.yml` (Node 22): build `ui/` + deploy ad ogni push
+      su `rel`. Routing **HashRouter** (niente `404.html`). Firebase Hosting NON
+      si usa (nessun blocco `hosting` in `firebase.json`).
+- [x] **Progetto Firebase reale** creato (account privato dell'autore),
+      Firestore `europe-west8` (Milano, permanente). Regole e functions
+      dispiegate. Deploy backend: `npm run deploy:rules` / `deploy:functions` /
+      `deploy:backend` (dopo `firebase use <project-id>`). `scripts/seed.mjs`:
+      `SEED_TARGET=prod` + key + `SEED_CONFIRM`; `SEED_SOLO_CONFIG=true`
+      (+ `SEED_DOCENTI`) scrive solo `config` — modalità giusta per il pilota.
+      Runbook e note operative in `docs/deploy.md`. **Da fare prima della Fase 5**:
+      ricreare il progetto nell'org dell'istituto (memory
+      `project_firebase_progetto_da_spostare`).
 
 **Fase 1 (somministrazione quiz) — componenti e repository:**
 
@@ -391,10 +393,9 @@ via Cloud Function. `data/authProvider.js` + `ui/src/auth/`. Emulatori: `npm run
 emu` avvia anche Auth e Functions; `npm run seed` crea gli account Auth di prova.
 
 Prossimo, da affrontare in sessioni separate:
-- **Coda Fase 0 — primo deploy reale**: pipeline GitHub Pages già in piedi
-  (`.github/workflows/deploy.yml`, deploy da `rel`). Restano i passi manuali da
-  console/GitHub nel runbook `docs/deploy.md` (sezione "Fase 2 — abilitare il
-  login") per la prima prova end-to-end su dispositivi reali.
+- ~~**Coda Fase 0 — primo deploy reale**~~ — **fatto**: app online su
+  `isaquiz.trikkulab.it`, regole + functions dispiegate, in uso per il
+  dogfooding. Runbook e operazioni ricorrenti in `docs/deploy.md`.
 - ~~**Onboarding docente / creazione corsi**~~ — **fatto** (2026-09):
   creazione corso **self-service** (`GestioneCorsi.jsx`, route `/docente/corsi`,
   `corsiRepository.creaCorso` → `writeBatch` corso + `docenti_corso` titolare;

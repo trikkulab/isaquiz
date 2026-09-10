@@ -5,21 +5,28 @@
 //   npm run emu   (in un terminale)
 //   npm run seed  (in un altro)
 //
-// PROGETTO REALE — interim Fase 0, SOLO dogfooding interno (vedi docs/deploy.md).
-// Serve una service-account key (Console Firebase -> Impostazioni progetto ->
-// Account di servizio -> "Genera nuova chiave privata"), da NON versionare.
+// PROGETTO REALE (vedi docs/deploy.md). Serve una service-account key (Console
+// Firebase -> Impostazioni progetto -> Account di servizio -> "Genera nuova
+// chiave privata"), da NON versionare.
 //   SEED_TARGET=prod \
 //   SEED_PROJECT_ID=<project-id> \
 //   GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json \
 //   SEED_CONFIRM=<project-id> \
 //   npm run seed
 // SEED_CONFIRM deve combaciare con SEED_PROJECT_ID: guardia anti-"oops".
+//
+// SEED_SOLO_CONFIG=true  -> scrive SOLO config/current + config/istituto (niente
+//   dati demo: utenti, classi, corsi, quesiti, quiz). È la modalità giusta per
+//   un progetto reale in cui i docenti creeranno da sé corsi e quiz.
+//   SEED_DOCENTI="a@x,b@x" -> imposta l'intera lista docentiAutorizzati (default:
+//   la sola SEED_DOCENTE_EMAIL). Sovrascrive: gestiscila poi a mano da console.
 
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
 const TARGET = process.env.SEED_TARGET === "prod" ? "prod" : "emulator";
+const SOLO_CONFIG = process.env.SEED_SOLO_CONFIG === "true";
 let PROJECT_ID;
 
 if (TARGET === "prod") {
@@ -64,22 +71,32 @@ const DOMINIO = (process.env.SEED_DOMINIO || "isarome.it").toLowerCase();
 // e in prod per il dogfooding).
 const DOCENTE_EMAIL = (process.env.SEED_DOCENTE_EMAIL || `rossi@${DOMINIO}`).toLowerCase();
 
+// Lista docentiAutorizzati da scrivere in config/current. Default: la sola
+// SEED_DOCENTE_EMAIL. Override con SEED_DOCENTI (email separate da virgola).
+const DOCENTI = (process.env.SEED_DOCENTI || DOCENTE_EMAIL)
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
 // uid del docente demo = id del documento `utenti` + autoreId di quiz/quesiti.
 //  - emulatore: uid fisso "mock-docente-1" (l'utente Auth lo crea seedUtentiAuth);
 //    se SEED_DOCENTE_EMAIL punta a un account già esistente, si usa quello.
 //  - prod: si cerca l'account per email (il docente deve aver fatto login almeno
 //    una volta, così il provisioning ha creato l'account).
+// In SOLO_CONFIG non serve: si scrive solo config, nessun dato intestato.
 let DOCENTE_ID = "mock-docente-1";
-try {
-  DOCENTE_ID = (await auth.getUserByEmail(DOCENTE_EMAIL)).uid;
-} catch {
-  if (TARGET === "prod") {
-    console.error(
-      `Nessun account per ${DOCENTE_EMAIL}. Il docente deve fare login almeno una volta prima del seed (oppure passa SEED_DOCENTE_EMAIL).`,
-    );
-    process.exit(1);
+if (!SOLO_CONFIG) {
+  try {
+    DOCENTE_ID = (await auth.getUserByEmail(DOCENTE_EMAIL)).uid;
+  } catch {
+    if (TARGET === "prod") {
+      console.error(
+        `Nessun account per ${DOCENTE_EMAIL}. Il docente deve fare login almeno una volta prima del seed (oppure passa SEED_DOCENTE_EMAIL, o SEED_SOLO_CONFIG=true).`,
+      );
+      process.exit(1);
+    }
+    // emulatore: l'account verrà creato più avanti con uid "mock-docente-1".
   }
-  // emulatore: l'account verrà creato più avanti con uid "mock-docente-1".
 }
 
 // --- documenti a id fisso (idempotenti) ---------------------------------------
@@ -90,7 +107,7 @@ const config = {
   ref: db.doc("config/current"),
   data: {
     annoScolasticoCorrente: ANNO,
-    docentiAutorizzati: [DOCENTE_EMAIL],
+    docentiAutorizzati: DOCENTI,
     dominioIstituzionale: DOMINIO,
     nomeIstituto: NOME_ISTITUTO,
     codiceMeccanografico: "XXIS00000X",
@@ -367,6 +384,20 @@ async function seedUtentiAuth() {
 // --- scrittura --------------------------------------------------------------
 
 async function main() {
+  if (SOLO_CONFIG) {
+    const b = db.batch();
+    b.set(config.ref, config.data);
+    b.set(configIstituto.ref, configIstituto.data);
+    await b.commit();
+    const dove = TARGET === "prod" ? "progetto REALE" : `emulatore ${process.env.FIRESTORE_EMULATOR_HOST}`;
+    console.log(`Seed SOLO_CONFIG su ${dove} (progetto ${PROJECT_ID}).`);
+    console.log(`  config/current + config/istituto`);
+    console.log(`  istituto: "${NOME_ISTITUTO}" · dominio: ${DOMINIO} · anno: ${ANNO}`);
+    console.log(`  docentiAutorizzati: ${DOCENTI.join(", ")}`);
+    console.log(`  (nessun dato demo. codiceMeccanografico da controllare a mano in console)`);
+    return;
+  }
+
   const batch = db.batch();
 
   batch.set(config.ref, config.data);

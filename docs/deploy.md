@@ -1,9 +1,19 @@
 # Deploy — GitHub Pages
 
-Stato: **coda Fase 0**, con Fase 2 (login vero) già nel codice. Le sezioni 1–9
-sotto sono il setup base del progetto Firebase + Pages; la sezione **"Fase 2 —
-abilitare il login"** più in fondo va fatta prima di qualsiasi accesso reale.
-Fino ad allora, dogfooding solo con gli account che si creano a mano.
+**Stato (settembre 2026): online e in uso per il dogfooding.** Progetto Firebase
+reale creato su account privato dell'autore, regole e Cloud Functions
+dispiegate, UI su GitHub Pages a `isaquiz.trikkulab.it`. Le sezioni 1–9 e "Fase
+2 — abilitare il login" restano come **riferimento** (per rifare il setup —
+soprattutto quando il progetto verrà ricreato nell'organizzazione dell'istituto
+prima della Fase 5) e come **runbook operativo** (aggiungere un docente, nominare
+un admin, ridispiegare le regole dopo una modifica).
+
+**Operazioni ricorrenti** (dettaglio nelle sezioni sotto):
+- modifica a `firestore.rules` → `npm run deploy:rules` (o `deploy:backend`);
+- modifica alle Cloud Functions → `npm run deploy:functions`;
+- nuovo docente pilota → §B-bis (email in `config/current.docentiAutorizzati`);
+- nuovo amministratore → §B-ter (`utenti/{uid}.ruolo = "admin"` da console);
+- UI → merge `dev` → `rel` (il workflow builda e pubblica).
 
 ## Come funziona
 
@@ -15,12 +25,19 @@ Fino ad allora, dogfooding solo con gli account che si creano a mano.
 - Routing: **HashRouter** (`ui/src/main.jsx`). Gli URL hanno il `#`
   (`isaquiz.trikkulab.it/#/quiz/abc`). Scelta voluta: nessun `404.html` da tenere
   sincronizzato, refresh e link diretti funzionano sempre su hosting statico.
+- **Firebase Hosting non si usa.** `firebase.json` non ha un blocco `hosting`
+  apposta: `firebase deploy` senza `--only` tocca solo Firestore rules +
+  functions, mai la UI (che sta su Pages).
 
 ## Setup una tantum — creare il progetto Firebase reale
 
-Tutto da **console web** (la Firebase CLI non è autenticata su questa macchina e
-non serve autenticarla ora). Regione Firestore scelta: **`europe-west8` (Milano)**
-— dati in Italia, coerente con `docs/analisi-gdpr.md`. **La regione è permanente.**
+*Già fatto per il progetto attuale (account privato). Da rifare quando il
+progetto passerà nell'organizzazione dell'istituto (§A, nota Fase 5).*
+
+Il grosso è da **console web**; il deploy di regole/functions è da CLI
+(`firebase login` già fatto su questa macchina). Regione Firestore:
+**`europe-west8` (Milano)** — dati in Italia, coerente con `docs/analisi-gdpr.md`.
+**La regione è permanente.**
 
 ### 1. Progetto Firebase
 
@@ -43,9 +60,8 @@ non serve autenticarla ora). Regione Firestore scelta: **`europe-west8` (Milano)
 
 ### 3. Regole
 
-`firestore.rules` nel repo è la fonte di verità (regole reali, Fase 2). Puoi
-incollarle a mano una prima volta (Console Firestore → **Regole** → Pubblica),
-ma dalla Fase 2 conviene il deploy via CLI: vedi "Fase 2 — abilitare il login".
+`firestore.rules` nel repo è la fonte di verità. Si dispiegano da CLI —
+`npm run deploy:rules` (§D) — mai a mano dalla console.
 
 > **Dominio istituzionale**: in `firestore.rules`, `dominioIstituzionale()`
 > ritorna `'isarome.it'` (il dominio Google Workspace di questo istituto). Se
@@ -84,27 +100,32 @@ cambiare progetto senza toccare il codice, non perché siano segrete.
 
 **Settings → Pages → Source: `GitHub Actions`**.
 
-### 7. Seed del DB reale
+### 7. `config` del DB reale (seed o console)
 
 1. **Impostazioni progetto → Account di servizio → Genera nuova chiave privata** →
    salva il `.json` nella root del repo (è già in `.gitignore`) o altrove.
-2. Dalla root del repo:
+2. Dalla root del repo — **modalità "solo config"** (consigliata per un progetto
+   reale: i docenti creeranno da sé corsi e quiz, niente dati demo):
    ```sh
    SEED_TARGET=prod \
    SEED_PROJECT_ID=<project-id> \
    GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json \
    SEED_CONFIRM=<project-id> \
-   SEED_DOCENTE_EMAIL=<tua email @isarome.it> \
+   SEED_SOLO_CONFIG=true \
+   SEED_DOMINIO=<dominio Workspace> \
    SEED_NOME_ISTITUTO="<nome esteso dell'istituto>" \
+   SEED_DOCENTI="prof1@dominio,prof2@dominio" \
    npm run seed
    ```
-   Popola `config`/`config/istituto`, `utenti`, `classi`, `corsi`,
-   `docenti_corso`, `quesiti`, i 3 quiz di prova + codici `TEST01`/`TEST02`.
-   `SEED_DOCENTE_EMAIL` intesta i quiz/quesiti demo al tuo account (devi aver
-   fatto login almeno una volta, così l'account esiste) e ti mette in
-   `docentiAutorizzati`.
+   Scrive **solo** `config/current` + `config/istituto`. `SEED_DOCENTI` imposta
+   l'intera lista `docentiAutorizzati` (**sovrascrive** — poi gestiscila a mano,
+   §B-bis).
+   *Senza* `SEED_SOLO_CONFIG` il seed popola anche i dati demo (`utenti`,
+   `classi`, `corsi`, `quesiti`, 3 quiz + codici `TEST01`/`TEST02`) intestati a
+   `SEED_DOCENTE_EMAIL` — utile solo per un ambiente di prova, non per il pilota.
+   L'admin demo (`mock-admin-1`) **non** viene mai creato in prod.
 3. **Revoca la chiave** dalla console quando hai finito (o tienila al sicuro per i
-   re-seed). Il seed è idempotente: puoi rilanciarlo.
+   re-run). Il seed è idempotente.
 
 > `DOMINIO` di default è `isarome.it` (override con `SEED_DOMINIO`); il nome
 > istituto di default resta `IIS Esempio` finché non passi `SEED_NOME_ISTITUTO`.
@@ -118,12 +139,20 @@ Merge `dev` → `rel` (o push su `rel`). La tab **Actions** builda e pubblica su
 
 ### 9. Verifica end-to-end
 
-1. Apri `https://isaquiz.trikkulab.it/#/studente`.
-2. Inserisci il codice `TEST01` → deve caricare "Verifica: il Rinascimento".
-3. `#/docente` → deve elencare i 3 quiz di prova con i badge di stato.
+1. `https://isaquiz.trikkulab.it/#/accedi` → "Accedi con Google" (schermata,
+   niente errori) — conferma che i secret del build ci sono.
+2. Login con un'email in `docentiAutorizzati` → atterra su `/docente`; "Crea
+   nuovo quiz" rimanda a `/docente/corsi` finché non c'è un corso.
+3. Crea un corso in `/docente/corsi` → deve funzionare. Se dà `permission-denied`:
+   regole non aggiornate → `npm run deploy:rules`.
+4. Pubblica un quiz → compare il codice (lo genera la Cloud Function) → apri il
+   codice su un telefono e rispondi → in Firestore la risposta prende `corretta`.
 
-Se le schermate dati vanno in errore: secret mancanti/errati (passo 5) o regole
-non pubblicate (passo 3).
+(Se hai lanciato il seed *senza* `SEED_SOLO_CONFIG` esistono anche i codici demo
+`TEST01`/`TEST02` e i 3 quiz di prova.)
+
+Se le schermate dati vanno in errore: secret mancanti/errati (§5) o regole non
+pubblicate (§D).
 
 ## Dominio custom — `isaquiz.trikkulab.it`
 
@@ -242,10 +271,6 @@ Per togliere l'admin: reimpostare `ruolo` a `docente`/`studente` da console.
 > nell'Emulator UI mentre si è loggati non aggiorna la UI finché non si ricarica
 > (`onAuthStateChanged` rifà `provisionUtente` solo al reload / logout-login).
 
-> ⚠️ Le regole in `firestore.rules` sono cambiate (il write su `utenti` ora
-> vieta al client di toccare `ruolo`): al deploy va rieseguito
-> `firebase deploy --only firestore:rules` (vedi §D).
-
 ### C. Costante del dominio in `firestore.rules`
 
 `dominioIstituzionale()` nel file rules → dominio reale (deve combaciare con
@@ -253,18 +278,28 @@ Per togliere l'admin: reimpostare `ruolo` a `docente`/`studente` da console.
 
 ### D. Deploy di rules + functions (CLI)
 
-Serve la Firebase CLI autenticata (finora mai fatto su questa macchina):
+`firebase login` già fatto su questa macchina. Prima volta in una sessione,
+seleziona il progetto reale (il default in `.firebaserc` è `demo-isaquiz`, che
+serve solo all'emulatore):
 
 ```sh
-npx firebase login          # una tantum
-npx firebase use <project-id>
-npx firebase deploy --only firestore:rules,functions
+npx firebase use <project-id>          # una volta per progetto
+npm run deploy:backend                 # = firebase deploy --only firestore:rules,functions
+# oppure separati:
+npm run deploy:rules
+npm run deploy:functions
 ```
 
-Le tre function: `calcolaPunteggio` (trigger), `generaCodiceAccesso` e
-`generaQuesiti` (callable), regione `europe-west8`. `functions/` ha il suo
-`package.json` (Node 20). Il primo deploy functions può chiedere di abilitare
-alcune API Google Cloud e un piano **Blaze** (il free tier resta ampio).
+Le tre function: `calcolaPunteggio` (trigger `onDocumentWritten`),
+`generaCodiceAccesso` e `generaQuesiti` (callable — `generaQuesiti` è uno stub
+Fase 3), regione `europe-west8`. `functions/` gira su **Node 22**
+(firebase-functions 6, firebase-admin 13). Il primo deploy functions può chiedere
+di abilitare alcune API Google Cloud e il piano **Blaze** (free tier ampio).
+
+> **`firestore.rules` è la fonte di verità**: ogni volta che cambia (es. i commit
+> su corsi/`docenti_corso` e sul write di `utenti` di set-2026) va rieseguito
+> `npm run deploy:rules`. Se una scrittura che dovrebbe funzionare dà
+> `permission-denied` online, quasi sempre le regole dispiegate sono vecchie.
 
 ### E. Secret del build
 

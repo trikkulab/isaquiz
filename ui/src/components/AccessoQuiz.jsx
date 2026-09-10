@@ -1,10 +1,10 @@
 // Come gli studenti entrano in un quiz attivo: codice breve, QR, o link.
 // Usato dopo la pubblicazione in CreaQuiz e nella lista di DocenteHome.
 //
-// Il link/QR si costruiscono da origin + BASE_URL (in prod "/isaquiz/") + "#/"
-// (HashRouter): davvero utili solo dopo l'hosting (su localhost un telefono non
-// li raggiunge). Il codice invece funziona appena c'è l'hosting, digitandolo
-// sulla home studente.
+// Il link/QR si costruiscono da origin + BASE_URL (oggi "/" — dominio custom
+// alla radice, vedi vite.config.js) + "#/" (HashRouter): davvero utili solo
+// dopo l'hosting (su localhost un telefono non li raggiunge). Il codice invece
+// funziona appena c'è l'hosting, digitandolo sulla home studente.
 
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -14,7 +14,7 @@ import { getCodiceQuiz } from "../../../data/codiciAccessoRepository.js";
 export default function AccessoQuiz({ quizId, dimensioneQr = 180 }) {
   const [copiato, setCopiato] = useState(false);
   const [codice, setCodice] = useState(null);
-  // import.meta.env.BASE_URL: "/" in locale, "/isaquiz/" su GitHub Pages.
+  // import.meta.env.BASE_URL: "/" (dominio custom alla radice, vite.config.js).
   const radiceApp = `${window.location.origin}${import.meta.env.BASE_URL}`;
   const link = `${radiceApp}#/quiz/${quizId}`;
 

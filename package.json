@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "emu": "firebase emulators:start --project demo-isaquiz --only firestore,auth,functions --import=./.emulator-data --export-on-exit",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:backend": "firebase deploy --only firestore:rules,functions"
   },
   "devDependencies": {
     "firebase-tools": "^13.29.0"
