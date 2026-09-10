@@ -102,8 +102,18 @@ export function esci() {
   return signOut(auth);
 }
 
-// Provisioning: ricontrolla il ruolo e allinea utenti/{uid}. Ritorna l'utente
-// completo ({ id, ...campi }).
+// Provisioning: ricontrolla ruolo/capability e allinea utenti/{uid}. Ritorna
+// l'utente completo ({ id, ...campi }) con in più `isDocente` / `isAdmin` —
+// campi CALCOLATI in memoria, non scritti su Firestore.
+//
+// Modello a tre aree indipendenti (vedi DECISIONI_DESIGN.md, "Amministratore:
+// cruscotto minimale" e "Navigazione e layout"):
+//  - Studente: baseline, ogni utente autenticato;
+//  - Docente:  isDocente = email in config/current.docentiAutorizzati;
+//  - Admin:    isAdmin = ruolo === 'admin', assegnato SOLO da console.
+// `ruolo` è una stringa singola (studente|docente|admin): serve a scegliere
+// l'area di atterraggio dopo il login ed è la fonte di verità per l'area Admin.
+// Un 'admin' già assegnato NON viene mai declassato dal provisioning.
 async function provisionUtente(user) {
   const email = (user.email || "").toLowerCase();
   const [autorizzati, esistente] = await Promise.all([
@@ -111,7 +121,9 @@ async function provisionUtente(user) {
     getUtente(user.uid),
   ]);
 
-  const ruolo = autorizzati.includes(email) ? "docente" : "studente";
+  const isDocente = autorizzati.includes(email);
+  const isAdmin = esistente?.ruolo === "admin";
+  const ruolo = isAdmin ? "admin" : isDocente ? "docente" : "studente";
   const { nome, cognome } = separaNome(user.displayName, email);
 
   const dati = {
@@ -119,7 +131,7 @@ async function provisionUtente(user) {
     nome,
     cognome,
     photoURL: user.photoURL || null,
-    ruolo, // ricontrollato a ogni login
+    ruolo, // ricontrollato a ogni login (admin preservato)
   };
   // Campi "di comodo" per la UI studente: solo se non già impostati, così un
   // eventuale nickname/avatar scelto in futuro non viene sovrascritto.
@@ -127,7 +139,8 @@ async function provisionUtente(user) {
   if (!esistente?.avatarEmoji) dati.avatarEmoji = avatarDefault(user.uid);
   if (esistente?.livello == null) dati.livello = LIVELLO_DEFAULT;
 
-  return upsertUtente(user.uid, dati);
+  const utente = await upsertUtente(user.uid, dati);
+  return { ...utente, isDocente, isAdmin };
 }
 
 // Sottoscrizione all'utente corrente. `cb` riceve l'oggetto utente completo

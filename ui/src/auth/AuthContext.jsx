@@ -24,7 +24,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ utente, caricamento, accedi: accediConGoogle, esci }}>
+    <AuthContext.Provider
+      value={{
+        utente,
+        caricamento,
+        // Capability delle tre aree (vedi data/authProvider.js). Studente è
+        // sempre disponibile per un utente autenticato: non serve un flag.
+        isDocente: utente?.isDocente ?? false,
+        isAdmin: utente?.isAdmin ?? false,
+        accedi: accediConGoogle,
+        esci,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

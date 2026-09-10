@@ -100,12 +100,44 @@ possibile buco di sicurezza da evitare esplicitamente.
 
 **Amministratore: cruscotto minimale, non workflow di approvazione.** Un
 ruolo `admin`, assegnato scrivendo direttamente su Firestore (mai tramite
-un flusso nell'app), dà accesso a una pagina protetta con: lista email
-autorizzate come docente (editabile), tabella dei corsi esistenti (per
-individuare doppioni), bottone di disattivazione corso per casi eccezionali.
-Deliberatamente non un sistema con notifiche e coda di richieste in attesa:
-sovradimensionato per un progetto con un amministratore e pochi docenti
-pilota.
+un flusso nell'app), dà accesso a un'area protetta con: elenco email
+autorizzate come docente, tabella dei corsi dell'istituto (per individuare
+doppioni), impostazioni dell'istituto. Deliberatamente non un sistema con
+notifiche e coda di richieste in attesa: sovradimensionato per un progetto
+con un amministratore e pochi docenti pilota.
+
+**Tre aree indipendenti, non una gerarchia.** Studente, Docente e Admin non
+sono livelli progressivi né mutuamente esclusivi:
+
+| Area | Chi vi accede | Fonte di verità |
+|---|---|---|
+| Studente | ogni utente autenticato | baseline, nessun gate |
+| Docente | `isDocente` = email ∈ `config/current.docentiAutorizzati` | la lista |
+| Admin | `isAdmin` = `UTENTE.ruolo === 'admin'` | flag, solo da console |
+
+Docente e Admin si combinano liberamente: un amministratore può **non** essere
+docente (tecnico/segreteria) e viceversa. `UTENTE.ruolo` resta **una stringa
+singola** (`studente | docente | admin`): serve solo a (1) scegliere l'area di
+atterraggio dopo il login (`admin > docente > studente`, funzione
+`areaHome` in `ui/src/config/navigazione.js`) e (2) fare da fonte di verità per
+l'area Admin. L'accesso all'area **Docente non guarda `ruolo`** ma la lista, così
+un admin che insegna vede comunque l'area Docente.
+
+**`isDocente` / `isAdmin`** sono calcolati nel provisioning
+(`data/authProvider.js`) ed esposti da `ui/src/auth/AuthContext.jsx` — **campi in
+memoria, non su Firestore** (`isDocente` è derivabile dalla lista, `isAdmin` da
+`ruolo`). `RichiediAuth` prende una prop `area` (`"docente"` / `"admin"` /
+assente) e verifica la capability corrispondente.
+
+**Provisioning: `admin` non viene mai declassato.** A ogni login
+`provisionUtente` ricalcola `ruolo`, ma se il documento ha già `ruolo: 'admin'`
+lo conserva (l'admin si mette e si toglie solo da console). Le security rules su
+`utenti` sono state ampliate di conseguenza (vedi "Security rules").
+
+**In questa fase l'area Admin è in sola lettura.** Le *scritture* admin —
+editare `docentiAutorizzati` dalla UI — richiederebbero una regola di scrittura
+su `config` legata a `isAdmin`: rimandata. Per ora la lista si modifica da
+console (`docs/deploy.md`).
 
 ## Multi-istituto
 
@@ -273,24 +305,36 @@ globale, che non esiste finché il docente non lo crea.
 
 ## Navigazione e layout
 
-**Guscio di navigazione condiviso lato docente: `ui/src/components/DocenteLayout.jsx`.**
-Route di layout in `App.jsx` che avvolge tutte le `/docente/*` (guardia
-`RichiediAuth` inclusa, non più ripetuta pagina per pagina): header con wordmark,
-menu ("I miei quiz", "Corsi"), identità utente e "Esci" (spostato qui da
-`DocenteHome`); `<Outlet>`; footer. Lato studente **nessun layout condiviso**:
-le schermate studente restano volutamente autonome e minimali (`QuizStudente`
-soprattutto — vedi "Multi-istituto").
+**Guscio applicativo condiviso: `ui/src/components/AppLayout.jsx`.** Un solo
+guscio per tutte le aree (studente / docente / admin), con navigazione a due
+livelli:
+- **livello 1 — aree**: quelle a cui l'utente ha accesso (Studente sempre;
+  Docente se `isDocente`; Admin se `isAdmin`). Con una sola area le tab
+  spariscono;
+- **livello 2 — pagine**: le pagine dell'area attiva (dedotta dal path corrente
+  contro `AREE[].base` in `ui/src/config/navigazione.js`).
+
+Header: wordmark, tab delle aree, identità utente e "Esci". Sotto i 640px le due
+barre diventano un **menù laterale** (drawer, icona ☰); sopra, stanno in alto.
+`<Outlet>` + `PiePagina` in fondo.
+
+**Route in `App.jsx`: tre gruppi** che condividono `<AppLayout>` ma con guardia
+diversa — `RichiediAuth` (solo auth) per `/studente/*`, `RichiediAuth
+area="docente"` per `/docente/*`, `RichiediAuth area="admin"` per `/admin/*`.
+`AppLayout` si rimonta al cambio d'area (costo trascurabile, azzera il drawer).
+**Fuori dal guscio restano nudi**: `/quiz/:id` (svolgimento, minimale per
+vincolo di semplicità) e `/quiz/:id/risultati` (monta il proprio `PiePagina`).
 
 **Route `/`: `ui/src/pages/Indirizza.jsx`** — smista per stato di auth
-(caricamento → attesa; anonimo → `/accedi`; autenticato → dashboard del ruolo).
-Stessa logica di destinazione già in `Accedi` dopo il login.
+(caricamento → attesa; anonimo → `/accedi`; autenticato → `areaHome(ruolo)`).
+Stessa logica di destinazione in `Accedi` dopo il login.
 
 **Route `*`: `ui/src/pages/NonTrovato.jsx`** — pagina 404 pubblica con link a
 `/`. Con `HashRouter` non serve un `404.html`.
 
 **Footer `ui/src/components/PiePagina.jsx`**: `nomeIstituto` (da
 `config/istituto`, via `configRepository.getNomeIstituto`) sopra
-`CreditoTecnico`. Montato da `DocenteLayout` e da `NonTrovato`; se la lettura
+`CreditoTecnico`. Montato da `AppLayout` e da `NonTrovato`; se la lettura
 fallisce o `CONFIG` non è popolato il nome semplicemente non compare (niente
 dato finto). Realizza quanto previsto in "Multi-istituto" (nomeIstituto nel
 footer delle pagine contenitore).
@@ -303,7 +347,14 @@ coprono i casi che contano davvero:
 - `corretta` su `RISPOSTA` non scrivibile dal client (create senza il campo;
   update solo su `rispostaData`/`timestamp`);
 - risposte solo del proprio `studenteId`, solo su quiz `attivo`;
-- niente escalation di ruolo (`admin` vietato, `docente` solo se in lista);
+- niente escalation di ruolo: il client può scrivere `ruolo` solo
+  `studente`/`docente` (`docente` solo se in lista), **oppure** lasciarlo
+  invariato rispetto al documento esistente — questo permette al provisioning di
+  conservare un `admin` assegnato da console, senza che il client possa mai
+  *diventare* admin (non c'è un documento admin preesistente da cui "copiare" il
+  valore);
+- `corsi`/`docenti_corso`: `create` da un docente autorizzato (forma +
+  `annoScolastico` verificati); `update`/`delete` vietati;
 - quiz e quesiti scrivibili solo da chi si dichiara autore;
 - `codici_accesso` non scrivibile dal client (solo la Cloud Function);
 - lettura di un quiz `bozza` riservata all'autore.
@@ -540,6 +591,13 @@ Se in futuro dovesse emergere un bisogno reale (es. un istituto con studenti
 non italofoni), va trattato come una decisione nuova da riprendere da capo,
 non come "attivare" un'infrastruttura i18n lasciata pronta in previsione:
 nessuna struttura di questo tipo va predisposta preventivamente nel codice.
+
+**Eccezione: i predicati booleani usano il prefisso `is`/`ha`.** `isDocente`,
+`isAdmin` (e simili in futuro) invece di `èDocente` / `docenteAbilitato`: niente
+parole accentate negli identificatori (confondono in uno schema di dati) e il
+prefisso booleano è una convenzione universale, più leggibile. È l'unico
+anglicismo ammesso — il resto (`getBancaDocente`, `impostaAttivoQuesito`,
+`quesito`, `opzioni`…) resta in italiano.
 
 ## Versionamento dei quesiti
 

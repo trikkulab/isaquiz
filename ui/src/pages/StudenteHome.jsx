@@ -1,6 +1,6 @@
-// Home dello studente (route /studente): la pagina a cui si arriva dopo il
-// login. Da qui: partecipare a un quiz col codice, e (in futuro) vedere le
-// proprie statistiche.
+// Home dello studente (route /studente, area "Studente" del guscio): da qui si
+// partecipa a un quiz col codice. Identità utente e "Esci" sono nell'header
+// condiviso (AppLayout); "Le mie statistiche" è una pagina dell'area.
 //
 // Stile "studente": più vivo e accogliente delle schermate docente (vedi
 // CLAUDE.md, "Schermate studente"), ma leggero e velocissimo.
@@ -8,14 +8,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthContext.jsx";
+import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import {
   getQuizIdDaCodice,
   normalizzaCodice,
 } from "../../../data/codiciAccessoRepository.js";
 
 export default function StudenteHome() {
-  const { utente: studente, esci } = useAuth();
+  const studente = useUtenteCorrente();
   const navigate = useNavigate();
 
   const [codice, setCodice] = useState("");
@@ -47,26 +47,10 @@ export default function StudenteHome() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[480px] flex-col px-4 py-8">
-      <header className="mb-8 flex items-center gap-3">
-        <span
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-primario/15 text-2xl"
-          aria-hidden="true"
-        >
-          {studente.avatarEmoji || "🙂"}
-        </span>
-        <div className="min-w-0">
-          <p className="font-titoli text-lg font-bold">Ciao {studente.nickname || studente.nome}!</p>
-          <p className="truncate text-xs text-inchiostro/55">{studente.classeId || studente.email}</p>
-        </div>
-        <button
-          type="button"
-          onClick={esci}
-          className="ml-auto shrink-0 text-xs font-medium text-inchiostro/55 hover:text-inchiostro"
-        >
-          Esci
-        </button>
-      </header>
+    <div className="mx-auto flex max-w-[480px] flex-col px-4 py-8">
+      <p className="mb-6 font-titoli text-lg font-bold">
+        Ciao {studente.nickname || studente.nome || "!"}
+      </p>
 
       <section className="rounded-[22px] bg-gradient-to-br from-primario to-primario-scuro p-6 text-su-primario shadow-morbida">
         <h1 className="font-titoli text-xl font-bold">Partecipa a un quiz</h1>

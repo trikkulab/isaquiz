@@ -9,6 +9,7 @@
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.jsx";
+import { areaHome } from "../config/navigazione.js";
 
 export default function Indirizza() {
   const { utente, caricamento } = useAuth();
@@ -23,5 +24,5 @@ export default function Indirizza() {
 
   if (!utente) return <Navigate to="/accedi" replace />;
 
-  return <Navigate to={utente.ruolo === "docente" ? "/docente" : "/studente"} replace />;
+  return <Navigate to={areaHome(utente.ruolo)} replace />;
 }

@@ -58,11 +58,12 @@ cd ui && npm run dev
 ```
 
 `npm run seed` crea nell'emulatore gli account Auth `rossi@isarome.it`
-(docente), `giulia.bianchi@isarome.it` e `luca.verdi@isarome.it` (studenti) —
-`isarome.it` è il dominio istituzionale (costante in `firestore.rules`, override
-locale con `SEED_DOMINIO`). Nella pagina `/accedi` si "accede" con uno di questi
-tramite il selettore dell'emulatore Auth. Per intestare i dati demo a un altro
-account: `SEED_DOCENTE_EMAIL=tua@isarome.it npm run seed`.
+(docente), `admin@isarome.it` (solo admin — vede l'area Admin, non Docente),
+`giulia.bianchi@isarome.it` e `luca.verdi@isarome.it` (studenti) — `isarome.it`
+è il dominio istituzionale (costante in `firestore.rules`, override locale con
+`SEED_DOMINIO`). Nella pagina `/accedi` si "accede" con uno di questi tramite il
+selettore dell'emulatore Auth. Per intestare i dati demo a un altro account:
+`SEED_DOCENTE_EMAIL=tua@isarome.it npm run seed`.
 
 ## Deploy
 

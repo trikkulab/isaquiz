@@ -132,10 +132,22 @@ dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
   istituzionale. Layer in `data/authProvider.js` (`accediConGoogle`, `esci`,
   `ascoltaUtenteCorrente`): nessun componente `ui/` tocca Firebase Auth
   direttamente. Al login (ogni volta, non solo il primo) si fa provisioning di
-  `utenti/{uid}` e si ricalcola `ruolo` da `config/current.docentiAutorizzati`.
-  In UI: `ui/src/auth/AuthContext.jsx` (`useUtenteCorrente`/`useAuth`) +
+  `utenti/{uid}` e si ricalcola `ruolo` da `config/current.docentiAutorizzati`
+  (un `ruolo: 'admin'` già presente NON viene declassato — si mette/toglie solo
+  da console). In UI: `ui/src/auth/AuthContext.jsx`
+  (`useUtenteCorrente`/`useAuth`, che espone anche `isDocente`/`isAdmin`) +
   `RichiediAuth` sulle route. Mai reintrodurre un flusso "diventa docente".
   `data/mockAuth.js` non esiste più.
+- **Tre aree indipendenti (Studente / Docente / Admin), non una gerarchia.**
+  Studente = ogni utente autenticato; Docente = `isDocente` (email in
+  `docentiAutorizzati`); Admin = `isAdmin` (`ruolo === 'admin'`). Combinabili
+  liberamente. `UTENTE.ruolo` (stringa `studente|docente|admin`) serve solo
+  all'atterraggio dopo login (`areaHome`, `ui/src/config/navigazione.js`) e come
+  fonte per l'area Admin — **l'accesso all'area Docente guarda la lista, non
+  `ruolo`**. Guscio unico `ui/src/components/AppLayout.jsx` (menù a due livelli:
+  aree + pagine dell'area); `RichiediAuth` prende una prop `area`. Nomi `is*`:
+  eccezione ammessa all'italiano (vedi `DECISIONI_DESIGN.md`,
+  "Internazionalizzazione"). Area Admin: **sola lettura** in questa fase.
 - **Il campo `corretta` su una risposta non si scrive mai dal client.** Il
   client scrive solo la risposta grezza (`saveAnswer`, con `merge`); il calcolo
   e la scrittura di `corretta` sono di `functions/calcolaPunteggio.js` (trigger
@@ -273,8 +285,8 @@ Fase 0 — setup:
       (`bozza → attivo` + genera il codice di accesso), `chiudiQuiz`
       (`attivo → chiuso`), `riapriQuiz` (`chiuso → attivo`) — a senso obbligato),
       `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
-      `getCorsiDocente`, `getMaterieEsistenti`, `getClassiEsistenti`,
-      `creaCorso`), `data/utentiRepository.js` (`getUtente`,
+      `getCorsiDocente`, `getTuttiICorsi`, `getMaterieEsistenti`,
+      `getClassiEsistenti`, `creaCorso`), `data/utentiRepository.js` (`getUtente`,
       `nomeVisibile`), `data/risposteRepository.js` (`saveAnswer` — id
       deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
       `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
@@ -343,12 +355,17 @@ Fase 0 — setup:
       (`writeBatch` atomico: `corsi/{id}` + `docenti_corso/{uid_corsoId}`
       titolare; `annoScolastico` da `CONFIG`; `codiceAccesso` generato). Solo
       creazione: modifica/disattivazione corso restano all'admin.
-- [x] Navigazione condivisa: `components/DocenteLayout.jsx` (header + menu +
-      "Esci" + footer, route di layout su tutte le `/docente/*`),
-      `pages/Indirizza.jsx` (route `/` → dashboard per ruolo),
-      `pages/NonTrovato.jsx` (route `*` → 404), `components/PiePagina.jsx`
-      (`nomeIstituto` da `config/istituto` + `CreditoTecnico`). Vedi
-      `DECISIONI_DESIGN.md`, "Navigazione e layout".
+- [x] Navigazione condivisa: `components/AppLayout.jsx` (guscio unico, menù a
+      due livelli aree+pagine, drawer sotto 640px; route di layout — 3 gruppi
+      per area con guardia diversa), `config/navigazione.js` (`AREE`,
+      `areaHome`), `pages/Indirizza.jsx` (route `/`), `pages/NonTrovato.jsx`
+      (route `*`), `components/PiePagina.jsx`. Vedi `DECISIONI_DESIGN.md`,
+      "Navigazione e layout".
+- [x] Area Admin (sola lettura): `pages/admin/AdminCorsi.jsx`
+      (`corsiRepository.getTuttiICorsi`), `AdminDocenti.jsx`
+      (`getDocentiAutorizzati`), `AdminImpostazioni.jsx` (`getConfig`). Route
+      `/admin/corsi|docenti|impostazioni`. Scritture admin (editare la lista
+      docenti da UI) → rimandate (serve regola su `config` legata a `isAdmin`).
 - [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
       `archiviaQuiz`; la pagina statistiche vera (per-argomento, adattiva —
       Fase 4/5); modifica/disattivazione di un corso (oggi solo creazione).

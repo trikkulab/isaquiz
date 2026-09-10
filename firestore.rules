@@ -72,14 +72,21 @@ service cloud.firestore {
     // ── utenti ────────────────────────────────────────────────────────────
     // Lettura larga (dominio): student legge il nome del docente del quiz,
     // docente legge i nomi degli studenti nei risultati. DA RESTRINGERE.
-    // Scrittura: solo il proprio documento, ruolo studente|docente (mai admin),
-    // 'docente' solo se in lista, email = quella del token.
+    // Scrittura: solo il proprio documento, email = quella del token, e
+    //  - ruolo 'studente'/'docente' ('docente' solo se in lista); oppure
+    //  - ruolo INVARIATO rispetto al documento esistente: serve al provisioning
+    //    per conservare un 'admin' assegnato da console. Il client non può MAI
+    //    diventare admin — senza un doc admin preesistente da cui copiare, la
+    //    seconda clausola non si applica e la prima esclude 'admin'.
     match /utenti/{uid} {
       allow read: if isDominio();
       allow write: if isDominio()
         && request.auth.uid == uid
         && request.resource.data.email.lower() == request.auth.token.email.lower()
-        && request.resource.data.ruolo in ['studente', 'docente']
+        && (
+             request.resource.data.ruolo in ['studente', 'docente']
+             || (resource != null && request.resource.data.ruolo == resource.data.ruolo)
+           )
         && (request.resource.data.ruolo != 'docente' || isDocenteAutorizzato());
     }
 

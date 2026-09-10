@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 
 import { getConfig } from "./configRepository.js";
+import { getUtente, nomeVisibile } from "./utentiRepository.js";
 
 // Crockford Base32 (niente I L O U, ambigui a occhio). Duplicato — a mano — con
 // data/codiciAccessoRepository.js e functions/generaCodiceAccesso.js: è un
@@ -87,6 +88,41 @@ export async function getClassiEsistenti() {
     if (c) classi.add(c);
   }
   return [...classi].sort((a, b) => a.localeCompare(b, "it"));
+}
+
+// Tutti i corsi dell'istituto, con il nome del docente titolare risolto — per
+// la vista Admin (sola lettura). "Niente JOIN": corsi + collegamenti titolare +
+// utenti, assemblati qui. Scala pilota: nessun indice, letture aperte a
+// isDominio() (già così nelle rules).
+export async function getTuttiICorsi() {
+  const [corsiSnap, titolariSnap] = await Promise.all([
+    getDocs(collection(db, "corsi")),
+    getDocs(query(collection(db, "docenti_corso"), where("ruolo", "==", "titolare"))),
+  ]);
+
+  const titolareDi = new Map(); // corsoId -> docenteId
+  for (const d of titolariSnap.docs) {
+    const { corsoId, docenteId } = d.data();
+    if (corsoId && !titolareDi.has(corsoId)) titolareDi.set(corsoId, docenteId);
+  }
+
+  const nomi = new Map(); // docenteId -> nome visibile
+  await Promise.all(
+    [...new Set(titolareDi.values())].map(async (id) => {
+      nomi.set(id, nomeVisibile(await getUtente(id)));
+    }),
+  );
+
+  return corsiSnap.docs
+    .map((d) => {
+      const docenteId = titolareDi.get(d.id);
+      return { id: d.id, ...d.data(), titolare: docenteId ? nomi.get(docenteId) : null };
+    })
+    .sort(
+      (a, b) =>
+        (a.materia || "").localeCompare(b.materia || "", "it") ||
+        (a.classeId || "").localeCompare(b.classeId || "", "it"),
+    );
 }
 
 // Creazione corso "self-service" (modello Google Classroom): il docente

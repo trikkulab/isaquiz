@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 
-import DocenteLayout from "./components/DocenteLayout.jsx";
+import AppLayout from "./components/AppLayout.jsx";
 import DocenteHome from "./pages/DocenteHome.jsx";
 import CreaQuiz from "./pages/CreaQuiz.jsx";
 import GestioneCorsi from "./pages/GestioneCorsi.jsx";
@@ -9,6 +9,9 @@ import StudenteHome from "./pages/StudenteHome.jsx";
 import QuizStudente from "./pages/QuizStudente.jsx";
 import QuizRisultatiPagina from "./pages/QuizRisultatiPagina.jsx";
 import StatisticheStudente from "./pages/StatisticheStudente.jsx";
+import AdminCorsi from "./pages/admin/AdminCorsi.jsx";
+import AdminDocenti from "./pages/admin/AdminDocenti.jsx";
+import AdminImpostazioni from "./pages/admin/AdminImpostazioni.jsx";
 import Accedi from "./pages/Accedi.jsx";
 import Indirizza from "./pages/Indirizza.jsx";
 import NonTrovato from "./pages/NonTrovato.jsx";
@@ -20,12 +23,24 @@ export default function App() {
       <Route path="/" element={<Indirizza />} />
       <Route path="/accedi" element={<Accedi />} />
 
-      {/* Area docente: guardia + guscio di navigazione (header/menu/footer)
-          condivisi una volta sola per tutte le sotto-route. */}
+      {/* Guscio condiviso (AppLayout). Un gruppo di route per area, con la
+          propria guardia: studente = solo autenticazione; docente/admin = la
+          capability corrispondente. */}
       <Route
         element={
-          <RichiediAuth ruolo="docente">
-            <DocenteLayout />
+          <RichiediAuth>
+            <AppLayout />
+          </RichiediAuth>
+        }
+      >
+        <Route path="/studente" element={<StudenteHome />} />
+        <Route path="/studente/statistiche" element={<StatisticheStudente />} />
+      </Route>
+
+      <Route
+        element={
+          <RichiediAuth area="docente">
+            <AppLayout />
           </RichiediAuth>
         }
       >
@@ -37,13 +52,19 @@ export default function App() {
       </Route>
 
       <Route
-        path="/studente"
         element={
-          <RichiediAuth>
-            <StudenteHome />
+          <RichiediAuth area="admin">
+            <AppLayout />
           </RichiediAuth>
         }
-      />
+      >
+        <Route path="/admin/corsi" element={<AdminCorsi />} />
+        <Route path="/admin/docenti" element={<AdminDocenti />} />
+        <Route path="/admin/impostazioni" element={<AdminImpostazioni />} />
+      </Route>
+
+      {/* Fuori dal guscio: lo svolgimento del quiz resta minimale, la
+          correzione monta il proprio footer. */}
       <Route
         path="/quiz/:quizId"
         element={
@@ -57,14 +78,6 @@ export default function App() {
         element={
           <RichiediAuth>
             <QuizRisultatiPagina />
-          </RichiediAuth>
-        }
-      />
-      <Route
-        path="/studente/statistiche"
-        element={
-          <RichiediAuth>
-            <StatisticheStudente />
           </RichiediAuth>
         }
       />

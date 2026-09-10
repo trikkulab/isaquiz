@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.jsx";
+import { areaHome } from "../config/navigazione.js";
 import { ErroreDominio } from "../../../data/authProvider.js";
 
 export default function Accedi() {
@@ -21,8 +22,7 @@ export default function Accedi() {
   const next = params.get("next");
 
   if (!caricamento && utente) {
-    const dest = next || (utente.ruolo === "docente" ? "/docente" : "/studente");
-    return <Navigate to={dest} replace />;
+    return <Navigate to={next || areaHome(utente.ruolo)} replace />;
   }
 
   async function entra() {

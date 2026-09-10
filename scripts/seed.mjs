@@ -115,6 +115,21 @@ const utente = {
   },
 };
 
+// Utente demo di sola amministrazione: ruolo "admin" (in prod si assegna a mano
+// da console — qui è nel seed per provare l'area Admin in emulatore). NON è in
+// docentiAutorizzati: vede quindi Studente + Admin, non Docente.
+const ADMIN_ID = "mock-admin-1";
+const ADMIN_EMAIL = `admin@${DOMINIO}`;
+const admin = {
+  ref: db.doc(`utenti/${ADMIN_ID}`),
+  data: {
+    email: ADMIN_EMAIL,
+    nome: "Anna",
+    cognome: "Conti",
+    ruolo: "admin",
+  },
+};
+
 // Studenti di prova. Gli id sono anche gli uid Auth nell'emulatore.
 const studenti = [
   { id: "mock-studente-1", nome: "Giulia", cognome: "Bianchi", email: `giulia.bianchi@${DOMINIO}` },
@@ -326,6 +341,7 @@ async function seedUtentiAuth() {
   const auth = getAuth();
   const persone = [
     { uid: DOCENTE_ID, email: DOCENTE_EMAIL, displayName: "Mario Rossi" },
+    { uid: ADMIN_ID, email: ADMIN_EMAIL, displayName: "Anna Conti" },
     ...studenti.map((s) => ({
       uid: s.ref.id,
       email: s.data.email,
@@ -355,6 +371,7 @@ async function main() {
   batch.set(config.ref, config.data);
   batch.set(configIstituto.ref, configIstituto.data);
   batch.set(utente.ref, utente.data);
+  batch.set(admin.ref, admin.data);
   batch.set(classe.ref, classe.data);
   for (const s of studenti) batch.set(s.ref, s.data);
 
@@ -393,7 +410,9 @@ async function main() {
 
   const dove = TARGET === "prod" ? "progetto REALE" : `emulatore ${process.env.FIRESTORE_EMULATOR_HOST}`;
   console.log(`Seed completato su ${dove} (progetto ${PROJECT_ID}).`);
-  console.log(`  config/current, utenti (1 docente + ${studenti.length} studenti), classi/3A`);
+  console.log(
+    `  config/current, utenti (1 docente + 1 admin + ${studenti.length} studenti), classi/3A`,
+  );
   console.log(`  corsi: ${corsi.map((c) => c.id).join(", ")}`);
   console.log(
     `  quesiti: ${quesiti.length} (di cui ${quesiti.filter((q) => q.attivo === false).length} inattivi) · risposte di prova: ${risposteProva.length}`,

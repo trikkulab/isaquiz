@@ -220,6 +220,31 @@ aggiungere un collega docente:
 
 Togliere un'email dall'array fa tornare la persona studente al login successivo.
 
+### B-ter. Nominare un amministratore
+
+Il ruolo `admin` si assegna **solo** da console (mai dall'app), e **dopo** che
+la persona ha fatto login almeno una volta (così esiste `utenti/{uid}`):
+
+1. Console Firestore → `utenti/{uid}` della persona → campo `ruolo` = `admin`.
+2. Al login successivo il provisioning **conserva** `admin` (non lo declassa).
+3. La persona vede l'area Admin (sola lettura: corsi dell'istituto, elenco
+   docenti autorizzati, impostazioni) oltre a Studente. Vede anche Docente solo
+   se la sua email è pure in `docentiAutorizzati` — le due cose sono
+   indipendenti.
+
+Per togliere l'admin: reimpostare `ruolo` a `docente`/`studente` da console.
+
+> **Nota.** Un cambio di `config/current.docentiAutorizzati` o di
+> `utenti/{uid}.ruolo` ha effetto **al prossimo provisioning**, cioè a un
+> **login pulito o a un reload completo della pagina** — non basta navigare
+> nell'app se la sessione è ancora attiva. In sviluppo: modificare il DB
+> nell'Emulator UI mentre si è loggati non aggiorna la UI finché non si ricarica
+> (`onAuthStateChanged` rifà `provisionUtente` solo al reload / logout-login).
+
+> ⚠️ Le regole in `firestore.rules` sono cambiate (il write su `utenti` ora
+> ammette di conservare un `admin`): al deploy va rieseguito
+> `firebase deploy --only firestore:rules` (vedi §D).
+
 ### C. Costante del dominio in `firestore.rules`
 
 `dominioIstituzionale()` nel file rules → dominio reale (deve combaciare con
