@@ -7,7 +7,7 @@
 // Firestore: tutto passa dai repository in /data.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
@@ -560,11 +560,29 @@ export default function CreaQuiz() {
         </div>
       )}
 
+      {corsi.length === 0 && (
+        <div className="mb-6 rounded-xl border border-bordo bg-sfondo px-4 py-3 text-sm text-inchiostro/70">
+          Non hai ancora un corso: un quiz appartiene sempre a un corso.{" "}
+          <Link
+            to="/docente/corsi?ritorno=crea-quiz"
+            className="font-medium text-primario"
+          >
+            Crea il tuo primo corso
+          </Link>
+          .
+        </div>
+      )}
+
       {/* Dati del quiz */}
       <section className="mb-6 grid gap-4 rounded-xl border border-bordo bg-superficie p-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-inchiostro/60">Corso</span>
-          <select className={CAMPO} value={corsoId} onChange={(e) => setCorsoId(e.target.value)}>
+          <select
+            className={CAMPO}
+            value={corsoId}
+            onChange={(e) => setCorsoId(e.target.value)}
+            disabled={corsi.length === 0}
+          >
             {corsi.length === 0 && <option value="">Nessun corso</option>}
             {corsi.map((c) => (
               <option key={c.id} value={c.id}>

@@ -203,6 +203,23 @@ Console Firestore, oppure `scripts/seed.mjs` (`SEED_TARGET=prod …`, vedi §7):
 - `config/istituto`: `{ dominioIstituzionale, nomeIstituto }` (stessi valori) —
   è il documento **pubblico** che la pagina `/accedi` legge senza login.
 
+### B-bis. Autorizzare un nuovo docente
+
+Non c'è UI per questo (è la frontiera di sicurezza: "mai autoregistrazione"). Per
+aggiungere un collega docente:
+
+1. Console Firestore → `config/current` → aggiungi la sua **email in minuscolo**
+   all'array `docentiAutorizzati`. (In alternativa, ri-seed con
+   `SEED_TARGET=prod` — ma il seed *sovrascrive* l'array con la sola
+   `SEED_DOCENTE_EMAIL`, quindi in prod conviene la modifica manuale.)
+2. Il docente fa login almeno una volta → il provisioning gli assegna
+   `ruolo: "docente"` e lui atterra su `/docente`.
+3. Da lì crea da sé i propri corsi (`/docente/corsi`) — non serve nessun
+   intervento admin per i corsi. Vedi `DECISIONI_DESIGN.md`, "Onboarding docente
+   e creazione corsi".
+
+Togliere un'email dall'array fa tornare la persona studente al login successivo.
+
 ### C. Costante del dominio in `firestore.rules`
 
 `dominioIstituzionale()` nel file rules → dominio reale (deve combaciare con
@@ -242,9 +259,8 @@ variabile per l'auth.
 
 - I quiz demo del seed sono intestati a `rossi@isarome.it` (o a
   `SEED_DOCENTE_EMAIL`). In prod il docente vero, al primo login, ottiene un
-  `utenti/{uid}` con ruolo docente ma **nessun corso**: non c'è ancora UI per
-  creare un `CORSO`, quindi i `corsi`/`docenti_corso` vanno creati per il suo
-  uid (ri-seed con `SEED_DOCENTE_EMAIL=<sua email>` dopo il suo primo login, o
-  Admin SDK). Nodo noto, vedi `DECISIONI_DESIGN.md`.
+  `utenti/{uid}` con ruolo docente e **nessun corso**: se li crea da sé in
+  `/docente/corsi` (non serve più seed/Admin SDK per questo). Il seed serve solo
+  se si vogliono anche i *quiz/quesiti* demo intestati a lui.
 - Emulatori in locale: `npm run emu` avvia anche Auth e Functions; `npm run
   seed` crea gli account Auth di prova.

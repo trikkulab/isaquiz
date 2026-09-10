@@ -1,13 +1,14 @@
 // Contenitore "pagina intera" per QuizRisultati — route /quiz/:quizId/risultati.
 // Procura i dati (da navigate state se si arriva da QuizStudente, altrimenti
-// li rilegge da Firestore per link diretto / refresh) e aggiunge il credito
-// tecnico in fondo, che ha senso solo qui. QuizRisultati resta "contenuto puro".
+// li rilegge da Firestore per link diretto / refresh) e aggiunge il footer
+// (nome istituto + credito tecnico) in fondo, che ha senso solo qui.
+// QuizRisultati resta "contenuto puro".
 
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 
 import QuizRisultati from "./QuizRisultati.jsx";
-import CreditoTecnico from "../components/CreditoTecnico.jsx";
+import PiePagina from "../components/PiePagina.jsx";
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getQuizConQuesiti } from "../../../data/quizRepository.js";
 import { getRisposteStudente } from "../../../data/risposteRepository.js";
@@ -64,7 +65,7 @@ export default function QuizRisultatiPagina() {
       ) : (
         <QuizRisultati quiz={dati.quiz} risposte={dati.risposte} />
       )}
-      <CreditoTecnico />
+      <PiePagina />
     </div>
   );
 }

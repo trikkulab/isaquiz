@@ -13,6 +13,12 @@ rules_version = '2';
 //  - invarianti di versionamento dei quesiti (baseId/versione, no edit in place);
 //  - forma/completezza dei documenti scritti.
 //
+// Creazione corso self-service (Fase "onboarding"): `corsi`/`docenti_corso`
+// accettano `create` da un docente autorizzato (forma + annoScolastico
+// verificati). NON è ancora verificato: che la riga `docenti_corso` punti a un
+// corso esistente creato dallo stesso docente (i due write sono un batch
+// atomico lato client, ma le rules li valutano separatamente).
+//
 // Dominio istituzionale: COSTANTE qui sotto. Un'installazione = un istituto
 // (vedi DECISIONI_DESIGN.md, "Multi-istituto"). Cambiarlo = modificare qui,
 // allineare `config/current.dominioIstituzionale`, e ripubblicare le regole.
@@ -78,15 +84,33 @@ service cloud.firestore {
     }
 
     // ── corsi / collegamenti docente ──────────────────────────────────────
-    // Nessuna UI di creazione corso ancora: sola lettura, scrittura da seed/
-    // Admin SDK.
+    // Creazione "self-service" (modello Google Classroom): un docente
+    // autorizzato crea il proprio corso e si auto-assegna come titolare
+    // (data/corsiRepository.js creaCorso: writeBatch corso + docenti_corso).
+    // Forma verificata; annoScolastico deve essere quello corrente in CONFIG.
+    // Modifica/disattivazione del corso restano all'admin (update/delete
+    // vietati). Vedi DECISIONI_DESIGN.md, "Onboarding docente e creazione corsi".
     match /corsi/{id} {
       allow read: if isDominio();
-      allow write: if false;
+      allow create: if isDocenteAutorizzato()
+        && request.resource.data.keys().hasOnly(
+             ['classeId', 'materia', 'annoScolastico', 'codiceAccesso', 'creato'])
+        && request.resource.data.materia is string
+        && request.resource.data.materia.size() > 0
+        && request.resource.data.classeId is string
+        && request.resource.data.classeId.size() > 0
+        && request.resource.data.annoScolastico ==
+             get(/databases/$(database)/documents/config/current).data.annoScolasticoCorrente;
+      allow update, delete: if false;
     }
     match /docenti_corso/{id} {
       allow read: if isDominio();
-      allow write: if false;
+      allow create: if isDominio()
+        && request.resource.data.keys().hasOnly(['docenteId', 'corsoId', 'ruolo'])
+        && request.resource.data.docenteId == request.auth.uid
+        && request.resource.data.ruolo == 'titolare'
+        && request.resource.data.corsoId is string;
+      allow update, delete: if false;
     }
 
     // ── quesiti ───────────────────────────────────────────────────────────

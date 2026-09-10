@@ -8,9 +8,9 @@
 // Non ancora qui: i risultati (serve risposteRepository reale).
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthContext.jsx";
+import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import {
   getQuizDocente,
   avviaQuiz,
@@ -78,7 +78,7 @@ const AZIONI_CONFERMA = {
 };
 
 export default function DocenteHome() {
-  const { utente, esci } = useAuth();
+  const utente = useUtenteCorrente();
   const navigate = useNavigate();
 
   const [quiz, setQuiz] = useState([]);
@@ -171,22 +171,13 @@ export default function DocenteHome() {
             </span>
           )}
         </h1>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className={BOTTONE_PRIMARIO}
-            onClick={() => navigate("/docente/crea-quiz")}
-          >
-            Crea nuovo quiz
-          </button>
-          <button
-            type="button"
-            onClick={esci}
-            className="text-xs font-medium text-inchiostro/55 hover:text-inchiostro"
-          >
-            Esci
-          </button>
-        </div>
+        <button
+          type="button"
+          className={BOTTONE_PRIMARIO}
+          onClick={() => navigate("/docente/crea-quiz")}
+        >
+          Crea nuovo quiz
+        </button>
       </div>
 
       {errore && (
@@ -258,7 +249,11 @@ export default function DocenteHome() {
         <p className="text-sm text-inchiostro/60">Caricamento…</p>
       ) : quiz.length === 0 ? (
         <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
-          Nessun quiz. Inizia con «Crea nuovo quiz».
+          Nessun quiz. Inizia con «Crea nuovo quiz» — ti servirà almeno un{" "}
+          <Link to="/docente/corsi" className="font-medium text-primario">
+            corso
+          </Link>
+          .
         </div>
       ) : quizVisibili.length === 0 ? (
         <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">

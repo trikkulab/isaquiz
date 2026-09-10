@@ -193,12 +193,107 @@ dell'email), `avatarEmoji` scelto per hash dell'uid (così non cambia tra login)
 sovrascriverli. `livello` resta puro display finché non c'è la gamification
 (Fase 4).
 
-**Onboarding docente / creazione corsi: ancora scoperto.** Non c'è UI per creare
-un `CORSO`: un docente reale è operativo solo se `corsi`/`docenti_corso` esistono
-già per il suo uid. Nodo noto (era "Non ancora deciso"), da sciogliere prima di
-allargare i docenti pilota. Il seed può intestare i dati demo all'account con cui
-si fa login (`SEED_DOCENTE_EMAIL`), e in prod risolve l'uid del docente per email
-(che deve aver fatto login almeno una volta).
+**Onboarding docente / creazione corsi: vedi sezione dedicata sotto**
+("Onboarding docente e creazione corsi"). Il seed può comunque intestare i dati
+demo all'account con cui si fa login (`SEED_DOCENTE_EMAIL`), e in prod risolve
+l'uid del docente per email (che deve aver fatto login almeno una volta).
+
+## Onboarding docente e creazione corsi
+
+**Due passaggi distinti, con due responsabili diversi.**
+
+**1. Autorizzazione del docente: admin / console, mai self-service.** L'email va
+aggiunta a `config/current.docentiAutorizzati` da chi ha accesso alla console
+Firebase (o via `scripts/seed.mjs`). È la frontiera di sicurezza già decisa
+("Ruolo docente: assegnato per appartenenza a una lista, non per
+autoregistrazione"): la lista resta `write: if false` nelle rules. Per il pilota
+**nessuna pagina admin** — sarebbe superficie in più (ruolo `admin` in UI,
+regole di scrittura su `config`) per un'operazione che capita di rado. Procedura
+in `docs/deploy.md`, "Autorizzare un nuovo docente". Al login successivo il
+provisioning (`data/authProvider.js`) ricalcola `ruolo: "docente"`.
+
+**2. Creazione del corso: self-service dal docente** (modello Google Classroom).
+Un docente autorizzato crea da sé il proprio `CORSO` e si auto-assegna come
+`titolare` — nessuna intermediazione della segreteria. Coerente con "pochi
+passaggi dal contenuto della lezione al quiz" e con l'assenza di flussi di
+approvazione altrove.
+
+- **`data/corsiRepository.js` `creaCorso({ materia, classeId, docenteId })`**:
+  scrive `corsi/{idCasuale}` + `docenti_corso/{docenteId}_{corsoId}` in un unico
+  `writeBatch` atomico — se la seconda scrittura fallisse non resterebbe un
+  corso orfano senza docente.
+- **`annoScolastico` da `CONFIG`**, non dal client (coerente con "nessuna
+  migrazione tra anni"). `codiceAccesso` del corso generato alla creazione
+  (Crockford, non un id documento: unicità non critica) — serve all'iscrizione
+  degli studenti al corso, non ancora implementata.
+- **Solo creazione, in questa iterazione.** Modifica e disattivazione del corso
+  restano all'admin (rules: `update, delete: if false` su `corsi` e
+  `docenti_corso`) — coerente con "Amministratore: cruscotto minimale". Se
+  servirà, si aggiungeranno lì.
+- **Rules**: `create` su `corsi` consentito a `isDocenteAutorizzato()` con forma
+  verificata (`hasOnly` dei 5 campi, `materia`/`classeId` stringhe non vuote,
+  `annoScolastico` == quello corrente in `CONFIG`); `create` su `docenti_corso`
+  consentito solo con `docenteId == request.auth.uid` e `ruolo == 'titolare'`.
+  Non è verificato che la riga `docenti_corso` punti a un corso realmente
+  esistente e creato dallo stesso docente (i due write sono un batch atomico
+  lato client, ma le rules li valutano separatamente) — accettato alla scala
+  pilota, annotato in `firestore.rules` e nella memory
+  `project_rules_firestore_da_rafforzare`.
+
+**UI**: `ui/src/pages/GestioneCorsi.jsx` (route `/docente/corsi`, link
+nell'header docente) — elenco dei propri corsi + form "Nuovo corso". `CreaQuiz`
+e `DocenteHome`, quando il docente non ha corsi, rimandano lì.
+
+## Combobox materia (form corso)
+
+**Il campo "materia" (e "classe") nel form di creazione corso è una combobox
+editabile**: `<input list>` + `<datalist>` nativi (componente
+`ui/src/components/CampoCombobox.jsx`), zero dipendenze — coerente con "niente
+libreria di componenti finché non serve". I suggerimenti sono i valori già in
+uso in **tutti** i corsi dell'istituto (`getMaterieEsistenti` /
+`getClassiEsistenti` — lettura dell'intera collezione `corsi`, trascurabile alla
+scala pilota), ma il testo resta **libero**: nessuna lista "ufficiale"
+d'istituto.
+
+**Perché testo libero e non una lista chiusa.** La creazione corso è
+self-service (vedi sopra): non c'è un'assegnazione cattedre centralizzata da cui
+derivare un elenco autorevole di materie. Il rischio di drift di denominazione
+("Informatica" vs "informatica" vs "Lab. Informatica") si mitiga rendendo
+**visibili a tutti** i nomi già usati — il docente vede cosa hanno scritto i
+colleghi e tende ad allinearsi — non vietando l'inserimento libero. Se in
+futuro la creazione corsi diventasse admin-driven, si rivaluterà una lista
+chiusa.
+
+**Nota — il form del quesito in `CreaQuiz` NON usa questa combobox**: lì la
+materia resta una `<select>` vincolata alle materie note del *singolo docente*
+(unione dei suoi corsi + della sua banca quesiti). Scelta deliberatamente
+diversa: la materia del quesito è circoscritta a un contesto personale e piccolo,
+dove una lista chiusa aiuta la coerenza; la materia del corso è un dato nuovo,
+globale, che non esiste finché il docente non lo crea.
+
+## Navigazione e layout
+
+**Guscio di navigazione condiviso lato docente: `ui/src/components/DocenteLayout.jsx`.**
+Route di layout in `App.jsx` che avvolge tutte le `/docente/*` (guardia
+`RichiediAuth` inclusa, non più ripetuta pagina per pagina): header con wordmark,
+menu ("I miei quiz", "Corsi"), identità utente e "Esci" (spostato qui da
+`DocenteHome`); `<Outlet>`; footer. Lato studente **nessun layout condiviso**:
+le schermate studente restano volutamente autonome e minimali (`QuizStudente`
+soprattutto — vedi "Multi-istituto").
+
+**Route `/`: `ui/src/pages/Indirizza.jsx`** — smista per stato di auth
+(caricamento → attesa; anonimo → `/accedi`; autenticato → dashboard del ruolo).
+Stessa logica di destinazione già in `Accedi` dopo il login.
+
+**Route `*`: `ui/src/pages/NonTrovato.jsx`** — pagina 404 pubblica con link a
+`/`. Con `HashRouter` non serve un `404.html`.
+
+**Footer `ui/src/components/PiePagina.jsx`**: `nomeIstituto` (da
+`config/istituto`, via `configRepository.getNomeIstituto`) sopra
+`CreditoTecnico`. Montato da `DocenteLayout` e da `NonTrovato`; se la lettura
+fallisce o `CONFIG` non è popolato il nome semplicemente non compare (niente
+dato finto). Realizza quanto previsto in "Multi-istituto" (nomeIstituto nel
+footer delle pagine contenitore).
 
 ## Security rules (Fase 2) — minime ma reali
 
@@ -807,24 +902,11 @@ le danno gratis.
   `rel` prima di iniziare a usarlo attivamente.
 - Libreria di grafici per le statistiche (candidato: `recharts`, già nello stack).
 
-- **Chi crea `CORSO` e assegna `DOCENTE_CORSO`: self-service o admin-driven?**
-  L'idea di partenza è un modello decentralizzato, sul modello di Google
-  Classroom (il docente crea il proprio corso, senza intermediazione della
-  segreteria/admin) — coerente con "pochi passaggi dal contenuto della
-  lezione al quiz" e con l'assenza di un flusso di approvazione anche per il
-  ruolo admin (vedi "Amministratore: cruscotto minimale"). Da notare però che
-  in Classroom i corsi non sono condivisi tra docenti nello stesso modo in
-  cui `isaquiz` prevede una banca quesiti condivisa (Fase 4): il parallelo
-  regge per la creazione del corso, non necessariamente per tutto il resto.
-  Se self-service: `materia` resta testo libero fin dall'inizio, nessuna
-  lista "ufficiale" — coerente con la combobox editabile scelta per
-  `QUESITO.materia`. Se invece la creazione dei corsi finisse per essere
-  admin-driven (assegnazione cattedre), servirebbe rivalutare se anche
-  `materia` debba attingere a una lista d'istituto per evitare drift di
-  denominazione (es. "Informatica" vs "informatica" vs "Lab. Informatica").
-  Decisione rimandata: probabile da affrontare insieme alla Fase 2 (login
-  vero + `docentiAutorizzati`), quando si definisce comunque l'onboarding
-  del docente.
+- ~~**Chi crea `CORSO` e assegna `DOCENTE_CORSO`: self-service o
+  admin-driven?**~~ **Deciso (2026-09): self-service** per il corso,
+  admin/console per l'autorizzazione del docente. `materia` = combobox
+  editabile con suggerimenti globali, testo libero. Vedi "Onboarding docente e
+  creazione corsi" e "Combobox materia (form corso)".
 
 - **Chiave IA personale del docente, come terza via oltre a interna/esterna.**
   Richiesta probabile da colleghi con background informatico, non ipotetica.

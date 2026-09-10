@@ -67,8 +67,13 @@ Sviluppo a partire dal flusso centrale — somministrazione del quiz — con aut
       `request.auth`; da rafforzare: vedi `DECISIONI_DESIGN.md`, "Security rules")
 - [x] `functions/calcolaPunteggio.js` reale (trigger, `corretta` server-side)
 - [x] Codice di accesso senza race (`functions/generaCodiceAccesso.js`, callable)
+- Onboarding docente / creazione corsi — **fatto**: creazione corso
+  self-service (`GestioneCorsi.jsx`, `/docente/corsi`), autorizzazione docente
+  via console (`docs/deploy.md`, "Autorizzare un nuovo docente"). Header/menu
+  docente condiviso, route `/` e 404. Vedi `DECISIONI_DESIGN.md`, "Onboarding
+  docente e creazione corsi" e "Navigazione e layout".
 - Restano: passi manuali di deploy (`docs/deploy.md`, "Fase 2 — abilitare il
-  login"); onboarding docente / creazione corsi (non c'è ancora UI); vista
+  login"); modifica/disattivazione di un corso (oggi solo creazione); vista
   "docente vede solo la propria classe" più stretta (oggi lettura larga).
 
 ### Fase 3 — Generazione domande IA

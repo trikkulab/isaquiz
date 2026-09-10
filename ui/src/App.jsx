@@ -1,56 +1,40 @@
 import { Routes, Route } from "react-router-dom";
 
+import DocenteLayout from "./components/DocenteLayout.jsx";
 import DocenteHome from "./pages/DocenteHome.jsx";
 import CreaQuiz from "./pages/CreaQuiz.jsx";
+import GestioneCorsi from "./pages/GestioneCorsi.jsx";
 import RisultatiDocente from "./pages/RisultatiDocente.jsx";
 import StudenteHome from "./pages/StudenteHome.jsx";
 import QuizStudente from "./pages/QuizStudente.jsx";
 import QuizRisultatiPagina from "./pages/QuizRisultatiPagina.jsx";
 import StatisticheStudente from "./pages/StatisticheStudente.jsx";
 import Accedi from "./pages/Accedi.jsx";
+import Indirizza from "./pages/Indirizza.jsx";
+import NonTrovato from "./pages/NonTrovato.jsx";
 import RichiediAuth from "./auth/RichiediAuth.jsx";
-
-// TODO: quando si aggiunge un layout docente condiviso (header, menu) —
-// vedi discussione su DocenteLayout — avvolgere le route /docente/* lì.
-// Per ora nessun layout: si parte dal flusso più semplice possibile.
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Indirizza />} />
       <Route path="/accedi" element={<Accedi />} />
 
+      {/* Area docente: guardia + guscio di navigazione (header/menu/footer)
+          condivisi una volta sola per tutte le sotto-route. */}
       <Route
-        path="/docente"
         element={
           <RichiediAuth ruolo="docente">
-            <DocenteHome />
+            <DocenteLayout />
           </RichiediAuth>
         }
-      />
-      <Route
-        path="/docente/crea-quiz"
-        element={
-          <RichiediAuth ruolo="docente">
-            <CreaQuiz />
-          </RichiediAuth>
-        }
-      />
-      <Route
-        path="/docente/crea-quiz/:quizId"
-        element={
-          <RichiediAuth ruolo="docente">
-            <CreaQuiz />
-          </RichiediAuth>
-        }
-      />
-      <Route
-        path="/docente/quiz/:quizId/risultati"
-        element={
-          <RichiediAuth ruolo="docente">
-            <RisultatiDocente />
-          </RichiediAuth>
-        }
-      />
+      >
+        <Route path="/docente" element={<DocenteHome />} />
+        <Route path="/docente/crea-quiz" element={<CreaQuiz />} />
+        <Route path="/docente/crea-quiz/:quizId" element={<CreaQuiz />} />
+        <Route path="/docente/corsi" element={<GestioneCorsi />} />
+        <Route path="/docente/quiz/:quizId/risultati" element={<RisultatiDocente />} />
+      </Route>
 
       <Route
         path="/studente"
@@ -84,6 +68,8 @@ export default function App() {
           </RichiediAuth>
         }
       />
+
+      <Route path="*" element={<NonTrovato />} />
     </Routes>
   );
 }

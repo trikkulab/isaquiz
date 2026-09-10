@@ -273,7 +273,8 @@ Fase 0 — setup:
       (`bozza → attivo` + genera il codice di accesso), `chiudiQuiz`
       (`attivo → chiuso`), `riapriQuiz` (`chiuso → attivo`) — a senso obbligato),
       `data/quesitiRepository.js`, `data/corsiRepository.js` (`getCorso`,
-      `getCorsiDocente`), `data/utentiRepository.js` (`getUtente`,
+      `getCorsiDocente`, `getMaterieEsistenti`, `getClassiEsistenti`,
+      `creaCorso`), `data/utentiRepository.js` (`getUtente`,
       `nomeVisibile`), `data/risposteRepository.js` (`saveAnswer` — id
       deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
       `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
@@ -334,9 +335,23 @@ Fase 0 — setup:
       (conferme inline); attivo → "Risultati" / "Link e QR" (`AccessoQuiz`) /
       "Chiudi"; chiuso → "Risultati" / "Link e QR" / "Riapri"; attivo/chiuso →
       "Duplica" (→ modifica subito la copia).
+- [x] `ui/src/pages/GestioneCorsi.jsx` (route `/docente/corsi`) — elenco dei
+      propri corsi + form "Nuovo corso" (materia/classe via
+      `components/CampoCombobox.jsx` — `<input list>`+`<datalist>` nativi,
+      suggerimenti globali da `corsiRepository.getMaterieEsistenti` /
+      `getClassiEsistenti`, testo libero). `corsiRepository.creaCorso`
+      (`writeBatch` atomico: `corsi/{id}` + `docenti_corso/{uid_corsoId}`
+      titolare; `annoScolastico` da `CONFIG`; `codiceAccesso` generato). Solo
+      creazione: modifica/disattivazione corso restano all'admin.
+- [x] Navigazione condivisa: `components/DocenteLayout.jsx` (header + menu +
+      "Esci" + footer, route di layout su tutte le `/docente/*`),
+      `pages/Indirizza.jsx` (route `/` → dashboard per ruolo),
+      `pages/NonTrovato.jsx` (route `*` → 404), `components/PiePagina.jsx`
+      (`nomeIstituto` da `config/istituto` + `CreditoTecnico`). Vedi
+      `DECISIONI_DESIGN.md`, "Navigazione e layout".
 - [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
       `archiviaQuiz`; la pagina statistiche vera (per-argomento, adattiva —
-      Fase 4/5).
+      Fase 4/5); modifica/disattivazione di un corso (oggi solo creazione).
 - [x] **Codice di accesso senza race (Fase 2)**: `functions/generaCodiceAccesso.js`
       (callable, transazione + verifica autore); `data/codiciAccessoRepository.js`
       `generaCodiceQuiz` la invoca. Il client non scrive più su `codici_accesso`.
@@ -352,10 +367,13 @@ Prossimo, da affrontare in sessioni separate:
   (`.github/workflows/deploy.yml`, deploy da `rel`). Restano i passi manuali da
   console/GitHub nel runbook `docs/deploy.md` (sezione "Fase 2 — abilitare il
   login") per la prima prova end-to-end su dispositivi reali.
-- **Onboarding docente / creazione corsi**: non c'è ancora UI per creare un
-  `CORSO` (era "Non ancora deciso" in `DECISIONI_DESIGN.md`). Oggi un docente
-  vero può lavorare solo se `corsi`/`docenti_corso` sono stati creati per il
-  suo uid (seed, o Admin SDK). Da affrontare prima di allargare i docenti pilota.
+- ~~**Onboarding docente / creazione corsi**~~ — **fatto** (2026-09):
+  creazione corso **self-service** (`GestioneCorsi.jsx`, route `/docente/corsi`,
+  `corsiRepository.creaCorso` → `writeBatch` corso + `docenti_corso` titolare;
+  rules `create`-only). L'autorizzazione del docente (email in
+  `config/current.docentiAutorizzati`) resta **console/seed**, non c'è pagina
+  admin — procedura in `docs/deploy.md`. Vedi `DECISIONI_DESIGN.md`,
+  "Onboarding docente e creazione corsi".
 - **Rafforzare le security rules** — vedi memory `project_rules_firestore_da_rafforzare`.
 
 ## Cosa NON fare in questa fase
