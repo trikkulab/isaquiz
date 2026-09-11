@@ -1020,6 +1020,27 @@ cambia solo quale chiave usa `functions/aiProvider.js` per quell'utente
 (quella del progetto, o quella personale se presente e valida). Vedi anche
 voce corrispondente in "Non ancora deciso".
 
+**Stato dell'implementazione**: percorso ESTERNO + pagina di revisione
+condivisa — fatti. `ui/src/components/RevisioneQuesiti.jsx` ("contenuto
+puro" rispetto alla provenienza: riceve `quesiti`/`materia`/`autoreId`/`fonte`
+come prop, ignaro di come sono arrivati i candidati) — riga per riga
+editabile, validata live (`ui/src/utils/validazioneQuesitiCandidati.js`,
+pura), con Accetta (→ `creaQuesito`) / Scarta (reversibile) per riga e
+"Accetta tutti i validi" come scorciatoia; nessuna scrittura prima
+dell'accettazione esplicita. `ui/src/components/ImportaQuesitiIA.jsx` — il
+percorso esterno stesso: genera il prompt-template (con l'avviso GDPR
+sempre visibile prima del campo argomento/appunti), il docente lo copia nel
+proprio strumento IA e incolla qui il JSON di ritorno; validazione di forma
+del payload (`{ "quesiti": [...] }`) prima di passare a
+`RevisioneQuesiti`. Innesto in `CreaQuiz.jsx`: bottone "Importa da IA
+esterna" nell'intestazione della banca, sostituisce temporaneamente
+banca+form manuale (Colonna B — quesiti nel quiz — resta visibile); i
+quesiti accettati entrano nel quiz in composizione come quelli creati a
+mano, `materia` presa dal corso selezionato (mai dal modello IA). Ancora da
+fare: percorso INTERNO (`functions/aiProvider.js` è ancora lo stub
+`unimplemented` di Fase 0/2; manca il flag `UTENTE.generazioneIA` e il
+contatore `richiesteIAOggi`).
+
 ## Stati del quiz
 
 **Enum `QUIZ.stato`: `bozza` → `attivo` ⇄ `chiuso` ⇄ `archiviato`.** `stato` è

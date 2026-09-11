@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
+import ImportaQuesitiIA from "../components/ImportaQuesitiIA.jsx";
 import { coloreMateria } from "../utils/colori.js";
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
@@ -107,6 +108,12 @@ export default function CreaQuiz() {
   const [ordineBanca, setOrdineBanca] = useState("recenti");
   const [bancaInverso, setBancaInverso] = useState(false);
   const [mostraInattivi, setMostraInattivi] = useState(false);
+
+  // Percorso IA esterna (Fase 3): sostituisce temporaneamente banca+form
+  // manuale con l'import (vedi DECISIONI_DESIGN.md, "Generazione domande:
+  // interna vs esterna"). I quesiti accettati in revisione finiscono
+  // direttamente nel quiz in composizione, come quelli creati a mano.
+  const [importIA, setImportIA] = useState(false);
 
   useEffect(() => {
     let attivo = true;
@@ -256,6 +263,15 @@ export default function CreaQuiz() {
       );
       console.error(err);
     }
+  }
+
+  // Quesito accettato in RevisioneQuesiti (percorso IA esterna): entra nel
+  // quiz in composizione come uno creato a mano, banca riletta dalla fonte di
+  // verità (stessa scelta di eseguiSalvataggioQuesito, niente ricostruzione
+  // ottimistica lato client).
+  async function quesitoImportato(id) {
+    aggiungiAlQuiz(id);
+    setBanca(await getBancaDocente(utente.id, { includiInattivi: true }));
   }
 
   // --- form quesito (nuovo / nuova versione / duplica) ---------------------
@@ -604,17 +620,37 @@ export default function CreaQuiz() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Colonna A — banca + nuovo quesito */}
+        {/* Colonna A — banca + nuovo quesito (o import IA esterna) */}
         <div className="flex flex-col gap-6">
+          {importIA ? (
+            <ImportaQuesitiIA
+              materia={materiaCorso}
+              autoreId={utente.id}
+              onQuesitoCreato={quesitoImportato}
+              onChiudi={() => setImportIA(false)}
+            />
+          ) : (
+          <>
           <section className="rounded-xl border border-bordo bg-superficie p-4">
-            <h2 className="mb-3 text-sm font-semibold">
-              Banca quesiti{" "}
-              <span className="font-normal text-inchiostro/50">
-                ({filtriAttivi
-                  ? `${bancaDisponibile.length} di ${nonSelezionati.length}`
-                  : bancaDisponibile.length})
-              </span>
-            </h2>
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold">
+                Banca quesiti{" "}
+                <span className="font-normal text-inchiostro/50">
+                  ({filtriAttivi
+                    ? `${bancaDisponibile.length} di ${nonSelezionati.length}`
+                    : bancaDisponibile.length})
+                </span>
+              </h2>
+              <button
+                type="button"
+                className="text-xs font-medium text-primario disabled:opacity-40"
+                onClick={() => setImportIA(true)}
+                disabled={!corsoId}
+                title={!corsoId ? "Seleziona prima un corso" : undefined}
+              >
+                Importa da IA esterna
+              </button>
+            </div>
 
             {/* Filtri della banca. "Per docente" arriverà con la banca condivisa
                 (Fase 4): oggi la banca contiene solo i quesiti di chi è loggato. */}
@@ -933,6 +969,8 @@ export default function CreaQuiz() {
               </div>
             </form>
           </section>
+          </>
+          )}
         </div>
 
         {/* Colonna B — quesiti nel quiz */}
