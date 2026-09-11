@@ -12,6 +12,7 @@ import { useState } from "react";
 
 import PunteggioContestuale from "./PunteggioContestuale.jsx";
 import ModaleCorrezione from "./ModaleCorrezione.jsx";
+import { coloreMateria, livelloPadronanza } from "../utils/colori.js";
 
 export default function AccordionArgomenti({ argomenti, studenteId }) {
   const [apertoChiave, setApertoChiave] = useState(null);
@@ -25,7 +26,9 @@ export default function AccordionArgomenti({ argomenti, studenteId }) {
           return (
             <li
               key={arg.chiave}
-              className="overflow-hidden rounded-xl border border-bordo bg-superficie"
+              className={`overflow-hidden rounded-xl border-y border-r border-l-[3px] border-y-bordo border-r-bordo bg-superficie ${coloreMateria(
+                arg.materia
+              )}`}
             >
               <button
                 type="button"
@@ -50,7 +53,11 @@ export default function AccordionArgomenti({ argomenti, studenteId }) {
                     </span>
                   )}
                 </span>
-                <PunteggioContestuale corrette={arg.corrette} totali={arg.totali} />
+                <PunteggioContestuale
+                  corrette={arg.corrette}
+                  totali={arg.totali}
+                  livello={livelloPadronanza(arg.corrette, arg.totali)}
+                />
               </button>
 
               {aperto && (

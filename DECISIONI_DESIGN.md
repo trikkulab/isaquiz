@@ -548,19 +548,23 @@ quesiti. Riusa la **stessa** funzione pura `coloreMateria(nome)` ovunque, mai
 un mapping locale per pagina — altrimenti "Informatica" rischia un colore
 diverso in due schermate, che è peggio di non avere colore. Set chiuso di
 **10-12 token** `--color-materia-1`…`--color-materia-12` (nomi posizionali,
-non di tinta), assegnazione deterministica (hash del nome); oltre la
-capienza, le materie eccedenti condividono `--color-materia-neutro`
-(grigio) — il colore degrada, l'etichetta testuale resta sempre visibile.
-10-12 e non 6-8: un singolo studente/docente segue realisticamente 8-12
-materie nell'anno, non le poche dell'istituto nel complesso, quindi la
-palette va dimensionata su quella cardinalità. Gli hex vanno scelti da una
-palette qualitativa validata (es. Tableau10/20, ColorBrewer), variando anche
-chiarezza/saturazione oltre alla tinta pura (8 hue distinte reggono da sole;
-oltre servono coppie hue+chiarezza) — non inventati singolarmente — e
-verificati con un simulatore di daltonismo (rosso-verde in particolare)
-prima di fissarli: qui il rischio di due materie troppo simili è mitigato
-dall'etichetta testuale sempre presente, ma vale comunque la pena
-minimizzarlo a monte.
+non di tinta), assegnazione deterministica via hash del nome (nessun
+tracciamento di "quante materie ho già assegnato": non serve a bassa
+cardinalità, e tenerlo avrebbe reso la funzione non più pura). 10-12 e non
+6-8: un singolo studente/docente segue realisticamente 8-12 materie
+nell'anno, non le poche dell'istituto nel complesso, quindi la palette va
+dimensionata su quella cardinalità. Gli hex sono ispirati a palette
+qualitative validate (Tableau10 esteso), variando anche chiarezza/saturazione
+oltre alla tinta pura — non inventati singolarmente. **Implementato**
+(2026-09): `ui/src/utils/colori.js`, `coloreMateria(nome)` — hash DJB2-style
+mod 12 → una delle 12 classi `border-materia-N` (scritte per esteso in una
+mappa, non costruite con un template literal: Tailwind scansiona il sorgente
+come testo, una classe costruita dinamicamente non verrebbe generata).
+`--color-materia-neutro` è **solo** il fallback per materia mancante/vuota,
+non un vero "overflow" della palette (con hash puro non esiste un overflow
+reale da gestire: oltre le 12 materie si accettano collisioni di colore
+anziché tracciare un ordine di assegnazione — se in pratica risultassero
+fastidiose, si rivede allora, non preventivamente).
 
 **Perché il bordo materia non è un badge di stato.** Sono due assi
 indipendenti dello stesso oggetto: bordo sinistro per la materia, badge in
@@ -582,6 +586,16 @@ sull'argomento (la padronanza dello studente), si usa un colore-**stato**:
 un numero fisso di tinte (2-4, tipo semaforo) riusato su ogni riga
 indipendentemente da quanti argomenti esistono — esattamente come i quattro
 stati del quiz già in tabella sopra.
+
+**Padronanza: implementata (2026-09).** `ui/src/utils/colori.js`,
+`livelloPadronanza(corrette, totali)` — soglie `<60%` bassa, `60-79%` media,
+`>=80%` alta (scelta didattica, non ricavata da altro). Si applica **solo**
+alla riga-argomento aggregata (`PunteggioContestuale` con prop `livello`,
+`AccordionArgomenti`/`PannelloArgomenti`), mai alle righe-quiz del
+drill-down, che restano con la barra viola neutra di sempre: il punteggio di
+un singolo quiz non è "padronanza" (che per definizione aggrega più quiz).
+Quando `livello` è passato, un'etichetta testuale (bassa/media/alta) affianca
+la barra colorata — coerente con "il colore non è mai l'unico segnale".
 
 ### Dark theme — predisposto, non attivo
 

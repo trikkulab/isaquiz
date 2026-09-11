@@ -101,7 +101,7 @@ if (!SOLO_CONFIG) {
 
 // --- documenti a id fisso (idempotenti) ---------------------------------------
 
-const NOME_ISTITUTO = process.env.SEED_NOME_ISTITUTO || "IIS Esempio";
+const NOME_ISTITUTO = process.env.SEED_NOME_ISTITUTO || "IS Saraceno Romegialli";
 
 const config = {
   ref: db.doc("config/current"),

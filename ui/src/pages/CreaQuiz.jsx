@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
+import { coloreMateria } from "../utils/colori.js";
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
 import {
@@ -705,11 +706,11 @@ export default function CreaQuiz() {
                     return (
                       <li
                         key={q.id}
-                        className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 ${
-                          quesitoBase?.id === q.id
-                            ? "border-primario ring-1 ring-primario"
-                            : "border-bordo"
-                        } ${inattivo ? "opacity-60" : ""}`}
+                        className={`flex items-start justify-between gap-3 rounded-lg border-y border-r border-l-[3px] border-y-bordo border-r-bordo px-3 py-2 ${coloreMateria(
+                          q.materia
+                        )} ${quesitoBase?.id === q.id ? "ring-1 ring-primario" : ""} ${
+                          inattivo ? "opacity-60" : ""
+                        }`}
                       >
                         <button
                           type="button"
@@ -950,7 +951,9 @@ export default function CreaQuiz() {
               {quesitiNelQuiz.map((q, i) => (
                 <li
                   key={q.id}
-                  className="flex items-start justify-between gap-3 rounded-lg border border-bordo px-3 py-2"
+                  className={`flex items-start justify-between gap-3 rounded-lg border-y border-r border-l-[3px] border-y-bordo border-r-bordo px-3 py-2 ${coloreMateria(
+                    q.materia
+                  )}`}
                 >
                   <div className="min-w-0">
                     <p className="text-sm">

@@ -12,6 +12,7 @@ import { useState } from "react";
 
 import PunteggioContestuale from "./PunteggioContestuale.jsx";
 import CorrezioneQuiz from "./CorrezioneQuiz.jsx";
+import { coloreMateria, livelloPadronanza } from "../utils/colori.js";
 
 export default function PannelloArgomenti({ argomenti, studenteId }) {
   const [chiaveSel, setChiaveSel] = useState(() => argomenti[0]?.chiave ?? null);
@@ -36,10 +37,12 @@ export default function PannelloArgomenti({ argomenti, studenteId }) {
                 type="button"
                 onClick={() => selezionaArgomento(arg.chiave)}
                 aria-current={attivo ? "true" : undefined}
-                className={`flex w-full flex-col gap-1.5 rounded-xl border px-3.5 py-3 text-left transition-colors ${
+                className={`flex w-full flex-col gap-1.5 rounded-xl border-y border-r border-l-[3px] px-3.5 py-3 text-left transition-colors ${coloreMateria(
+                  arg.materia
+                )} ${
                   attivo
-                    ? "border-primario bg-primario/5"
-                    : "border-bordo bg-superficie hover:border-primario/50"
+                    ? "border-y-primario border-r-primario bg-primario/5"
+                    : "border-y-bordo border-r-bordo bg-superficie hover:border-y-primario/50 hover:border-r-primario/50"
                 }`}
               >
                 <span className="min-w-0">
@@ -52,7 +55,11 @@ export default function PannelloArgomenti({ argomenti, studenteId }) {
                     </span>
                   )}
                 </span>
-                <PunteggioContestuale corrette={arg.corrette} totali={arg.totali} />
+                <PunteggioContestuale
+                  corrette={arg.corrette}
+                  totali={arg.totali}
+                  livello={livelloPadronanza(arg.corrette, arg.totali)}
+                />
               </button>
             </li>
           );

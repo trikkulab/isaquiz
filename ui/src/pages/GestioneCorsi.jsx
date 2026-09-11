@@ -11,6 +11,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import CampoCombobox from "../components/CampoCombobox.jsx";
+import { coloreMateria } from "../utils/colori.js";
 import {
   getCorsiDocente,
   getMaterieEsistenti,
@@ -154,7 +155,9 @@ export default function GestioneCorsi() {
           {corsiOrdinati.map((c) => (
             <li
               key={c.id}
-              className="flex items-start justify-between gap-3 rounded-xl border border-bordo bg-superficie p-4"
+              className={`flex items-start justify-between gap-3 rounded-xl border-y border-r border-l-[3px] border-y-bordo border-r-bordo bg-superficie p-4 ${coloreMateria(
+                c.materia
+              )}`}
             >
               <div className="min-w-0">
                 <p className="font-medium">

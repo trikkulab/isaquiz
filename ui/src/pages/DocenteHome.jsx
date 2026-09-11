@@ -23,6 +23,7 @@ import {
 } from "../../../data/quizRepository.js";
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
+import { coloreMateria } from "../utils/colori.js";
 
 const BOTTONE_PRIMARIO =
   "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-su-primario transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
@@ -298,7 +299,12 @@ export default function DocenteHome() {
             const cfgConferma =
               conferma?.id === q.id ? AZIONI_CONFERMA[conferma.tipo] : null;
             return (
-              <li key={q.id} className="rounded-xl border border-bordo bg-superficie p-4">
+              <li
+                key={q.id}
+                className={`rounded-xl border-y border-r border-l-[3px] border-y-bordo border-r-bordo bg-superficie p-4 ${coloreMateria(
+                  q.materia
+                )}`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{q.titolo}</p>

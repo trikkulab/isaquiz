@@ -44,6 +44,34 @@
   --color-stato-archiviato: #5f5d6e;
   --color-stato-archiviato-sfondo: #efeef4;
 
+  /* --- Padronanza di un argomento (statistiche studente) --- */
+  /* Colore-stato a 3 valori, distinto da corretto/errato: la padronanza è
+     aggregata su più quesiti, non l'esito di uno solo. Soglie in
+     utils/colori.js (livelloPadronanza). */
+  --color-padronanza-bassa: #dc2626;
+  --color-padronanza-media: #d97706;
+  --color-padronanza-alta: #15803d;
+
+  /* --- Colore-identità materia (bordo sinistro, vedi DECISIONI_DESIGN.md,
+     "Sistema colore") --- */
+  /* Set chiuso, assegnazione deterministica per hash del nome
+     (utils/colori.js, coloreMateria). Palette qualitativa (ispirata a
+     Tableau10/IBM Carbon categorical), hue+chiarezza variate per reggere
+     anche a chi non distingue rosso/verde. -neutro per materia mancante. */
+  --color-materia-1: #4e79a7;
+  --color-materia-2: #f28e2b;
+  --color-materia-3: #59a14f;
+  --color-materia-4: #e15759;
+  --color-materia-5: #b07aa1;
+  --color-materia-6: #76b7b2;
+  --color-materia-7: #edc948;
+  --color-materia-8: #ff9da7;
+  --color-materia-9: #9c755f;
+  --color-materia-10: #6a3d9a;
+  --color-materia-11: #86bc86;
+  --color-materia-12: #4b6584;
+  --color-materia-neutro: #9a97ab;
+
   --font-titoli: "Poppins", "Segoe UI", system-ui, sans-serif;
   --font-testo: "Inter", "Segoe UI", system-ui, sans-serif;
 
