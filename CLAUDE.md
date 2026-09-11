@@ -347,10 +347,16 @@ Fase 0 — setup:
       `getQuizPerArgomento`: **implementati** (vedi sopra). Seed:
       `quiz-prova-rinascimento` (attivo, Storia, `TEST01`),
       `quiz-bozza-informatica` (bozza), `quiz-chiuso-informatica`
-      (chiuso, `TEST02`), `quiz-attivo-informatica` (attivo, `TEST03`); 13
-      risposte di 2 studenti su 3 quiz (Giulia/`mock-studente-1` copre 2 materie
-      e argomenti toccati da più quiz, per far vedere le statistiche); 7 quesiti
-      di cui 1 inattivo (`seed-info-3`), gli altri senza il campo `attivo`.
+      (chiuso, `TEST02`), `quiz-attivo-informatica` (attivo, `TEST03`),
+      `quiz-info-3`/`quiz-info-4` (chiusi, `TEST04`/`TEST05`), `quiz-info-5`
+      (attivo, `TEST06`) — questi ultimi tre con `avviato` esplicito (non
+      `serverTimestamp`) e solo per la demo di "Andamento studente": 3
+      studenti (`mock-studente-3`/Marco aggiunto apposta), 37 risposte, di
+      cui le 5 informatiche in sequenza per studente fanno scattare i tre
+      segnali di `calcolaTrendMateria` (Giulia → calo, Luca → miglioramento,
+      Marco → debolezza persistente — vedi `DECISIONI_DESIGN.md`, "Andamento
+      studente"); 7 quesiti di cui 1 inattivo (`seed-info-3`), gli altri
+      senza il campo `attivo`.
 - [x] `functions/calcolaPunteggio.js` — Cloud Function reale (Fase 2): trigger
       `onDocumentWritten` su `risposte/{id}`, scrive `corretta` server-side
       (guardia anti-loop, ricalcolo al cambio risposta). Il calcolo client resta
@@ -408,8 +414,22 @@ Fase 0 — setup:
       (`getDocentiAutorizzati`), `AdminImpostazioni.jsx` (`getConfig`). Route
       `/admin/corsi|docenti|impostazioni`. Scritture admin (editare la lista
       docenti da UI) → rimandate (serve regola su `config` legata a `isAdmin`).
+- [x] `ui/src/pages/AndamentoCorso.jsx` (route
+      `/docente/corsi/:corsoId/andamento`, link "Andamento" per riga in
+      `GestioneCorsi.jsx`) — andamento degli studenti di UN corso (mai per
+      materia in astratto, mai cross-corso). Layout adattivo come
+      "Statistiche studente" (`AccordionAndamento.jsx` /
+      `PannelloAndamento.jsx`), stesso `ModaleCorrezione`/`CorrezioneQuiz` per
+      la correzione. `risposteRepository.getAndamentoCorso(corsoId,
+      docenteId)` — una lettura aggregata per corso, per studente: serie
+      cronologica dei punteggi quiz (trend a livello materia,
+      `calcolaTrendMateria` — regressione lineare su indice quiz, soglie
+      **non tarate su dati reali**, vedi `DECISIONI_DESIGN.md`, "Andamento
+      studente") e rottura per argomento (frazione grezza, niente trend).
+      `quizRepository.getQuizCorso(corsoId, docenteId)` filtra anche per
+      `autoreId` (indispensabile per le security rules su una query `list`,
+      vedi nota lì).
 - [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
-      la pagina statistiche vera (per-argomento, adattiva — Fase 4/5);
       modifica/disattivazione di un corso (oggi solo creazione).
 - [x] **Codice di accesso senza race (Fase 2)**: `functions/generaCodiceAccesso.js`
       (callable, transazione + verifica autore); `data/codiciAccessoRepository.js`

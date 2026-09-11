@@ -4,6 +4,7 @@ import AppLayout from "./components/AppLayout.jsx";
 import DocenteHome from "./pages/DocenteHome.jsx";
 import CreaQuiz from "./pages/CreaQuiz.jsx";
 import GestioneCorsi from "./pages/GestioneCorsi.jsx";
+import AndamentoCorso from "./pages/AndamentoCorso.jsx";
 import RisultatiDocente from "./pages/RisultatiDocente.jsx";
 import StudenteHome from "./pages/StudenteHome.jsx";
 import QuizStudente from "./pages/QuizStudente.jsx";
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/docente/crea-quiz" element={<CreaQuiz />} />
         <Route path="/docente/crea-quiz/:quizId" element={<CreaQuiz />} />
         <Route path="/docente/corsi" element={<GestioneCorsi />} />
+        <Route path="/docente/corsi/:corsoId/andamento" element={<AndamentoCorso />} />
         <Route path="/docente/quiz/:quizId/risultati" element={<RisultatiDocente />} />
       </Route>
 

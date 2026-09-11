@@ -173,13 +173,22 @@ export default function GestioneCorsi() {
                     .join(" · ")}
                 </p>
               </div>
-              <button
-                type="button"
-                className="shrink-0 text-xs font-medium text-primario"
-                onClick={() => navigate("/docente/crea-quiz")}
-              >
-                Crea un quiz →
-              </button>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primario"
+                  onClick={() => navigate("/docente/crea-quiz")}
+                >
+                  Crea un quiz →
+                </button>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primario"
+                  onClick={() => navigate(`/docente/corsi/${c.id}/andamento`)}
+                >
+                  Andamento →
+                </button>
+              </div>
             </li>
           ))}
         </ul>

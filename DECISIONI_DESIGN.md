@@ -468,6 +468,62 @@ abilitare il login".
   non contraddice "niente realtime tipo Kahoot" in "Flusso quiz studente",
   che riguarda la sincronizzazione tra studenti.
 
+## Domande non risposte (correzione e aggregazioni)
+
+**Scoperta (2026-09), durante l'implementazione di "Andamento studente" —
+guardando il seed dati con Luca Verdi che non risponde all'ultima domanda di
+"Verifica: il Rinascimento".** Non è un caso di laboratorio: può succedere
+davvero, in almeno due modi. `saveAnswer` è fire-and-forget (nessun retry né
+segnalazione allo studente se la scrittura fallisce) e le security rules
+rifiutano la scrittura se il quiz non è più `attivo` — quindi (1) il docente
+chiude il quiz mentre uno studente è ancora a metà, i tentativi successivi
+falliscono silenziosamente; oppure (2) un problema di rete fa perdere una
+risposta, e lo studente non se ne accorge (ha già visto il proprio ✓/✗
+locale). Prima di questa scelta il caso non era mai stato considerato, perché
+nell'interfaccia non è mai stato possibile saltare volontariamente una
+domanda (niente tasto "salta" in `QuizStudente`) — il caso esisteva solo per
+vie traverse.
+
+**Il problema che questo causava, concretamente:**
+- `QuesitoCard` in modalità `correzione` evidenziava SEMPRE in verde
+  l'opzione corretta, a prescindere da `indiceSelezionato` — una domanda mai
+  risposta appariva identica a una risposta indovinata, nessun terzo stato.
+- `getStatistichePerArgomento` (Statistiche studente) e `getAndamentoCorso`
+  (Andamento studente) costruivano le righe aggregate a partire dai soli
+  documenti `risposte` esistenti: una domanda mai risposta non produce un
+  documento, quindi spariva del tutto dall'argomento (non "0 corrette su 1",
+  proprio assente) — mentre il totale di `QuizRisultati`
+  (`quiz.quesiti.length`, sempre TUTTE le domande del quiz) la contava
+  comunque. Risultato: numeri diversi fra correzione completa e riepiloghi
+  per argomento, senza che nessuna delle due schermate lo segnalasse.
+
+**Decisione presa: una domanda non risposta CONTA come tentata e sbagliata,
+ovunque — non sparisce mai.** Motivazione: coerenza con `QuizRisultati`, che
+usava già `quiz.quesiti.length` come denominatore (non i soli documenti
+risposte); ed è l'interpretazione più prudente per un docente che guarda
+l'andamento — uno studente che salta sistematicamente delle domande non deve
+apparire come se quelle domande non fossero mai esistite.
+
+Implementazione: `risposteArricchite` (usata da `getStatistichePerArgomento`)
+e `getAndamentoCorso` (`data/risposteRepository.js`) ora partono dai QUIZ
+toccati da almeno una risposta (non dai singoli documenti `risposte`) e
+iterano TUTTI i `quiz.quesiti` di quei quiz — una domanda senza un documento
+`risposte` corrispondente conta `esatta: false`. `QuesitoCard` (modalità
+correzione) mostra un'etichetta neutra "Non risposta" accanto al tag
+argomento quando `indiceSelezionato === null`, distinta dal verde/rosso di
+corretto/errato (nessun nuovo token colore: è testo neutro, non uno
+stato-colore — vedi "Sistema colore"). `QuizRisultati` segnala il conteggio
+("· N non risposte") accanto al totale, invece di lasciarlo implicito nel
+denominatore.
+
+**Da rivalutare in futuro (deliberatamente non fatto ora).** Il conteggio
+aggregato (es. "3/6 su questo argomento", la barra di padronanza) oggi non
+distingue una domanda sbagliata da una saltata: entrambe finiscono nello
+stesso "non corretta". Se in futuro servisse distinguerle esplicitamente
+(es. "2 corrette, 1 sbagliata, 1 non risposta" invece di "2/4"), va
+ridiscusso — non implementato ora per non appesantire un caso che resta
+comunque raro.
+
 ## Statistiche studente
 
 - **Aggregazione per argomento**, non per singolo quiz — più utile per capire
@@ -509,6 +565,23 @@ valore arbitrario da fissare qui a tavolino — chi implementa (ClaudeCode,
 che vede la distribuzione vera dei punteggi) propone i numeri, non li
 inventa in astratto.
 
+**Soglie implementate (2026-09) — punto di partenza, non tarate su dati
+reali.** Al momento dell'implementazione il DB (emulatore, dogfooding
+iniziale) non aveva ancora nessuna coppia corso-studente con >=4 quiz: non
+c'era una distribuzione vera da cui leggere le soglie. I numeri sotto sono
+un punto di partenza ragionato (ancorati a soglie già in uso nel progetto,
+non inventati a caso), non un risultato empirico — **da ritarare quando
+l'uso reale accumula più quiz per studente in un corso** (vedi
+`data/risposteRepository.js`, `calcolaTrendMateria`):
+- Regressione lineare dei punteggi % sull'**indice del quiz** (0,1,2,…),
+  non sulla data: conta quanti tentativi, non quanti giorni sono passati.
+- `calo` / `miglioramento`: pendenza >= 5 punti percentuali per quiz **e**
+  correlazione |r| >= 0.5 (trend "consistente", non rumore).
+- `debolezza persistente`: nessun trend chiaro **e** media < 60% — stesso
+  confine di `livelloPadronanza` "bassa" (`ui/src/utils/colori.js`), riuso
+  del numero, non del token (resta un colore-stato distinto, vedi "Sistema
+  colore").
+
 **Livello argomento — frazione grezza, niente trend.** Nel dettaglio di
 uno studente, ogni argomento mostra solo "corrette/tentate" (es. 4/6),
 colorato con la stessa scala di padronanza già decisa in "Sistema colore"
@@ -527,10 +600,22 @@ modo, ma va progettata da subito compatibile con l'esito della DPIA
 (conservazione limitata, framing esplicito come strumento formativo non
 valutativo, niente esportazione libera).
 
-**Route, nomi componenti, dove vive il calcolo del trend: non specificati
-qui.** Decisioni di implementazione che richiedono di vedere il codice
-reale — le lascio a chi lo implementa, coerentemente con come già gestito
-per il colore-materia.
+**Route, nomi componenti (implementati, 2026-09).** Sempre per **corso**
+(mai per materia in astratto, mai cross-corso — un corso è
+materia+classe+anno, vedi CLAUDE.md "CORSO, non CLASSE"): route
+`/docente/corsi/:corsoId/andamento` (`AndamentoCorso.jsx`), raggiunta da un
+link "Andamento" per riga in `GestioneCorsi.jsx`. Stesso layout adattivo
+di "Statistiche studente" (`AccordionAndamento.jsx` sotto la soglia,
+`PannelloAndamento.jsx` master-detail sopra), stesso `ModaleCorrezione`/
+`CorrezioneQuiz` per la correzione di un quiz (le rules già permettono
+all'autore del quiz di leggere le risposte di qualunque studente). Una
+lettura aggregata per corso (`risposteRepository.getAndamentoCorso`), niente
+altre letture nel drill-down. `quizRepository.getQuizCorso(corsoId,
+docenteId)` filtra ANCHE per `autoreId`, non solo `corsoId`: una query `list`
+su `quiz` filtrata solo per `corsoId` non è "dimostrabile" dal motore delle
+security rules (che per `quiz` ragiona per `autoreId`) e viene rifiutata —
+filtrare per entrambi è corretto comunque, dato che un corso ha un solo
+docente.
 
 ## Layout adattivo (non solo responsive)
 

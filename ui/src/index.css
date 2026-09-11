@@ -52,6 +52,18 @@
   --color-padronanza-media: #d97706;
   --color-padronanza-alta: #15803d;
 
+  /* --- Segnale di trend (vista docente, "Andamento studente") --- */
+  /* Colore-stato a 3 valori, distinto da corretto/errato/padronanza: qui il
+     segnale è sul TREND nel tempo di un corso, non sull'esito di un singolo
+     quesito né sulla frazione grezza di un argomento. Soglie in
+     data/risposteRepository.js (calcolaTrendMateria). */
+  --color-segnale-calo: #dc2626;
+  --color-segnale-calo-sfondo: #fdecec;
+  --color-segnale-debolezza: #b45309;
+  --color-segnale-debolezza-sfondo: #fbeee0;
+  --color-segnale-miglioramento: #15803d;
+  --color-segnale-miglioramento-sfondo: #e7f8ee;
+
   /* --- Colore-identità materia (bordo sinistro, vedi DECISIONI_DESIGN.md,
      "Sistema colore") --- */
   /* Set chiuso, assegnazione deterministica per hash del nome

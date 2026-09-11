@@ -22,7 +22,7 @@
 //   la sola SEED_DOCENTE_EMAIL). Sovrascrive: gestiscila poi a mano da console.
 
 import { initializeApp, applicationDefault } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
 const TARGET = process.env.SEED_TARGET === "prod" ? "prod" : "emulator";
@@ -150,9 +150,13 @@ const admin = {
 };
 
 // Studenti di prova. Gli id sono anche gli uid Auth nell'emulatore.
+// mock-studente-3 esiste solo per la demo di "Andamento studente" (vista
+// docente): serve un terzo studente per mostrare il segnale "debolezza
+// persistente" accanto a "calo" e "miglioramento" — vedi risposteAndamento.
 const studenti = [
   { id: "mock-studente-1", nome: "Giulia", cognome: "Bianchi", email: `giulia.bianchi@${DOMINIO}` },
   { id: "mock-studente-2", nome: "Luca", cognome: "Verdi", email: `luca.verdi@${DOMINIO}` },
+  { id: "mock-studente-3", nome: "Marco", cognome: "Neri", email: `marco.neri@${DOMINIO}` },
 ].map((s) => ({
   ref: db.doc(`utenti/${s.id}`),
   data: {
@@ -225,6 +229,7 @@ const quizzes = [
       autoreId: DOCENTE_ID,
       quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
       stato: "chiuso",
+      avviato: Timestamp.fromDate(new Date("2025-10-06T09:00:00")),
     },
   },
   {
@@ -238,6 +243,47 @@ const quizzes = [
       autoreId: DOCENTE_ID,
       quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
       stato: "attivo",
+      avviato: Timestamp.fromDate(new Date("2025-10-13T09:00:00")),
+    },
+  },
+  // I tre quiz seguenti esistono solo per la demo di "Andamento studente"
+  // (vista docente, DECISIONI_DESIGN.md): calcolaTrendMateria richiede
+  // almeno 4 quiz per corso-studente, quindi ne servono >=4 in sequenza
+  // temporale (`avviato` esplicito, non serverTimestamp — altrimenti tutti i
+  // quiz dello stesso batch avrebbero lo stesso istante e l'ordine
+  // cronologico sarebbe indeterminato). Vedi risposteAndamento sotto per le
+  // sequenze di punteggio che fanno scattare i tre segnali.
+  {
+    id: "quiz-info-3",
+    data: {
+      titolo: "Verifica: rappresentazione dati",
+      corsoId: "informatica-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
+      stato: "chiuso",
+      avviato: Timestamp.fromDate(new Date("2025-10-20T09:00:00")),
+    },
+  },
+  {
+    id: "quiz-info-4",
+    data: {
+      titolo: "Ripasso: array e indici",
+      corsoId: "informatica-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
+      stato: "chiuso",
+      avviato: Timestamp.fromDate(new Date("2025-10-27T09:00:00")),
+    },
+  },
+  {
+    id: "quiz-info-5",
+    data: {
+      titolo: "Verifica: byte e strutture",
+      corsoId: "informatica-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
+      stato: "attivo",
+      avviato: Timestamp.fromDate(new Date("2025-11-03T09:00:00")),
     },
   },
 ];
@@ -249,6 +295,9 @@ const codiciAccesso = [
   { id: "TEST01", quizId: "quiz-prova-rinascimento" },
   { id: "TEST02", quizId: "quiz-chiuso-informatica" },
   { id: "TEST03", quizId: "quiz-attivo-informatica" },
+  { id: "TEST04", quizId: "quiz-info-3" },
+  { id: "TEST05", quizId: "quiz-info-4" },
+  { id: "TEST06", quizId: "quiz-info-5" },
 ];
 
 // --- quesiti di prova --------------------------------------------------------
@@ -342,13 +391,10 @@ const quesiti = [
   },
 ];
 
-// Risposte di prova. Tuple [quizId, studenteId, quesitoId, opzioneScelta].
-//  - quiz-prova-rinascimento (Storia, corrette: 1,2,1,1): Giulia 3/4, Luca 2/4
-//    (ultimo quesito senza risposta).
-//  - quiz-chiuso-informatica / quiz-attivo-informatica (Informatica, corrette
-//    1,1): danno a Giulia due materie e argomenti toccati da più quiz, così le
-//    "Statistiche studente" hanno di che mostrare (FiltroMaterie + drill-down).
-const risposteProva = [
+// Risposte di prova su Storia — Tuple [quizId, studenteId, quesitoId, opzioneScelta].
+// quiz-prova-rinascimento (corrette: 1,2,1,1): Giulia 3/4, Luca 2/4 (ultimo
+// quesito senza risposta).
+const risposteStoria = [
   ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-1-v0", 1],
   ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-2-v0", 2],
   ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-3-v0", 0],
@@ -356,22 +402,50 @@ const risposteProva = [
   ["quiz-prova-rinascimento", "mock-studente-2", "seed-storia-1-v0", 1],
   ["quiz-prova-rinascimento", "mock-studente-2", "seed-storia-2-v0", 0],
   ["quiz-prova-rinascimento", "mock-studente-2", "seed-storia-3-v0", 1],
-  ["quiz-chiuso-informatica", "mock-studente-1", "seed-info-1-v0", 1], // ok
-  ["quiz-chiuso-informatica", "mock-studente-1", "seed-info-2-v0", 0], // errata
-  ["quiz-attivo-informatica", "mock-studente-1", "seed-info-1-v0", 1], // ok
-  ["quiz-attivo-informatica", "mock-studente-1", "seed-info-2-v0", 1], // ok
-  ["quiz-attivo-informatica", "mock-studente-2", "seed-info-1-v0", 1], // ok
-  ["quiz-attivo-informatica", "mock-studente-2", "seed-info-2-v0", 0], // errata
-].map(([quizId, studenteId, quesitoId, opzioneScelta]) => ({
-  id: `${quizId}_${studenteId}_${quesitoId}`,
-  data: {
-    quizId,
-    studenteId,
-    quesitoId,
-    rispostaData: { opzioneScelta },
-    timestamp: FieldValue.serverTimestamp(),
-  },
-}));
+];
+
+// Risposte di prova su Informatica: 5 quiz in sequenza cronologica (vedi
+// `avviato` sui quiz sopra), una sequenza di punteggio % per studente,
+// pensate per far scattare i tre segnali di calcolaTrendMateria (richiede
+// >=4 quiz) — demo di "Andamento studente" (vista docente). Con soli 2
+// quesiti per quiz l'unica percentuale intermedia possibile è 50% (un
+// quesito giusto, uno sbagliato): basta a dimostrare l'algoritmo, non serve
+// altra granularità.
+const QUIZ_INFORMATICA_ANDAMENTO = [
+  "quiz-chiuso-informatica",
+  "quiz-attivo-informatica",
+  "quiz-info-3",
+  "quiz-info-4",
+  "quiz-info-5",
+];
+const PERCENTUALI_ANDAMENTO = {
+  "mock-studente-1": [100, 100, 50, 0, 0], // Giulia -> calo
+  "mock-studente-2": [0, 0, 50, 100, 100], // Luca -> miglioramento
+  "mock-studente-3": [50, 0, 50, 0, 50], // Marco -> debolezza persistente
+};
+const risposteAndamento = Object.entries(PERCENTUALI_ANDAMENTO).flatMap(
+  ([studenteId, percentuali]) =>
+    percentuali.flatMap((perc, i) => {
+      const quizId = QUIZ_INFORMATICA_ANDAMENTO[i];
+      return [
+        [quizId, studenteId, "seed-info-1-v0", perc >= 50 ? 1 : 0],
+        [quizId, studenteId, "seed-info-2-v0", perc >= 100 ? 1 : 0],
+      ];
+    }),
+);
+
+const risposteProva = [...risposteStoria, ...risposteAndamento].map(
+  ([quizId, studenteId, quesitoId, opzioneScelta]) => ({
+    id: `${quizId}_${studenteId}_${quesitoId}`,
+    data: {
+      quizId,
+      studenteId,
+      quesitoId,
+      rispostaData: { opzioneScelta },
+      timestamp: FieldValue.serverTimestamp(),
+    },
+  }),
+);
 
 // --- utenti Auth (solo emulatore) ------------------------------------------
 // In produzione gli account nascono dal login Google reale (provisioning in

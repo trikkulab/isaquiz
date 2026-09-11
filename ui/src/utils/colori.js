@@ -46,3 +46,19 @@ export function livelloPadronanza(corrette, totali) {
   if (frazione < 0.8) return "media";
   return "alta";
 }
+
+// Segnale di trend a livello corso (vista docente, "Andamento studente" —
+// vedi DECISIONI_DESIGN.md e data/risposteRepository.js calcolaTrendMateria).
+// Tre valori più il silenzio (null, il default): nessun colore senza
+// l'etichetta testuale accanto.
+export const ETICHETTA_SEGNALE = {
+  calo: "In calo",
+  debolezza: "Debolezza persistente",
+  miglioramento: "In miglioramento",
+};
+
+export const BADGE_SEGNALE = {
+  calo: "bg-segnale-calo-sfondo text-segnale-calo",
+  debolezza: "bg-segnale-debolezza-sfondo text-segnale-debolezza",
+  miglioramento: "bg-segnale-miglioramento-sfondo text-segnale-miglioramento",
+};

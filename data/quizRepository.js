@@ -78,6 +78,26 @@ export async function getQuizDocente(docenteId) {
     .sort((a, b) => (b.creato?.toMillis?.() ?? 0) - (a.creato?.toMillis?.() ?? 0));
 }
 
+// Tutti i quiz di UN corso (qualsiasi stato), ordinati dal più vecchio —
+// usata per l'andamento docente (data/risposteRepository.js
+// getAndamentoCorso). Mai cross-corso: vedi CLAUDE.md, "CORSO, non CLASSE, è
+// il contenitore dei quiz".
+//
+// Filtrata ANCHE per autoreId (non solo corsoId): un corso ha un solo
+// docente (vedi CLAUDE.md), quindi non perde quiz — ma è indispensabile per
+// le rules. La regola su "quiz" (`autoreId == uid`) è pensata per un `get`
+// o una query già ristretta su autoreId (come getQuizDocente): una query
+// filtrata solo su corsoId non è "dimostrabile" dal motore delle rules per
+// un `list` e viene rifiutata con permission-denied.
+export async function getQuizCorso(corsoId, docenteId) {
+  const snap = await getDocs(
+    query(quizCol, where("corsoId", "==", corsoId), where("autoreId", "==", docenteId)),
+  );
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.creato?.toMillis?.() ?? 0) - (b.creato?.toMillis?.() ?? 0));
+}
+
 export async function creaQuiz({ titolo, corsoId, docenteId, quesiti }) {
   // Salva un quiz in stato "bozza". L'avvio (stato -> "attivo") e il QR sono
   // una fetta successiva: qui ci si ferma alla composizione.

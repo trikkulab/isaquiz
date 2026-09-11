@@ -39,6 +39,12 @@ export default function QuesitoCard({
 }) {
   const inCorrezione = modalita === "correzione";
   const haRisposto = inCorrezione || indiceSelezionato !== null;
+  // Solo in correzione: null qui significa proprio "non ha risposto" (mai
+  // "non ancora", che è il caso di modalità "quiz"). Senza questo terzo
+  // stato l'opzione corretta, sempre evidenziata in verde, sarebbe
+  // indistinguibile da una risposta indovinata — vedi DECISIONI_DESIGN.md,
+  // "Domande non risposte (correzione e aggregazioni)".
+  const nonRisposta = inCorrezione && indiceSelezionato === null;
 
   function classeOpzione(indice) {
     if (inCorrezione) {
@@ -74,10 +80,19 @@ export default function QuesitoCard({
 
   return (
     <div className="rounded-[22px] bg-superficie px-5 py-6 shadow-morbida">
-      {inCorrezione && argomento && (
-        <span className="mb-2 inline-block rounded-full bg-sfondo px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-primario">
-          {argomento}
-        </span>
+      {inCorrezione && (argomento || nonRisposta) && (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          {argomento && (
+            <span className="inline-block rounded-full bg-sfondo px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-primario">
+              {argomento}
+            </span>
+          )}
+          {nonRisposta && (
+            <span className="inline-block rounded-full bg-sfondo px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-inchiostro/50">
+              Non risposta
+            </span>
+          )}
+        </div>
       )}
       <h2 className="mb-5 text-xl leading-snug">{quesito.testo}</h2>
 

@@ -25,6 +25,11 @@ export default function QuizRisultati({ quiz, risposte }) {
   const risposteCorrette = quiz.quesiti.filter(
     (quesito) => risposte[quesito.id] === quesito.indiceCorretto,
   ).length;
+  // Contate nel totale (denominatore) ma segnalate a parte: vedi
+  // DECISIONI_DESIGN.md, "Domande non risposte (correzione e aggregazioni)".
+  const nonRisposte = quiz.quesiti.filter(
+    (quesito) => risposte[quesito.id] == null,
+  ).length;
 
   return (
     <div className="mx-auto max-w-[560px] px-4 py-6">
@@ -38,7 +43,11 @@ export default function QuizRisultati({ quiz, risposte }) {
         <p className="mt-3 font-titoli text-3xl font-extrabold">
           {risposteCorrette} / {quiz.quesiti.length}
         </p>
-        <p className="text-[13px] opacity-85">risposte corrette</p>
+        <p className="text-[13px] opacity-85">
+          risposte corrette
+          {nonRisposte > 0 &&
+            ` · ${nonRisposte} non ${nonRisposte === 1 ? "risposta" : "risposte"}`}
+        </p>
       </header>
 
       <div className="flex flex-col gap-4">
