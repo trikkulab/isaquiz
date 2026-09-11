@@ -227,6 +227,19 @@ const quizzes = [
       stato: "chiuso",
     },
   },
+  {
+    // Secondo quiz di informatica ATTIVO: serve alle "Statistiche studente" per
+    // avere un argomento toccato da più quiz (drill-down non banale) e due
+    // materie distinte (Storia + Informatica -> FiltroMaterie visibile).
+    id: "quiz-attivo-informatica",
+    data: {
+      titolo: "Ripasso: bit e indici",
+      corsoId: "informatica-3a-2526",
+      autoreId: DOCENTE_ID,
+      quesiti: ["seed-info-1-v0", "seed-info-2-v0"],
+      stato: "attivo",
+    },
+  },
 ];
 
 // Codici di accesso (collezione codici_accesso, id = il codice). Nell'app li
@@ -235,6 +248,7 @@ const quizzes = [
 const codiciAccesso = [
   { id: "TEST01", quizId: "quiz-prova-rinascimento" },
   { id: "TEST02", quizId: "quiz-chiuso-informatica" },
+  { id: "TEST03", quizId: "quiz-attivo-informatica" },
 ];
 
 // --- quesiti di prova --------------------------------------------------------
@@ -328,20 +342,30 @@ const quesiti = [
   },
 ];
 
-// Risposte di prova a quiz-prova-rinascimento (corrette: 1, 2, 1, 1).
-// Giulia 3/4, Luca 2/4 con l'ultimo quesito senza risposta.
+// Risposte di prova. Tuple [quizId, studenteId, quesitoId, opzioneScelta].
+//  - quiz-prova-rinascimento (Storia, corrette: 1,2,1,1): Giulia 3/4, Luca 2/4
+//    (ultimo quesito senza risposta).
+//  - quiz-chiuso-informatica / quiz-attivo-informatica (Informatica, corrette
+//    1,1): danno a Giulia due materie e argomenti toccati da più quiz, così le
+//    "Statistiche studente" hanno di che mostrare (FiltroMaterie + drill-down).
 const risposteProva = [
-  ["mock-studente-1", "seed-storia-1-v0", 1],
-  ["mock-studente-1", "seed-storia-2-v0", 2],
-  ["mock-studente-1", "seed-storia-3-v0", 0],
-  ["mock-studente-1", "seed-storia-4-v0", 1],
-  ["mock-studente-2", "seed-storia-1-v0", 1],
-  ["mock-studente-2", "seed-storia-2-v0", 0],
-  ["mock-studente-2", "seed-storia-3-v0", 1],
-].map(([studenteId, quesitoId, opzioneScelta]) => ({
-  id: `quiz-prova-rinascimento_${studenteId}_${quesitoId}`,
+  ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-1-v0", 1],
+  ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-2-v0", 2],
+  ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-3-v0", 0],
+  ["quiz-prova-rinascimento", "mock-studente-1", "seed-storia-4-v0", 1],
+  ["quiz-prova-rinascimento", "mock-studente-2", "seed-storia-1-v0", 1],
+  ["quiz-prova-rinascimento", "mock-studente-2", "seed-storia-2-v0", 0],
+  ["quiz-prova-rinascimento", "mock-studente-2", "seed-storia-3-v0", 1],
+  ["quiz-chiuso-informatica", "mock-studente-1", "seed-info-1-v0", 1], // ok
+  ["quiz-chiuso-informatica", "mock-studente-1", "seed-info-2-v0", 0], // errata
+  ["quiz-attivo-informatica", "mock-studente-1", "seed-info-1-v0", 1], // ok
+  ["quiz-attivo-informatica", "mock-studente-1", "seed-info-2-v0", 1], // ok
+  ["quiz-attivo-informatica", "mock-studente-2", "seed-info-1-v0", 1], // ok
+  ["quiz-attivo-informatica", "mock-studente-2", "seed-info-2-v0", 0], // errata
+].map(([quizId, studenteId, quesitoId, opzioneScelta]) => ({
+  id: `${quizId}_${studenteId}_${quesitoId}`,
   data: {
-    quizId: "quiz-prova-rinascimento",
+    quizId,
     studenteId,
     quesitoId,
     rispostaData: { opzioneScelta },

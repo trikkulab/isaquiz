@@ -285,6 +285,20 @@ Fase 0 — setup:
       live, **nessun controllo di lunghezza**: basta non vuoto) →
       `getQuizIdDaCodice` → `navigate('/quiz/:quizId')` o "Codice non valido";
       link alle statistiche; bottone "Esci".
+- [x] `ui/src/pages/StatisticheStudente.jsx` (route `/studente/statistiche`) —
+      vista dello studente sui propri risultati **aggregati per argomento** (non
+      per quiz), con punteggio **contestuale** ("3/4 su questo argomento").
+      Filtro materia (`components/FiltroMaterie.jsx`: "Anno" = tutte, o una
+      specifica; nascosto con ≤1 materia). **Layout adattivo**: sotto ~960px
+      (`useBreakpoint`) `AccordionArgomenti` + `ModaleCorrezione` (overlay, con
+      "Apri come pagina" → `/quiz/:id/risultati`); sopra, `PannelloArgomenti`
+      master-detail con la correzione **inline**. La correzione è sempre
+      `QuizRisultati` ("contenuto puro") montato da `components/CorrezioneQuiz.jsx`
+      (fetch condiviso: `getQuizConQuesiti` + `getRisposteStudente`). Punteggio
+      via `components/PunteggioContestuale.jsx`. La pagina fa **una** lettura
+      aggregata e filtra per materia in memoria (tab e drill-down non rileggono).
+      NON è la vista docente cross-quiz (resta Fase 4/5). Vedi
+      `DECISIONI_DESIGN.md`, "Statistiche studente" e "Layout adattivo".
 - [x] `data/quizRepository.js` (`getQuiz`; `getQuizConQuesiti` — quesiti in
       ordine + materia dal corso + docente dall'autore, "niente JOIN";
       `getQuizDocente` — meta + materia, ordinati per data; `creaQuiz` →
@@ -300,7 +314,13 @@ Fase 0 — setup:
       deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
       `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
       studenteId)`; `ascoltaRisposteQuiz(quizId, onDati, onErrore)` — live
-      via `onSnapshot`, ritorna l'unsubscribe), nuovo `data/codiciAccessoRepository.js` (collezione
+      via `onSnapshot`, ritorna l'unsubscribe;
+      `getTutteLeRisposteStudente(studenteId)` — trasversale ai quiz, per le
+      statistiche; `getStatistichePerArgomento(studenteId, materia?)` — aggrega
+      per argomento del quesito, forma **annidata** (ogni argomento porta i suoi
+      quiz col punteggio contestuale), `materia` opzionale filtra;
+      `getQuizPerArgomento(studenteId, argomento)` — comodità, riusa la forma
+      annidata), nuovo `data/codiciAccessoRepository.js` (collezione
       `codici_accesso`, id = codice: `getQuizIdDaCodice`, `getCodiceQuiz`,
       `generaCodiceQuiz` idempotente, `normalizzaCodice` pura (clemenza
       Crockford + **allowlist** all'alfabeto → output sempre id-doc valido);
@@ -316,12 +336,14 @@ Fase 0 — setup:
       `impostaAttivoQuesito(id, attivo)` (in place); `idProssimaVersione`
       (pura). Tutte scrivono `fonte: "manuale"`. `archiviaQuiz` /
       `ripristinaQuiz` (`chiuso ⇄ archiviato`, reversibile; non toccano il
-      codice). Restano stub: `getStatistichePerArgomento` / `getQuizPerArgomento`
-      (Fase 4/5). Seed:
-      un quiz per stato (`quiz-prova-rinascimento` attivo con 7 risposte di 2
-      studenti + codice `TEST01`; `quiz-bozza-informatica`;
-      `quiz-chiuso-informatica` + codice `TEST02`); 7 quesiti di cui 1 inattivo
-      (`seed-info-3`), gli altri senza il campo `attivo`.
+      codice). Restano stub: `getStatistichePerArgomento` /
+      `getQuizPerArgomento`: **implementati** (vedi sopra). Seed:
+      `quiz-prova-rinascimento` (attivo, Storia, `TEST01`),
+      `quiz-bozza-informatica` (bozza), `quiz-chiuso-informatica`
+      (chiuso, `TEST02`), `quiz-attivo-informatica` (attivo, `TEST03`); 13
+      risposte di 2 studenti su 3 quiz (Giulia/`mock-studente-1` copre 2 materie
+      e argomenti toccati da più quiz, per far vedere le statistiche); 7 quesiti
+      di cui 1 inattivo (`seed-info-3`), gli altri senza il campo `attivo`.
 - [x] `functions/calcolaPunteggio.js` — Cloud Function reale (Fase 2): trigger
       `onDocumentWritten` su `risposte/{id}`, scrive `corretta` server-side
       (guardia anti-loop, ricalcolo al cambio risposta). Il calcolo client resta
