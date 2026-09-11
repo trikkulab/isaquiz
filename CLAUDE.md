@@ -468,8 +468,15 @@ Prossimo, da affrontare in sessioni separate:
 
 ## Cosa NON fare in questa fase
 
-Non anticipare Fase 3 (IA), Fase 4 (banca dati condivisa e badge/livelli): sono
-volutamente rimandate, vedi "Cosa resta fuori dal primo rilascio" nel piano di
+Non anticipare Fase 4 (banca dati condivisa e badge/livelli): resta
+volutamente rimandata, vedi "Cosa resta fuori dal primo rilascio" nel piano di
 sviluppo. Il campo `UTENTE.livello` esiste ma è solo un default (1) di display
 finché non c'è la gamification.
+
+Fase 3 (IA) NON è più da rimandare — è il prossimo passo (vedi "Stato attuale
+del progetto" sopra). Il design è già scritto in `DECISIONI_DESIGN.md`,
+"Generazione domande: interna vs esterna": generazione interna (chiamata
+reale IA) riservata all'autore per dogfooding, generazione esterna
+(prompt-template + import JSON) per tutti gli altri docenti — non
+un'integrazione IA per tutti fin da subito.
 
