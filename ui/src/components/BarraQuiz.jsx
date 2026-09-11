@@ -10,39 +10,12 @@
 // corsa" — tutti i segmenti pieni, niente contatore "Domanda X di Y" — così il
 // riepilogo sembra la naturale continuazione del quiz appena svolto.
 
-export default function BarraQuiz({ studente, quiz, corrente, totale, completato = false }) {
-  const iniziali = (studente.nickname || studente.nome || "?")
-    .slice(0, 1)
-    .toUpperCase();
+import IdentitaStudente from "./IdentitaStudente.jsx";
 
+export default function BarraQuiz({ studente, quiz, corrente, totale, completato = false }) {
   return (
     <header className="sticky top-0 z-10 rounded-b-[22px] bg-gradient-to-br from-primario to-primario-scuro px-5 pt-4 pb-3.5 text-su-primario shadow-morbida">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-su-primario/20 font-titoli text-xl font-bold"
-            aria-hidden="true"
-          >
-            {studente.avatarEmoji || iniziali}
-          </span>
-          <div className="flex flex-col leading-tight">
-            <span className="font-titoli text-[15px] font-semibold">
-              {studente.nickname || studente.nome}
-            </span>
-            <span className="text-xs opacity-80">{studente.classeId}</span>
-          </div>
-        </div>
-
-        {studente.livello != null && (
-          <span
-            className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-su-primario/[0.18] px-3 py-1.5 text-[13px] font-semibold"
-            title="Il tuo livello"
-          >
-            <span aria-hidden="true">⭐</span>
-            Lv. {studente.livello}
-          </span>
-        )}
-      </div>
+      <IdentitaStudente studente={studente} variante="scura" />
 
       <div className="mt-3 flex flex-col items-start gap-0.5">
         <span className="font-titoli text-[17px] font-bold">{quiz.titolo}</span>

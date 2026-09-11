@@ -21,6 +21,7 @@ import { getStatistichePerArgomento } from "../../../data/risposteRepository.js"
 import FiltroMaterie from "../components/FiltroMaterie.jsx";
 import AccordionArgomenti from "../components/AccordionArgomenti.jsx";
 import PannelloArgomenti from "../components/PannelloArgomenti.jsx";
+import IdentitaStudente from "../components/IdentitaStudente.jsx";
 
 export default function StatisticheStudente() {
   const studente = useUtenteCorrente();
@@ -64,6 +65,10 @@ export default function StatisticheStudente() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mb-5">
+        <IdentitaStudente studente={studente} variante="chiara" />
+      </div>
+
       <h1 className="text-xl font-semibold">Le mie statistiche</h1>
       <p className="mt-0.5 text-sm text-inchiostro/55">
         Come stai andando, argomento per argomento. Apri un argomento per vedere i

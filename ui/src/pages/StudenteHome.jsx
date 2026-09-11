@@ -13,6 +13,7 @@ import {
   getQuizIdDaCodice,
   normalizzaCodice,
 } from "../../../data/codiciAccessoRepository.js";
+import IdentitaStudente from "../components/IdentitaStudente.jsx";
 
 export default function StudenteHome() {
   const studente = useUtenteCorrente();
@@ -48,9 +49,9 @@ export default function StudenteHome() {
 
   return (
     <div className="mx-auto flex max-w-[480px] flex-col px-4 py-8">
-      <p className="mb-6 font-titoli text-lg font-bold">
-        Ciao {studente.nickname || studente.nome || "!"}
-      </p>
+      <div className="mb-6">
+        <IdentitaStudente studente={studente} variante="chiara" />
+      </div>
 
       <section className="rounded-[22px] bg-gradient-to-br from-primario to-primario-scuro p-6 text-su-primario shadow-morbida">
         <h1 className="font-titoli text-xl font-bold">Partecipa a un quiz</h1>

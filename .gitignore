@@ -27,3 +27,6 @@ serviceAccount*.json
 .DS_Store
 .vscode/
 *.log
+
+# Output del server MCP Playwright (log/snapshot di sessioni di test manuali)
+.playwright-mcp/
