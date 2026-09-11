@@ -484,6 +484,54 @@ abilitare il login".
   il modale è la via rapida, il bottone è per chi vuole condividere il link o
   vedere la correzione a schermo intero.
 
+## Andamento studente (vista docente)
+
+**Due livelli, con granularità diverse per un motivo strutturale, non
+stilistico.** L'argomento è testo libero del docente, senza tassonomia
+fissa (vedi "Combobox materia"): quanto è granulare dipende da come
+insegna, e per costruzione riceve pochi tentativi — un argomento viene
+trattato, verificato un paio di volte, poi il programma va avanti. La
+**materia** (= il corso) invece accumula un tentativo a ogni quiz del
+corso, indipendentemente dagli argomenti toccati: è l'unico livello
+abbastanza denso per un trend affidabile durante tutto l'anno.
+
+**Livello materia — trend nel tempo, motore del segnale nell'elenco
+docente.** Richiede **almeno 4 quiz** nel corso prima di esprimersi;
+sotto soglia, nessun segnale (non "dato insufficiente" mostrato attivamente
+— il default è silenzio, non un'etichetta). Tre segnali possibili:
+**calo** (trend negativo consistente), **debolezza persistente** (media
+stabilmente bassa, nessun trend chiaro), **miglioramento** (trend
+positivo consistente) — assenza di segnale per tutto il resto (andamento
+nella norma o troppo rumoroso per pronunciarsi). Soglie numeriche esatte
+(cosa conta come "consistente", dove sta il confine di "stabilmente
+bassa") sono un punto di partenza da tarare guardando dati reali, non un
+valore arbitrario da fissare qui a tavolino — chi implementa (ClaudeCode,
+che vede la distribuzione vera dei punteggi) propone i numeri, non li
+inventa in astratto.
+
+**Livello argomento — frazione grezza, niente trend.** Nel dettaglio di
+uno studente, ogni argomento mostra solo "corrette/tentate" (es. 4/6),
+colorato con la stessa scala di padronanza già decisa in "Sistema colore"
+(`livelloPadronanza`, se già implementata — vedi nota lì) — stessa
+funzione, non una seconda scala. Nessun algoritmo di trend qui: con pochi
+dati per natura, la frazione stessa comunica l'affidabilità (un 4/6 e un
+1/1 non vanno confusi, e il docente lo vede da sé senza bisogno che il
+sistema lo etichetti).
+
+**Nota GDPR.** Questa è precisamente la "costruzione di profili di
+andamento nel tempo" che l'analisi GDPR (sezione 6) segnala come fattore
+di rischio che richiede una DPIA — a differenza della vista coordinatore
+cross-materia (bloccata fino a DPIA passata), qui il docente vede dati di
+studenti già iscritti al proprio corso, quindi non è bloccata allo stesso
+modo, ma va progettata da subito compatibile con l'esito della DPIA
+(conservazione limitata, framing esplicito come strumento formativo non
+valutativo, niente esportazione libera).
+
+**Route, nomi componenti, dove vive il calcolo del trend: non specificati
+qui.** Decisioni di implementazione che richiedono di vedere il codice
+reale — le lascio a chi lo implementa, coerentemente con come già gestito
+per il colore-materia.
+
 ## Layout adattivo (non solo responsive)
 
 Sopra una soglia di larghezza (indicativa: 960px, vedi `useBreakpoint.js`), la
