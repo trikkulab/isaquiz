@@ -749,6 +749,44 @@ sistematica schermo per schermo, la gestione di `--shadow-*` e dei pochi
 ruolo. Se a quel punto il dark non si vuole più, i token semantici restano
 comunque il modo corretto di gestire i colori — non si è perso nulla.
 
+## Identità studente (avatar, nickname, livello)
+
+**Il problema (2026-09).** L'header del quiz (`BarraQuiz`) mostra avatar,
+nickname, classe e livello con un linguaggio "vivo" (gradiente, badge a
+stella) — ma quell'identità spariva del tutto appena usciti dal quiz:
+`StudenteHome` aveva solo un "Ciao {nickname}" testuale, `StatisticheStudente`
+nessun riferimento. Risultato: la parte più curata graficamente esisteva solo
+per la durata del quiz, non nell'area studente in generale — incoerente,
+perché è proprio in "Statistiche" che il livello ha senso stare (è la pagina
+che ne giustifica il valore).
+
+**Decisione: componente unico, due varianti di colore.**
+`ui/src/components/IdentitaStudente.jsx` — riga avatar+nickname+classe+
+livello, riusata da `BarraQuiz` (in testa al quiz e ai risultati) e da
+`StudenteHome`/`StatisticheStudente` (in testa alla pagina). Non un'unica
+riga "nuda": in entrambi i contesti è racchiusa in una piccola barra
+(`rounded-2xl`), cosicché avatar e livello si leggano come un solo blocco,
+non due elementi slegati (stesso principio del riquadro del quiz).
+
+**Perché due varianti e non un colore hard-coded identico.** Un fondo unico
+letterale è impossibile da soddisfare in entrambi i contesti: testo bianco
+leggibile serve un fondo scuro, testo primario un fondo chiaro. La
+convergenza cromatica è ottenuta con la **stessa tecnica**, non lo stesso
+hex — un velo semi-trasparente sopra il fondo di base:
+- `variante="scura"` (dentro l'header gradiente di `BarraQuiz`): velo bianco
+  (`bg-su-primario/[0.14]`), badge livello più opaco sopra (`bg-su-primario/30`)
+  per restare leggibile sul velo.
+- `variante="chiara"` (fondo pagina, `StudenteHome`/`StatisticheStudente`):
+  velo di primario (`bg-primario/[0.22]`), badge livello un chip bianco pieno
+  con ombra (`bg-superficie` + `shadow-sm`) per staccare dal velo sottostante.
+
+Nessun token nuovo in `@theme`: sono overlay di opacità su token già
+esistenti (`primario`, `su-primario`), coerente con "un ruolo, un token" —
+non è un colore-ruolo nuovo, è una tecnica di presentazione applicata due
+volte. Le opacità (14%/22%/30%) sono tarate a occhio per la resa attuale, non
+un valore "giusto" in astratto: da ritoccare liberamente se in pratica un
+contesto risulta troppo tenue o troppo carico rispetto all'altro.
+
 ## Internazionalizzazione
 
 **Nessuna i18n prevista, deliberatamente.** Il progetto resta interamente in

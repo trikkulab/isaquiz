@@ -261,8 +261,18 @@ Fase 0 — setup:
       volta, feedback immediato ✓/✗, nessun tasto indietro, avanzamento
       automatico configurabile (`config/impostazioniQuiz.js`) con riempimento
       progressivo e interruzione al tap (`components/BottoneAvanti.jsx`)
-- [x] `ui/src/components/BarraQuiz.jsx` — header con identità studente, quiz,
-      livello (solo display), barra di avanzamento a segmenti
+- [x] `ui/src/components/IdentitaStudente.jsx` — riga avatar+nickname+classe+
+      livello, in due varianti di colore (`variante="scura"` su fondo
+      gradiente, `"chiara"` su fondo pagina) pensate per convergere sulla
+      stessa tonalità percepita pur partendo da fondi opposti (velo chiaro
+      sopra lo scuro, velo di primario sopra il chiaro — stesso principio del
+      badge livello). Riusata da `BarraQuiz` (variante scura) e da
+      `StudenteHome`/`StatisticheStudente` (variante chiara), così l'identità
+      resta coerente in tutta l'area studente, non solo durante il quiz. Vedi
+      `DECISIONI_DESIGN.md`, "Identità studente".
+- [x] `ui/src/components/BarraQuiz.jsx` — header con identità studente
+      (`IdentitaStudente`, variante scura), quiz, barra di avanzamento a
+      segmenti
 - [x] `ui/src/components/QuesitoCard.jsx` — riusato in due modalità
       (`"quiz"` e `"correzione"`)
 - [x] `ui/src/pages/QuizRisultati.jsx` — correzione completa ("contenuto
@@ -288,12 +298,14 @@ Fase 0 — setup:
       `saveAnswer` scrive davvero su `risposte` (fire-and-forget).
       `BarraQuiz`/`QuizRisultati` mostrano `materia · docente` solo se presenti.
 - [x] `ui/src/pages/StudenteHome.jsx` (route `/studente`) — pagina post-login
-      dello studente: "Partecipa a un quiz" → campo codice (`normalizzaCodice`
+      dello studente: `IdentitaStudente` (variante chiara) in testa,
+      "Partecipa a un quiz" → campo codice (`normalizzaCodice`
       live, **nessun controllo di lunghezza**: basta non vuoto) →
       `getQuizIdDaCodice` → `navigate('/quiz/:quizId')` o "Codice non valido";
       link alle statistiche; bottone "Esci".
 - [x] `ui/src/pages/StatisticheStudente.jsx` (route `/studente/statistiche`) —
-      vista dello studente sui propri risultati **aggregati per argomento** (non
+      `IdentitaStudente` (variante chiara) in testa, poi vista dello studente
+      sui propri risultati **aggregati per argomento** (non
       per quiz), con punteggio **contestuale** ("3/4 su questo argomento").
       Filtro materia (`components/FiltroMaterie.jsx`: "Anno" = tutte, o una
       specifica; nascosto con ≤1 materia). **Layout adattivo**: sotto ~960px
