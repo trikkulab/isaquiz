@@ -58,6 +58,13 @@ uno stato: accanto c'è sempre l'etichetta. Dark theme predisposto ma non
 attivo (blocco `@media` commentato in `index.css`). Regola completa, tabella
 dei ruoli ed eccezioni ammesse in `DECISIONI_DESIGN.md`, "Sistema colore".
 
+**Colore-identità (materia) vs colore-stato (padronanza, stato quiz).**
+`coloreMateria(nome)` (bordo sinistro, 10-12 token) solo per insiemi a bassa
+cardinalità (le materie di una persona); gli argomenti restano distinti
+dalla struttura, non dal colore — per loro un colore-stato a 2-4 valori
+fissi (es. padronanza bassa/media/alta). Dettaglio in `DECISIONI_DESIGN.md`,
+"Sistema colore".
+
 - **Schermate studente (`QuizStudente`, `BarraQuiz`, `QuesitoCard`)**: qui c'è
   libertà di giudizio estetico — target sono studenti giovani, quindi
   l'interfaccia deve risultare moderna, accattivante, viva (non uno stile

@@ -528,6 +528,7 @@ uno senza l'altro. Casi già separati per questo motivo:
 | Stato quiz `attivo` | `--color-stato-attivo` / `-sfondo` | verde **proprio**, non quello di `corretto` |
 | Stato quiz `chiuso` | `--color-stato-chiuso` / `-sfondo` | ambra: chiuso ma riapribile |
 | Stato quiz `archiviato` | `--color-stato-archiviato` / `-sfondo` | grigio: terminale |
+| Padronanza argomento bassa/media/alta | `--color-padronanza-bassa` / `-media` / `-alta` | barra di progresso in "Statistiche studente"; token **distinto** da `corretto`/`errato` — la padronanza aggregata su più quesiti è un concetto diverso dall'esito di un singolo quesito, anche se le tinte si somigliano |
 
 I quattro stati del quiz hanno quattro tinte distinte apposta: nella lista
 docente si riconosce lo stato dal colore del badge. **Il colore non è mai
@@ -540,10 +541,47 @@ daltonismo).
 - `--shadow-morbida` / `--shadow-bottone` incorporano il primario come `rgba`:
   è un'ombra, non un colore di contenuto. Da rivedere col dark theme.
 
-**Colore per materia: non ancora.** Distinguere le materie a colpo d'occhio
-(liste quesiti/quiz) è rimandato a quando c'è la superficie che ne beneficia
-(pagina statistiche). Quando si farà: una funzione pura `coloreMateria(nome)`
-che mappa su un set chiuso di 6-8 token, non tinte a mano sparse nei componenti.
+**Colore per materia: deciso (2026-09).** Bordo sinistro colorato (3px) su
+card/righe che rappresentano una materia: statistiche studente
+(raggruppamento argomenti), lista quiz docente, "I miei corsi", banca
+quesiti. Riusa la **stessa** funzione pura `coloreMateria(nome)` ovunque, mai
+un mapping locale per pagina — altrimenti "Informatica" rischia un colore
+diverso in due schermate, che è peggio di non avere colore. Set chiuso di
+**10-12 token** `--color-materia-1`…`--color-materia-12` (nomi posizionali,
+non di tinta), assegnazione deterministica (hash del nome); oltre la
+capienza, le materie eccedenti condividono `--color-materia-neutro`
+(grigio) — il colore degrada, l'etichetta testuale resta sempre visibile.
+10-12 e non 6-8: un singolo studente/docente segue realisticamente 8-12
+materie nell'anno, non le poche dell'istituto nel complesso, quindi la
+palette va dimensionata su quella cardinalità. Gli hex vanno scelti da una
+palette qualitativa validata (es. Tableau10/20, ColorBrewer), variando anche
+chiarezza/saturazione oltre alla tinta pura (8 hue distinte reggono da sole;
+oltre servono coppie hue+chiarezza) — non inventati singolarmente — e
+verificati con un simulatore di daltonismo (rosso-verde in particolare)
+prima di fissarli: qui il rischio di due materie troppo simili è mitigato
+dall'etichetta testuale sempre presente, ma vale comunque la pena
+minimizzarlo a monte.
+
+**Perché il bordo materia non è un badge di stato.** Sono due assi
+indipendenti dello stesso oggetto: bordo sinistro per la materia, badge in
+alto a destra per lo stato — posizioni distinte apposta, per non competere
+per l'attenzione.
+
+**Colore-identità vs colore-stato: la regola che decide quando colorare.**
+Il colore-identità (un token fisso per ogni valore, come sopra per materia)
+regge solo per **bassa cardinalità** (indicativamente <10-12) — oltre,
+l'occhio non distingue più le tinte e il colore smette di essere un
+linguaggio. Le materie di una persona restano in quel range anche se
+l'istituto nel complesso ne ha molte di più: si applica *nel contesto di chi
+guarda*, non sul totale disponibile. Gli **argomenti** (potenzialmente
+decine per materia, centinaia lato studente aggregando tutte le materie) NON
+prendono un colore-identità proprio per lo stesso motivo — restano distinti
+dalla struttura (raggruppamento sotto la materia, accordion, gerarchia
+tipografica), non dal colore. Dove serve comunque segnalare qualcosa
+sull'argomento (la padronanza dello studente), si usa un colore-**stato**:
+un numero fisso di tinte (2-4, tipo semaforo) riusato su ogni riga
+indipendentemente da quanti argomenti esistono — esattamente come i quattro
+stati del quiz già in tabella sopra.
 
 ### Dark theme — predisposto, non attivo
 
@@ -976,6 +1014,12 @@ righe durante la migrazione. Le JOIN che in Firestore si evitano
 le danno gratis.
 
 ## Non ancora deciso
+
+- **Vivacità del guscio condiviso lato studente (`AppLayout`).** Direzione
+  concordata (2026-09): portare un accento del registro "vivace" già usato in
+  `QuizStudente`/`BarraQuiz`/`QuesitoCard` anche nella home e nelle statistiche
+  studente, senza intaccare il registro sobrio di docente/admin. Dettagli di
+  attuazione (quali elementi, quanto spingere) non ancora specificati.
 
 - Strategia branch Git (`main` / `dev` / `rel`) — da chiarire cosa rappresenta
   `rel` prima di iniziare a usarlo attivamente.
