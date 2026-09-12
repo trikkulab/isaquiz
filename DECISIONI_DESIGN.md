@@ -1243,3 +1243,19 @@ le danno gratis.
   dettaglio di cosa comporterebbe implementarla (campo chiave sul profilo,
   mai in chiaro dopo il salvataggio, validazione, gestione errori) e perché
   non si innesta comunque in modo distruttivo sul disegno attuale.
+
+- **Allegare file/documenti alla generazione IA (percorso interno).**
+  Requisito segnalato (2026-09) ma non ancora specificato: oggi
+  `functions/aiProvider.js` è pensato per ricevere solo testo
+  (argomento/appunti, stesso campo del percorso esterno). Da chiarire prima
+  di implementare: quali formati (PDF, slide, foto di pagine di libro?),
+  dove viene estratto il testo (lato client prima dell'invio, o file
+  passato direttamente a un provider multimodale), limiti di dimensione,
+  se il file va anche solo temporaneamente su uno storage (Firebase
+  Storage?) o resta in memoria per la sola durata della richiesta. Angolo
+  GDPR aggiuntivo rispetto al solo testo: un documento (foto di compiti,
+  slide con elenco studenti) ha più probabilità del testo libero di
+  contenere dati di studenti per errore — l'avviso "non caricare dati
+  studenti" (già in UI per il percorso esterno) da solo potrebbe non
+  bastare per un file; valutare se serva un controllo/anteprima prima
+  dell'invio. Vedi `docs/analisi-gdpr.md`, sez. 4 ("Contenuti IA") e 5.
