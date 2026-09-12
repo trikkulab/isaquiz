@@ -46,6 +46,18 @@ service cloud.firestore {
         && request.auth.token.email.lower().matches('^[^@]+@' + dominioIstituzionale() + '$');
     }
 
+    // Un campo scritto SOLO da console/Admin SDK: il client può scrivere il
+    // resto del documento, ma questo campo deve restare invariato rispetto a
+    // quanto già in Firestore (assente su un documento nuovo). Usato per
+    // `ruolo` e per i campi della generazione IA interna (`generazioneIA`,
+    // `richiesteIAOggi`, `richiesteIADataOggi`), scritti solo dalla Cloud
+    // Function `generaQuesiti` via Admin SDK — vedi DECISIONI_DESIGN.md,
+    // "Generazione domande: interna vs esterna".
+    function campoInvariato(nome) {
+      return request.resource.data.get(nome, null) ==
+        (resource == null ? null : resource.data.get(nome, null));
+    }
+
     // Email autorizzata come docente: lista in config/current, riletta a ogni
     // valutazione (una get() — accettabile, si tratta di scritture al login).
     function isDocenteAutorizzato() {
@@ -79,15 +91,21 @@ service cloud.firestore {
     // docente legge i nomi degli studenti nei risultati. DA RESTRINGERE.
     // Scrittura: solo il proprio documento, email = quella del token, e il
     // client NON tocca MAI `ruolo` (campo gestito solo da console/Admin SDK —
-    // designa l'admin). "Sei docente?" è calcolato al volo da `docentiAutorizzati`
-    // (vedi data/authProvider.js), non memorizzato qui.
+    // designa l'admin) né i campi della generazione IA interna
+    // (`generazioneIA`, `richiesteIAOggi`, `richiesteIADataOggi` — scritti
+    // solo dalla Cloud Function `generaQuesiti`, altrimenti un utente
+    // qualsiasi potrebbe auto-abilitarsi scrivendo `generazioneIA: true` sul
+    // proprio documento). "Sei docente?" è calcolato al volo da
+    // `docentiAutorizzati` (vedi data/authProvider.js), non memorizzato qui.
     match /utenti/{uid} {
       allow read: if isDominio();
       allow write: if isDominio()
         && request.auth.uid == uid
         && request.resource.data.email.lower() == request.auth.token.email.lower()
-        && request.resource.data.get('ruolo', null) ==
-             (resource == null ? null : resource.data.get('ruolo', null));
+        && campoInvariato('ruolo')
+        && campoInvariato('generazioneIA')
+        && campoInvariato('richiesteIAOggi')
+        && campoInvariato('richiesteIADataOggi');
     }
 
     // ── corsi / collegamenti docente ──────────────────────────────────────
