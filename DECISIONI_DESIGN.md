@@ -1036,10 +1036,31 @@ del payload (`{ "quesiti": [...] }`) prima di passare a
 esterna" nell'intestazione della banca, sostituisce temporaneamente
 banca+form manuale (Colonna B — quesiti nel quiz — resta visibile); i
 quesiti accettati entrano nel quiz in composizione come quelli creati a
-mano, `materia` presa dal corso selezionato (mai dal modello IA). Ancora da
-fare: percorso INTERNO (`functions/aiProvider.js` è ancora lo stub
-`unimplemented` di Fase 0/2; manca il flag `UTENTE.generazioneIA` e il
-contatore `richiesteIAOggi`).
+mano, `materia` presa dal corso selezionato (mai dal modello IA).
+
+**Percorso INTERNO — fatto (2026-09).** `functions/aiProvider.js`: callable
+`generaQuesiti`, provider **Google AI Studio** (Gemini, modello
+`gemini-2.5-flash` — scelto per semplicità di setup nel dogfooding, una sola
+API key come secret della function via `defineSecret`; non garantisce
+esplicitamente infrastruttura UE a differenza di Vertex AI, accettabile ora
+perché questo percorso non tratta mai dati di studenti per costruzione — da
+rivalutare (migrazione a Vertex AI, stesso contratto verso
+`RevisioneQuesiti`) se si aprisse oltre l'autore). Guardie verificate
+server-side, non solo lato client: `utenti/{uid}.generazioneIA === true`
+(flag scritto solo da console/seed, mai dall'app — vedi `docs/deploy.md`
+§B-quater) e contatore giornaliero (`utenti/{uid}.richiesteIAOggi` +
+`richiesteIADataOggi`, reset automatico al cambio data Europe/Rome, limite a
+mano nel codice). Stesso schema dell'array intermedio del percorso esterno
+(la function fa solo un controllo di forma grezzo — `{ quesiti: [...] }` non
+vuoto — la validazione fine per riga resta in `RevisioneQuesiti`, invariata).
+`data/aiRepository.js` (`generaQuesitiIA`, wrapper `httpsCallable`) +
+`ui/src/components/GeneraQuesitiIA.jsx` (stesso avviso GDPR e stessa UX di
+`ImportaQuesitiIA.jsx`, senza il passaggio copia/incolla) → confluisce nella
+stessa `RevisioneQuesiti` con `fonte="ia-interna"`. Innesto in `CreaQuiz.jsx`:
+bottone "Genera con IA" accanto a "Importa da IA esterna", visibile solo se
+`utente.generazioneIA === true`. Non implementato (deliberatamente, vedi "Non
+ancora deciso"): allegare file/documenti — il percorso interno resta a solo
+testo, identico all'esterno.
 
 ## Stati del quiz
 

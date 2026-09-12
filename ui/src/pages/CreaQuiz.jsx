@@ -12,6 +12,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
 import ImportaQuesitiIA from "../components/ImportaQuesitiIA.jsx";
+import GeneraQuesitiIA from "../components/GeneraQuesitiIA.jsx";
 import { coloreMateria } from "../utils/colori.js";
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getCorsiDocente } from "../../../data/corsiRepository.js";
@@ -114,6 +115,11 @@ export default function CreaQuiz() {
   // interna vs esterna"). I quesiti accettati in revisione finiscono
   // direttamente nel quiz in composizione, come quelli creati a mano.
   const [importIA, setImportIA] = useState(false);
+
+  // Percorso IA interna (Fase 3): stesso meccanismo di importIA, riservato
+  // all'autore (bottone visibile solo se utente.generazioneIA === true — la
+  // guardia vera è server-side in functions/aiProvider.js).
+  const [generaIA, setGeneraIA] = useState(false);
 
   useEffect(() => {
     let attivo = true;
@@ -629,6 +635,13 @@ export default function CreaQuiz() {
               onQuesitoCreato={quesitoImportato}
               onChiudi={() => setImportIA(false)}
             />
+          ) : generaIA ? (
+            <GeneraQuesitiIA
+              materia={materiaCorso}
+              autoreId={utente.id}
+              onQuesitoCreato={quesitoImportato}
+              onChiudi={() => setGeneraIA(false)}
+            />
           ) : (
           <>
           <section className="rounded-xl border border-bordo bg-superficie p-4">
@@ -641,15 +654,28 @@ export default function CreaQuiz() {
                     : bancaDisponibile.length})
                 </span>
               </h2>
-              <button
-                type="button"
-                className="text-xs font-medium text-primario disabled:opacity-40"
-                onClick={() => setImportIA(true)}
-                disabled={!corsoId}
-                title={!corsoId ? "Seleziona prima un corso" : undefined}
-              >
-                Importa da IA esterna
-              </button>
+              <div className="flex items-center gap-3">
+                {utente.generazioneIA && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primario disabled:opacity-40"
+                    onClick={() => setGeneraIA(true)}
+                    disabled={!corsoId}
+                    title={!corsoId ? "Seleziona prima un corso" : undefined}
+                  >
+                    Genera con IA
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primario disabled:opacity-40"
+                  onClick={() => setImportIA(true)}
+                  disabled={!corsoId}
+                  title={!corsoId ? "Seleziona prima un corso" : undefined}
+                >
+                  Importa da IA esterna
+                </button>
+              </div>
             </div>
 
             {/* Filtri della banca. "Per docente" arriverà con la banca condivisa

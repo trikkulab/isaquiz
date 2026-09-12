@@ -226,14 +226,18 @@ fissi (es. padronanza bassa/media/alta). Dettaglio in `DECISIONI_DESIGN.md`,
 **Fase 1 (MVP somministrazione) e Fase 2 (login vero) completate. Fase 0
 (deploy) chiusa: l'app è online** su `isaquiz.trikkulab.it` (progetto Firebase
 su account privato dell'autore), in uso per il dogfooding coi colleghi docenti.
-Prossimo: onboarding colleghi (lista `docentiAutorizzati`), poi il resto di
-Fase 3 (IA) e/o la ricreazione del progetto Firebase nell'org dell'istituto
-prima della Fase 5. **Fase 3, percorso ESTERNO — fatto**: import prompt+JSON
-+ pagina di revisione condivisa (`ImportaQuesitiIA.jsx` /
-`RevisioneQuesiti.jsx`, innestati in `CreaQuiz.jsx`) — vedi
-`DECISIONI_DESIGN.md`, "Generazione domande: interna vs esterna". Percorso
-INTERNO ancora da fare (`functions/aiProvider.js` resta lo stub
-`unimplemented`).
+Prossimo: onboarding colleghi (lista `docentiAutorizzati`), poi la
+ricreazione del progetto Firebase nell'org dell'istituto prima della Fase 5.
+**Fase 3 (IA) — fatta, entrambi i percorsi.** Esterno: import prompt+JSON +
+pagina di revisione condivisa (`ImportaQuesitiIA.jsx` / `RevisioneQuesiti.jsx`,
+innestati in `CreaQuiz.jsx`). Interno: `functions/aiProvider.js` (callable
+`generaQuesiti`, provider Google AI Studio/Gemini, guardie server-side su
+`utenti/{uid}.generazioneIA` + contatore giornaliero) + `data/aiRepository.js`
++ `GeneraQuesitiIA.jsx`, stesso punto di unione (`RevisioneQuesiti`,
+`fonte="ia-interna"`) — riservato all'autore, non aperto ai docenti pilota.
+Vedi `DECISIONI_DESIGN.md`, "Generazione domande: interna vs esterna", e
+`docs/deploy.md` §B-quater per l'abilitazione in prod. Non implementato
+(deliberatamente rimandato): allegare file/documenti alla generazione IA.
 
 Fase 0 — setup:
 

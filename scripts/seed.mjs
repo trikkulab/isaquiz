@@ -124,6 +124,10 @@ const configIstituto = {
 // Nota: `utenti.ruolo` NON è più scritto dal provisioning (vedi
 // data/authProvider.js) — è un campo solo-DB che designa l'admin. Il docente lo
 // è perché la sua email è in `docentiAutorizzati`, non per un campo qui.
+// generazioneIA: true solo per comodità di sviluppo locale (percorso interno
+// Fase 3, riservato all'autore per dogfooding — vedi DECISIONI_DESIGN.md,
+// "Generazione domande: interna vs esterna"). In prod va impostato a mano
+// sull'utente reale dell'autore (console/Admin SDK), non tramite il seed.
 const utente = {
   ref: db.doc(`utenti/${DOCENTE_ID}`),
   data: {
@@ -131,6 +135,7 @@ const utente = {
     nome: "Mario",
     cognome: "Rossi",
     classeId: "3A",
+    generazioneIA: true,
   },
 };
 

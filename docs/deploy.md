@@ -271,6 +271,53 @@ Per togliere l'admin: reimpostare `ruolo` a `docente`/`studente` da console.
 > nell'Emulator UI mentre si è loggati non aggiorna la UI finché non si ricarica
 > (`onAuthStateChanged` rifà `provisionUtente` solo al reload / logout-login).
 
+### B-quater. Abilitare la generazione IA interna (percorso autore)
+
+Percorso IA interno (Fase 3, vedi `DECISIONI_DESIGN.md`, "Generazione domande:
+interna vs esterna"): riservato all'autore per dogfooding, mai aperto a tutti i
+docenti (una sola chiave API condivisa esaurirebbe il free tier). Due passi,
+entrambi da console/CLI — **niente qui è impostabile dall'app**:
+
+1. **Chiave API del provider** (Google AI Studio, [aistudio.google.com/apikey](https://aistudio.google.com/apikey))
+   come secret della function:
+   ```sh
+   npx firebase functions:secrets:set GEMINI_API_KEY
+   # incolla la key al prompt — non finisce in nessun file del repo
+   npm run deploy:functions
+   ```
+   In locale (emulatore): stesso valore in `functions/.secret.local`
+   (`GEMINI_API_KEY=...`, file ignorato da git — pattern `*.local`).
+2. **Flag sull'utente autore**: Console Firestore → `utenti/{uid}` (l'uid
+   dell'autore, non un docente demo) → campo `generazioneIA` = `true`. Verificato
+   dalla Cloud Function ad ogni chiamata, non solo alla creazione dell'utente.
+   Il contatore giornaliero (`richiesteIAOggi` + `richiesteIADataOggi`, limite
+   a mano in `functions/aiProvider.js`) lo scrive solo la function stessa —
+   nessun intervento manuale necessario, si azzera da sé al cambio giorno.
+
+In emulatore, `npm run seed` imposta già `generazioneIA: true` sul docente demo
+— comodo per lo sviluppo, ma quel valore non tocca mai prod (il seed su prod
+scrive solo se non si usa `SEED_SOLO_CONFIG=true`, e comunque non è l'utente
+reale dell'autore).
+
+> **Insidie note (verificate 2026-09, possono cambiare)**:
+> - **`.secret.local` va letto solo all'avvio**: modificarlo mentre
+>   l'emulatore functions è già in esecuzione non ha effetto — va fermato e
+>   riavviato. Il codice sorgente delle function invece si ricarica da solo.
+> - **Nome del modello**: verificare che il modello scelto in
+>   `functions/aiProvider.js` (costante `MODELLO`) sia ancora disponibile —
+>   Google ne ritira/rinomina periodicamente (es. `gemini-2.5-flash` non più
+>   utilizzabile da chiavi nuove a settembre 2026, sostituito da
+>   `gemini-3.6-flash`). L'errore del provider indica sempre il nome
+>   sostitutivo consigliato.
+> - **Progetto AI Studio in stato "Prepay required"**: non tutti i progetti
+>   nuovi restano nel free tier puro — alcuni (dipende da come sono stati
+>   creati) richiedono un saldo prepagato per qualunque chiamata, anche sui
+>   modelli Flash. Su [ai.studio/projects](https://ai.studio/projects) si vede
+>   lo stato di ogni progetto: se quello con cui hai generato la key mostra
+>   "Prepay required", prova a generarne una nuova sotto **"Default Gemini
+>   Project"** (o un altro progetto ancora in "Free tier" senza quel badge)
+>   invece di attivare la fatturazione.
+
 ### C. Costante del dominio in `firestore.rules`
 
 `dominioIstituzionale()` nel file rules → dominio reale (deve combaciare con
@@ -291,10 +338,11 @@ npm run deploy:functions
 ```
 
 Le tre function: `calcolaPunteggio` (trigger `onDocumentWritten`),
-`generaCodiceAccesso` e `generaQuesiti` (callable — `generaQuesiti` è uno stub
-Fase 3), regione `europe-west8`. `functions/` gira su **Node 22**
-(firebase-functions 6, firebase-admin 13). Il primo deploy functions può chiedere
-di abilitare alcune API Google Cloud e il piano **Blaze** (free tier ampio).
+`generaCodiceAccesso` e `generaQuesiti` (callable — percorso IA interno, Fase
+3, vedi §B-quater per l'abilitazione), regione `europe-west8`. `functions/`
+gira su **Node 22** (firebase-functions 6, firebase-admin 13). Il primo deploy
+functions può chiedere di abilitare alcune API Google Cloud e il piano
+**Blaze** (free tier ampio).
 
 > **`firestore.rules` è la fonte di verità**: ogni volta che cambia (es. i commit
 > su corsi/`docenti_corso` e sul write di `utenti` di set-2026) va rieseguito
