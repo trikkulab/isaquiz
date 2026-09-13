@@ -1,7 +1,10 @@
 // Lato docente — i propri corsi e la creazione di uno nuovo (route
 // /docente/corsi). Creazione "self-service": il docente crea il corso e si
 // auto-assegna come titolare (vedi DECISIONI_DESIGN.md, "Onboarding docente e
-// creazione corsi"). Modifica/disattivazione non previste qui in questa fase.
+// creazione corsi"). Un corso disattivato dall'admin resta visibile qui
+// (dietro "Mostra disattivati", stesso pattern di "Mostra inattivi"/"Mostra
+// archiviati" altrove) ma in sola lettura: la disattivazione/riattivazione
+// resta un'azione solo admin (AdminCorsi.jsx).
 //
 // Stile "docente": sobrio e funzionale. Niente accesso diretto a Firestore:
 // tutto dai repository in /data.
@@ -33,6 +36,7 @@ export default function GestioneCorsi() {
   const [classi, setClassi] = useState([]);
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState(null);
+  const [mostraDisattivati, setMostraDisattivati] = useState(false);
 
   const [materia, setMateria] = useState("");
   const [classe, setClasse] = useState("");
@@ -41,7 +45,7 @@ export default function GestioneCorsi() {
   async function ricarica() {
     try {
       const [miei, materieEs, classiEs] = await Promise.all([
-        getCorsiDocente(utente.id),
+        getCorsiDocente(utente.id, { includiDisattivati: true }),
         getMaterieEsistenti(),
         getClassiEsistenti(),
       ]);
@@ -83,12 +87,14 @@ export default function GestioneCorsi() {
 
   const corsiOrdinati = useMemo(
     () =>
-      [...corsi].sort(
-        (a, b) =>
-          (a.materia || "").localeCompare(b.materia || "", "it") ||
-          (a.classeId || "").localeCompare(b.classeId || "", "it"),
-      ),
-    [corsi],
+      corsi
+        .filter((c) => mostraDisattivati || c.attivo !== false)
+        .sort(
+          (a, b) =>
+            (a.materia || "").localeCompare(b.materia || "", "it") ||
+            (a.classeId || "").localeCompare(b.classeId || "", "it"),
+        ),
+    [corsi, mostraDisattivati],
   );
 
   return (
@@ -144,6 +150,17 @@ export default function GestioneCorsi() {
         </p>
       </section>
 
+      {corsi.some((c) => c.attivo === false) && (
+        <label className="mb-3 flex items-center gap-2 text-sm text-inchiostro/70">
+          <input
+            type="checkbox"
+            checked={mostraDisattivati}
+            onChange={(e) => setMostraDisattivati(e.target.checked)}
+          />
+          Mostra disattivati
+        </label>
+      )}
+
       {caricamento ? (
         <p className="text-sm text-inchiostro/60">Caricamento…</p>
       ) : corsiOrdinati.length === 0 ? (
@@ -152,45 +169,51 @@ export default function GestioneCorsi() {
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {corsiOrdinati.map((c) => (
-            <li
-              key={c.id}
-              className={`flex items-start justify-between gap-3 rounded-xl border-y border-r border-l-[3px] border-y-bordo border-r-bordo bg-superficie p-4 ${coloreMateria(
-                c.materia
-              )}`}
-            >
-              <div className="min-w-0">
-                <p className="font-medium">
-                  {c.materia} — {c.classeId}
-                </p>
-                <p className="mt-0.5 text-xs text-inchiostro/55">
-                  {[
-                    c.annoScolastico,
-                    c.ruolo,
-                    c.codiceAccesso && `codice ${c.codiceAccesso}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <button
-                  type="button"
-                  className="text-xs font-medium text-primario"
-                  onClick={() => navigate("/docente/crea-quiz")}
-                >
-                  Crea un quiz →
-                </button>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-primario"
-                  onClick={() => navigate(`/docente/corsi/${c.id}/andamento`)}
-                >
-                  Andamento →
-                </button>
-              </div>
-            </li>
-          ))}
+          {corsiOrdinati.map((c) => {
+            const disattivato = c.attivo === false;
+            return (
+              <li
+                key={c.id}
+                className={`flex items-start justify-between gap-3 rounded-xl border-y border-r border-l-[3px] border-y-bordo border-r-bordo bg-superficie p-4 ${coloreMateria(
+                  c.materia
+                )} ${disattivato ? "opacity-50" : ""}`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {c.materia} — {c.classeId}
+                  </p>
+                  <p className="mt-0.5 text-xs text-inchiostro/55">
+                    {[
+                      c.annoScolastico,
+                      c.ruolo,
+                      c.codiceAccesso && `codice ${c.codiceAccesso}`,
+                      disattivato && "disattivato dall'admin",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  {!disattivato && (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-primario"
+                      onClick={() => navigate("/docente/crea-quiz")}
+                    >
+                      Crea un quiz →
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primario"
+                    onClick={() => navigate(`/docente/corsi/${c.id}/andamento`)}
+                  >
+                    Andamento →
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

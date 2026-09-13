@@ -49,9 +49,9 @@ export default function PannelloArgomenti({ argomenti, studenteId }) {
                   <span className="block truncate text-sm font-semibold">
                     {arg.argomento}
                   </span>
-                  {arg.materia && (
+                  {(arg.materia || arg.docente) && (
                     <span className="block truncate text-xs text-inchiostro/45">
-                      {arg.materia}
+                      {[arg.materia, arg.docente].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </span>
@@ -78,6 +78,7 @@ export default function PannelloArgomenti({ argomenti, studenteId }) {
               <p className="mt-0.5 text-xs text-inchiostro/55">
                 {[
                   argomento.materia,
+                  argomento.docente,
                   `${argomento.corrette} / ${argomento.totali} corrette in totale`,
                 ]
                   .filter(Boolean)

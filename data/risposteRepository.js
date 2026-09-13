@@ -25,6 +25,7 @@ import {
 
 import { getQuesito } from "./quesitiRepository.js";
 import { getQuiz, getQuizCorso } from "./quizRepository.js";
+import { getCorso } from "./corsiRepository.js";
 import { getUtente, nomeVisibile } from "./utentiRepository.js";
 
 const risposteCol = collection(db, "risposte");
@@ -118,7 +119,7 @@ async function risposteArricchite(studenteId) {
           quizId,
           quesitoId,
           argomento: q.argomento ?? "Senza argomento",
-          materia: q.materia ?? null,
+          corsoId: quiz.corsoId ?? null,
           esatta: r ? r.rispostaData?.opzioneScelta === q.indiceCorretto : false,
           titoloQuiz: quiz.titolo ?? "Quiz",
           dataQuiz: quiz.avviato ?? quiz.creato ?? null,
@@ -128,23 +129,77 @@ async function risposteArricchite(studenteId) {
   });
 }
 
-// Aggrega le risposte dello studente per ARGOMENTO del quesito (non per quiz —
-// vedi DECISIONI_DESIGN.md, "Statistiche studente"). Un quiz "misto" contribuisce
-// a più argomenti: è corretto, non un errore di conteggio. Ogni gruppo porta con
-// sé il dettaglio dei quiz che vi hanno contribuito (drill-down senza altre
-// letture), col punteggio CONTESTUALE ("3/4 su questo argomento"), mai il totale
-// del quiz. `materia` (opzionale) filtra al termine; null/undefined = tutte.
-// Ritorna: [{ chiave, argomento, materia, corrette, totali,
+// Materia/classe del corso + nome del docente TITOLARE, per etichettare le
+// statistiche studente per CORSO (non più per la `materia` testuale del
+// quesito — vedi DECISIONI_DESIGN.md, "Statistiche studente": due corsi di
+// due docenti diversi con la stessa materia non devono più mischiarsi, così
+// lo studente sa sempre a quale corso/docente fare riferimento). `in`
+// Firestore: max 30 valori — sufficiente a scala pilota, uno studente non
+// tocca decine di corsi diversi in un anno.
+async function corsiInfo(corsoIds) {
+  if (corsoIds.length === 0) return new Map();
+
+  const [corsi, legamiSnap] = await Promise.all([
+    Promise.all(corsoIds.map((id) => getCorso(id))),
+    getDocs(query(collection(db, "docenti_corso"), where("corsoId", "in", corsoIds.slice(0, 30)))),
+  ]);
+  const corsoPerId = new Map(corsoIds.map((id, i) => [id, corsi[i]]));
+
+  const titolareDi = new Map(); // corsoId -> docenteId
+  for (const d of legamiSnap.docs) {
+    const { corsoId, docenteId, ruolo } = d.data();
+    if (ruolo === "titolare") titolareDi.set(corsoId, docenteId);
+  }
+  const idsDocenti = [...new Set(titolareDi.values())];
+  const utenti = await Promise.all(idsDocenti.map((id) => getUtente(id)));
+  const nomePerDocente = new Map(idsDocenti.map((id, i) => [id, nomeVisibile(utenti[i])]));
+
+  const info = new Map();
+  for (const corsoId of corsoIds) {
+    const corso = corsoPerId.get(corsoId);
+    const docenteId = titolareDi.get(corsoId);
+    info.set(corsoId, {
+      materia: corso?.materia ?? null,
+      docente: docenteId ? nomePerDocente.get(docenteId) : null,
+    });
+  }
+  return info;
+}
+
+// Aggrega le risposte dello studente per CORSO + ARGOMENTO del quesito (non
+// per quiz, non più per la sola etichetta materia — vedi DECISIONI_DESIGN.md,
+// "Statistiche studente"). Raggruppare per `corsoId` invece che per la
+// stringa `materia` fa sì che due corsi si "mischino" nelle statistiche solo
+// se sono davvero lo stesso corso (es. titolare + assistente, stesso
+// corsoId) — mai per coincidenza di etichetta tra corsi/docenti diversi. Un
+// quiz "misto" contribuisce a più argomenti: è corretto, non un errore di
+// conteggio. Ogni gruppo porta con sé il dettaglio dei quiz che vi hanno
+// contribuito (drill-down senza altre letture), col punteggio CONTESTUALE
+// ("3/4 su questo argomento"), mai il totale del quiz. `corsoId` (opzionale)
+// filtra al termine; null/undefined = tutti.
+// Ritorna: [{ chiave, argomento, corsoId, materia, docente, corrette, totali,
 //             quiz: [{ quizId, titolo, data, corrette, totali }] }]
-export async function getStatistichePerArgomento(studenteId, materia = null) {
+export async function getStatistichePerArgomento(studenteId, corsoId = null) {
   const righe = await risposteArricchite(studenteId);
 
-  const gruppi = new Map(); // chiave "materia::argomento" -> gruppo
+  const info = await corsiInfo([...new Set(righe.map((r) => r.corsoId).filter(Boolean))]);
+
+  const gruppi = new Map(); // chiave "corsoId::argomento" -> gruppo
   for (const r of righe) {
-    const chiave = `${r.materia ?? ""}::${r.argomento}`;
+    const chiave = `${r.corsoId ?? ""}::${r.argomento}`;
     let g = gruppi.get(chiave);
     if (!g) {
-      g = { chiave, argomento: r.argomento, materia: r.materia, corrette: 0, totali: 0, _quiz: new Map() };
+      const inf = info.get(r.corsoId) ?? {};
+      g = {
+        chiave,
+        argomento: r.argomento,
+        corsoId: r.corsoId,
+        materia: inf.materia ?? null,
+        docente: inf.docente ?? null,
+        corrette: 0,
+        totali: 0,
+        _quiz: new Map(),
+      };
       gruppi.set(chiave, g);
     }
     g.totali += 1;
@@ -164,17 +219,20 @@ export async function getStatistichePerArgomento(studenteId, materia = null) {
   let out = [...gruppi.values()].map((g) => ({
     chiave: g.chiave,
     argomento: g.argomento,
+    corsoId: g.corsoId,
     materia: g.materia,
+    docente: g.docente,
     corrette: g.corrette,
     totali: g.totali,
     quiz: [...g._quiz.values()].sort(perDataDesc),
   }));
 
-  if (materia != null) out = out.filter((g) => g.materia === materia);
+  if (corsoId != null) out = out.filter((g) => g.corsoId === corsoId);
 
   return out.sort(
     (a, b) =>
       (a.materia ?? "").localeCompare(b.materia ?? "", "it") ||
+      (a.docente ?? "").localeCompare(b.docente ?? "", "it") ||
       a.argomento.localeCompare(b.argomento, "it"),
   );
 }

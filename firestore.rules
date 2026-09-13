@@ -19,6 +19,9 @@ rules_version = '2';
 // corso esistente creato dallo stesso docente (i due write sono un batch
 // atomico lato client, ma le rules li valutano separatamente).
 //
+// Disattivazione corso (2026-09): `corsi.update` consentito SOLO ad admin e
+// SOLO sul campo `attivo` — prima scrittura admin-gated del ruleset (isAdmin()).
+//
 // Ruoli/aree: il client non scrive MAI `utenti/{uid}.ruolo` — è un campo
 // gestito solo da console (designa l'admin). L'appartenenza all'area Docente si
 // deriva a runtime da `config/current.docentiAutorizzati`. Vedi
@@ -71,6 +74,13 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/quiz/$(quizId)).data.autoreId == request.auth.uid;
     }
 
+    // ruolo == 'admin' è scritto solo da console/Admin SDK (vedi campoInvariato
+    // sopra) — leggerlo qui per gate una scrittura è quindi affidabile.
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/utenti/$(request.auth.uid)).data.get('ruolo', null) == 'admin';
+    }
+
     // ── config ────────────────────────────────────────────────────────────
     // config/istituto: dominio + nome istituto, leggibili SENZA login (servono
     // alla pagina di accesso: hint `hd`, messaggio d'errore, footer).
@@ -113,8 +123,11 @@ service cloud.firestore {
     // autorizzato crea il proprio corso e si auto-assegna come titolare
     // (data/corsiRepository.js creaCorso: writeBatch corso + docenti_corso).
     // Forma verificata; annoScolastico deve essere quello corrente in CONFIG.
-    // Modifica/disattivazione del corso restano all'admin (update/delete
-    // vietati). Vedi DECISIONI_DESIGN.md, "Onboarding docente e creazione corsi".
+    // Modifica NON prevista (niente rename dalla UI in questa fase).
+    // Disattivazione/riattivazione: SOLO admin, SOLO il campo `attivo` — mai
+    // una cancellazione (coerente con QUESITO.attivo: un corso disattivato
+    // sparisce dai picker ma resta risolvibile per i quiz già creati). Vedi
+    // DECISIONI_DESIGN.md, "Onboarding docente e creazione corsi".
     match /corsi/{id} {
       allow read: if isDominio();
       allow create: if isDocenteAutorizzato()
@@ -126,7 +139,9 @@ service cloud.firestore {
         && request.resource.data.classeId.size() > 0
         && request.resource.data.annoScolastico ==
              get(/databases/$(database)/documents/config/current).data.annoScolasticoCorrente;
-      allow update, delete: if false;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attivo']);
+      allow delete: if false;
     }
     match /docenti_corso/{id} {
       allow read: if isDominio();

@@ -15,6 +15,7 @@ import {
   query,
   where,
   serverTimestamp,
+  updateDoc,
   writeBatch,
 } from "firebase/firestore";
 
@@ -43,7 +44,13 @@ export async function getCorso(corsoId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-export async function getCorsiDocente(docenteId) {
+// `includiDisattivati`: di default nasconde i corsi disattivati (stesso
+// filtro `attivo !== false` di getBancaDocente per i quesiti — un documento
+// senza il campo, dati pre-esistenti, è attivo). Usato così com'è dal
+// selettore corso in CreaQuiz.jsx (mai vedere un doppione disattivato tra le
+// opzioni per un nuovo quiz); GestioneCorsi.jsx passa true per mostrarli con
+// un'etichetta, in sola lettura (disattivazione resta solo admin).
+export async function getCorsiDocente(docenteId, { includiDisattivati = false } = {}) {
   // "Niente JOIN": prima le righe di collegamento, poi i corsi, assemblati qui.
   const legami = await getDocs(
     query(collection(db, "docenti_corso"), where("docenteId", "==", docenteId)),
@@ -58,7 +65,8 @@ export async function getCorsiDocente(docenteId) {
     }),
   );
 
-  return corsi.filter(Boolean);
+  const esistenti = corsi.filter(Boolean);
+  return includiDisattivati ? esistenti : esistenti.filter((c) => c.attivo !== false);
 }
 
 // Materie già in uso in TUTTI i corsi dell'istituto (non solo i propri): sono i
@@ -129,8 +137,9 @@ export async function getTuttiICorsi() {
 // autorizzato crea il proprio corso e si auto-assegna come titolare. Corso +
 // riga DOCENTE_CORSO in un unico writeBatch atomico — niente corso orfano se la
 // seconda scrittura fallisse. `annoScolastico` è preso da CONFIG (non passato
-// dal client), coerente con "nessuna migrazione tra anni". Modifica e
-// disattivazione del corso restano all'admin (rules: update/delete vietati).
+// dal client), coerente con "nessuna migrazione tra anni". Modifica non
+// prevista; disattivazione/riattivazione resta all'admin (vedi
+// impostaAttivoCorso sotto — rules: update ammesso solo su `attivo`).
 // Vedi DECISIONI_DESIGN.md, "Onboarding docente e creazione corsi".
 export async function creaCorso({ materia, classeId, docenteId }) {
   const nome = String(materia ?? "").trim();
@@ -158,4 +167,16 @@ export async function creaCorso({ materia, classeId, docenteId }) {
   await batch.commit();
 
   return corsoRef.id;
+}
+
+// Disattiva/riattiva un corso — SOLO admin (rules: update ammesso solo su
+// questo campo). Metadato scritto in place, mai una cancellazione: un corso
+// disattivato sparisce dai selettori per nuovi quiz (getCorsiDocente) ma
+// resta risolvibile per id — i quiz già creati non ne risentono (getCorso
+// non filtra mai per `attivo`, letto per id ovunque). Tipicamente usato per
+// chiudere un corso doppione (due docenti, o lo stesso, creano la stessa
+// combinazione materia+classe+anno per errore — vedi DECISIONI_DESIGN.md,
+// "Onboarding docente e creazione corsi").
+export async function impostaAttivoCorso(corsoId, attivo) {
+  await updateDoc(doc(db, "corsi", corsoId), { attivo: Boolean(attivo) });
 }

@@ -1,37 +1,48 @@
-// Tab di filtro per la pagina statistiche: "Anno" (aggregato su tutte le
-// materie) oppure una materia specifica. Il colore non porta informazione qui —
-// è solo evidenza dello stato attivo (vedi DECISIONI_DESIGN.md, "Sistema colore").
+// Tab di filtro per la pagina statistiche: "Anno" (aggregato su tutti i corsi)
+// oppure un CORSO specifico (vedi DECISIONI_DESIGN.md, "Statistiche
+// studente"). Una tab per corso, non per materia: due corsi diversi con la
+// stessa materia restano due tab distinte, altrimenti lo studente non
+// saprebbe a quale dei due (quindi quale docente) si riferisce. La materia
+// resta l'etichetta principale (protagonista); il docente è un sotto-testo
+// più piccolo e discreto sotto, solo per disambiguare — non è mai l'unico
+// elemento della tab. Il colore non porta informazione qui — è solo
+// evidenza dello stato attivo (vedi DECISIONI_DESIGN.md, "Sistema colore").
 //
-// Con una sola materia le tab non aggiungono nulla ("Anno" e la materia danno
-// la stessa lista): il componente non rende niente, come le tab di area in
+// Con un solo corso le tab non aggiungono nulla ("Anno" e il corso danno la
+// stessa lista): il componente non rende niente, come le tab di area in
 // AppLayout quando l'utente ha una sola area.
 
-export default function FiltroMaterie({ materie, selezione, onSelezione }) {
-  if (!materie || materie.length <= 1) return null;
+export default function FiltroMaterie({ corsi, selezione, onSelezione }) {
+  if (!corsi || corsi.length <= 1) return null;
 
-  const tab = (valore, etichetta) => {
+  const tab = (valore, materia, docente, chiave) => {
     const attiva = selezione === valore;
     return (
       <button
-        key={etichetta}
+        key={chiave}
         type="button"
         onClick={() => onSelezione(valore)}
         aria-pressed={attiva}
-        className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+        className={`flex flex-col items-start gap-0 rounded-lg px-3 py-1.5 text-left transition-colors ${
           attiva
             ? "bg-primario/10 text-primario"
             : "text-inchiostro/55 hover:text-inchiostro"
         }`}
       >
-        {etichetta}
+        <span className="text-sm font-semibold">{materia}</span>
+        {docente && (
+          <span className={`text-[11px] ${attiva ? "text-primario/70" : "text-inchiostro/40"}`}>
+            {docente}
+          </span>
+        )}
       </button>
     );
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1" aria-label="Filtra per materia">
-      {tab(null, "Anno")}
-      {materie.map((m) => tab(m, m))}
+    <div className="flex flex-wrap items-start gap-1" aria-label="Filtra per corso">
+      {tab(null, "Anno", null, "anno")}
+      {corsi.map((c) => tab(c.corsoId, c.materia, c.docente, c.corsoId))}
     </div>
   );
 }

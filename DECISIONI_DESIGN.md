@@ -264,10 +264,26 @@ approvazione altrove.
   migrazione tra anni"). `codiceAccesso` del corso generato alla creazione
   (Crockford, non un id documento: unicità non critica) — serve all'iscrizione
   degli studenti al corso, non ancora implementata.
-- **Solo creazione, in questa iterazione.** Modifica e disattivazione del corso
-  restano all'admin (rules: `update, delete: if false` su `corsi` e
-  `docenti_corso`) — coerente con "Amministratore: cruscotto minimale". Se
-  servirà, si aggiungeranno lì.
+- **Solo creazione dal docente.** Modifica (rename) non prevista. Disattivazione
+  self-service esclusa apposta: coerente con "Amministratore: cruscotto
+  minimale", e risolve anche il caso dei corsi doppioni (due docenti, o lo
+  stesso, creano per errore la stessa combinazione materia+classe+anno — non
+  essendoci un controllo di unicità lato client/rules). **Disattivazione —
+  fatta (2026-09), solo admin**: `corsi.update` in `firestore.rules` ammesso
+  SOLO ad `isAdmin()` e SOLO sul campo `attivo` (mai una cancellazione — un
+  corso disattivato resta risolvibile per id, i quiz già creati non ne
+  risentono: `getCorso`/`getQuizConQuesiti`/`getAndamentoCorso` non filtrano
+  mai per `attivo`, letto sempre per id). `data/corsiRepository.js`
+  `impostaAttivoCorso(id, attivo)`; `getCorsiDocente` nasconde di default i
+  disattivati (`attivo !== false`, stesso pattern di `getBancaDocente` per i
+  quesiti) — così un doppione disattivato sparisce dal selettore corso in
+  `CreaQuiz.jsx` per nuovi quiz, ma resta visibile (sola lettura, dietro
+  "Mostra disattivati") al docente in `GestioneCorsi.jsx`. Azione
+  disattiva/riattiva in `AdminCorsi.jsx` (route `/admin/corsi`), non
+  reversibile solo nel senso che va rifatta a mano — mai una scrittura
+  distruttiva. `docenti_corso` resta `update, delete: if false` (nessuna
+  modifica lì): se servirà modificare titolarità/assistenza, si aggiunge
+  quando serve davvero.
 - **Rules**: `create` su `corsi` consentito a `isDocenteAutorizzato()` con forma
   verificata (`hasOnly` dei 5 campi, `materia`/`classeId` stringhe non vuote,
   `annoScolastico` == quello corrente in `CONFIG`); `create` su `docenti_corso`
@@ -539,6 +555,40 @@ comunque raro.
   sincronizzazione automatica con l'URL (troppo complesso per il beneficio):
   il modale è la via rapida, il bottone è per chi vuole condividere il link o
   vedere la correzione a schermo intero.
+- **Aggregazione per `corsoId`, non per la stringa `materia` (2026-09).**
+  `getStatistichePerArgomento` (`risposteRepository.js`) raggruppa per
+  `corsoId::argomento` — non più per `materia::argomento` come alle origini.
+  Motivo: la `materia` letta dal singolo `QUESITO` è testo libero, senza
+  riferimento al corso; due corsi diversi (quindi potenzialmente due docenti
+  diversi, es. un doppione — vedi "Onboarding docente e creazione corsi")
+  con la stessa etichetta materia finivano mischiati nelle statistiche dello
+  studente, mentre la vista docente (`getAndamentoCorso`) è sempre stata
+  scopata per singolo corso. Raggruppare per `corsoId` fa sì che due corsi si
+  "mischino" agli occhi dello studente **solo** se sono davvero lo stesso
+  corso (es. titolare + assistente, due righe `DOCENTE_CORSO` sullo stesso
+  `corsoId`) — nessuna logica speciale ulteriore, è una conseguenza
+  automatica del raggruppare per id invece che per etichetta testuale. Ogni
+  gruppo porta ora anche `docente` (il titolare, risolto in batch — funzione
+  `corsiInfo`, stesso pattern "niente JOIN" di `quizRepository.getQuizDocente`)
+  oltre a `materia` (ora derivata dal corso, non più dal quesito): lo
+  studente sa sempre a quale corso/docente fare riferimento per un dato
+  punteggio. **Anche il filtro in UI (`FiltroMaterie.jsx`) è per corso, non
+  per materia**: una tab per `corsoId` (non deduplicata per etichetta), con
+  la materia come testo principale e il docente come sotto-testo piccolo e
+  discreto (mai l'unico elemento della tab — la materia resta protagonista).
+  Due corsi con la stessa materia restano quindi due tab distinte, non una
+  sola con righe miste sotto — coerente col motivo per cui si è cambiata
+  l'aggregazione: lo studente deve poter scegliere direttamente "quale dei
+  due" prima ancora di guardare gli argomenti. Verificato con uno scenario
+  di prova (due corsi "Storia" di due docenti diversi, stesso studente):
+  compaiono come tab separate ("Storia · docente A", "Storia · docente B").
+  **Deliberatamente non mostrato allo studente**: lo stato `attivo` del
+  corso — un corso disattivato (doppione chiuso dall'admin) resta comunque
+  in questa lista con i suoi punteggi storici intatti, ma senza alcuna
+  etichetta "disattivato": è un dettaglio di pulizia amministrativa, non un
+  segnale sul rendimento dello studente, e rischierebbe solo di
+  allarmarlo senza motivo. Chi ha bisogno di quell'informazione (docente,
+  admin) la vede già in `GestioneCorsi.jsx`/`AdminCorsi.jsx`.
 
 ## Andamento studente (vista docente)
 
@@ -1280,3 +1330,23 @@ le danno gratis.
   studenti" (già in UI per il percorso esterno) da solo potrebbe non
   bastare per un file; valutare se serva un controllo/anteprima prima
   dell'invio. Vedi `docs/analisi-gdpr.md`, sez. 4 ("Contenuti IA") e 5.
+
+- **Iscrizione degli studenti al corso (`ISCRIZIONE_CORSO`) — non
+  implementata.** Segnalato (2026-09): oggi esiste solo nello schema/ERD
+  (`docs/isaquiz_ERD.md`) e come campo decorativo (`CORSO.codiceAccesso`,
+  generato da `creaCorso` ma non consumato da nessuna schermata studente —
+  vedi commento in `data/corsiRepository.js`). In pratica lo studente si
+  "iscrive" solo implicitamente rispondendo a un quiz di quel corso (via il
+  codice del singolo quiz, `codici_accesso`), non c'è un elenco iscritti
+  esplicito né una schermata "i miei corsi" lato studente. Deciso di
+  **rimandare**: il dominio istituzionale nel login già esclude "gente a
+  caso" in senso stretto; il rischio residuo (uno studente di un'altra
+  classe risponde per curiosità) è rumore nei dati, non un problema di
+  sicurezza, e oggi si evita socialmente (il codice si dà a voce/QR solo
+  alla classe giusta). Da riprendere quando serve davvero un elenco
+  iscritti pulito come base dati per qualcos'altro — tipicamente la vista
+  andamento/coordinatore o un vero controllo whitelist (Fase 4/5) — non
+  prima, per non fare hardening anticipato senza un consumatore reale.
+
+- ~~**Statistiche studente: aggregazione per `materia` invece che per
+  `corsoId`.**~~ **Fatto (2026-09)**: vedi "Statistiche studente" più sotto.

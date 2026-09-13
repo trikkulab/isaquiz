@@ -452,7 +452,22 @@ Fase 0 — setup:
       `autoreId` (indispensabile per le security rules su una query `list`,
       vedi nota lì).
 - [ ] Ancora da fare lato docente: chiusura automatica a tempo (`chiudeAlle`);
-      modifica/disattivazione di un corso (oggi solo creazione).
+      rename di un corso (oggi solo creazione — la disattivazione è admin,
+      vedi sotto).
+- [x] **Disattivazione corso (2026-09, solo admin)**: `impostaAttivoCorso` in
+      `data/corsiRepository.js`, azione in `AdminCorsi.jsx`; `getCorsiDocente`
+      nasconde di default i disattivati (opzione `includiDisattivati` per
+      `GestioneCorsi.jsx`, sola lettura lì). Risolve i corsi doppioni senza
+      cancellare nulla — vedi DECISIONI_DESIGN.md, "Onboarding docente e
+      creazione corsi".
+- [x] **Statistiche studente per corso, non per materia (2026-09)**:
+      `getStatistichePerArgomento` raggruppa per `corsoId`, non più per la
+      stringa `materia` del quesito — due corsi/docenti diversi con la stessa
+      materia non si mischiano più; ogni riga porta anche il nome del docente
+      titolare. Anche i tab di filtro (`FiltroMaterie.jsx`) sono per corso,
+      non deduplicati per materia: due corsi con la stessa materia restano
+      due tab distinte (materia come testo principale, docente come
+      sotto-testo). Vedi DECISIONI_DESIGN.md, "Statistiche studente".
 - [x] **Codice di accesso senza race (Fase 2)**: `functions/generaCodiceAccesso.js`
       (callable, transazione + verifica autore); `data/codiciAccessoRepository.js`
       `generaCodiceQuiz` la invoca. Il client non scrive più su `codici_accesso`.

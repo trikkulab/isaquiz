@@ -47,9 +47,9 @@ export default function AccordionArgomenti({ argomenti, studenteId }) {
                   <span className="block truncate text-sm font-semibold">
                     {arg.argomento}
                   </span>
-                  {arg.materia && (
+                  {(arg.materia || arg.docente) && (
                     <span className="block truncate text-xs text-inchiostro/45">
-                      {arg.materia}
+                      {[arg.materia, arg.docente].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </span>

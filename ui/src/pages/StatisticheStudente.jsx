@@ -1,7 +1,8 @@
 // Statistiche personali dello studente (route /studente/statistiche): come sto
 // andando nel tempo, aggregato per ARGOMENTO (non per singolo quiz — vedi
-// DECISIONI_DESIGN.md, "Statistiche studente"). Filtro per materia
-// (FiltroMaterie: "Anno" = tutte, oppure una specifica).
+// DECISIONI_DESIGN.md, "Statistiche studente"). Filtro per CORSO, non per
+// materia (FiltroMaterie: "Anno" = tutti, oppure un corso specifico) — due
+// corsi diversi con la stessa materia restano due tab distinte.
 //
 // Layout ADATTIVO, non solo responsive (DECISIONI_DESIGN.md, "Layout adattivo"):
 // sotto la soglia (useBreakpoint) AccordionArgomenti + ModaleCorrezione; sopra,
@@ -29,7 +30,7 @@ export default function StatisticheStudente() {
 
   const [tutti, setTutti] = useState([]);
   const [stato, setStato] = useState("caricamento"); // caricamento | errore | pronto
-  const [materia, setMateria] = useState(null); // null = "Anno" (tutte)
+  const [corsoSel, setCorsoSel] = useState(null); // null = "Anno" (tutti)
 
   useEffect(() => {
     let vivo = true;
@@ -50,17 +51,26 @@ export default function StatisticheStudente() {
     };
   }, [studente.id]);
 
-  const materie = useMemo(
-    () =>
-      [...new Set(tutti.map((s) => s.materia).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b, "it"),
-      ),
-    [tutti],
-  );
+  // Una tab per CORSO (non per materia): due corsi diversi con la stessa
+  // materia restano tab distinte — vedi DECISIONI_DESIGN.md, "Statistiche
+  // studente" e FiltroMaterie.jsx.
+  const corsi = useMemo(() => {
+    const perCorso = new Map();
+    for (const s of tutti) {
+      if (s.corsoId && !perCorso.has(s.corsoId)) {
+        perCorso.set(s.corsoId, { corsoId: s.corsoId, materia: s.materia, docente: s.docente });
+      }
+    }
+    return [...perCorso.values()].sort(
+      (a, b) =>
+        (a.materia ?? "").localeCompare(b.materia ?? "", "it") ||
+        (a.docente ?? "").localeCompare(b.docente ?? "", "it"),
+    );
+  }, [tutti]);
 
   const argomenti = useMemo(
-    () => (materia == null ? tutti : tutti.filter((s) => s.materia === materia)),
-    [tutti, materia],
+    () => (corsoSel == null ? tutti : tutti.filter((s) => s.corsoId === corsoSel)),
+    [tutti, corsoSel],
   );
 
   return (
@@ -96,26 +106,26 @@ export default function StatisticheStudente() {
         <>
           <div className="mt-5">
             <FiltroMaterie
-              materie={materie}
-              selezione={materia}
-              onSelezione={setMateria}
+              corsi={corsi}
+              selezione={corsoSel}
+              onSelezione={setCorsoSel}
             />
           </div>
 
           <div className="mt-4">
             {argomenti.length === 0 ? (
               <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
-                Nessun quiz per questa materia.
+                Nessun quiz per questo corso.
               </div>
             ) : isDesktop ? (
               <PannelloArgomenti
-                key={materia ?? "anno"}
+                key={corsoSel ?? "anno"}
                 argomenti={argomenti}
                 studenteId={studente.id}
               />
             ) : (
               <AccordionArgomenti
-                key={materia ?? "anno"}
+                key={corsoSel ?? "anno"}
                 argomenti={argomenti}
                 studenteId={studente.id}
               />
