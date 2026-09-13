@@ -1290,6 +1290,84 @@ righe durante la migrazione. Le JOIN che in Firestore si evitano
 (`risposta → quesito / quiz / utente`) in SQL si vogliono, e le righe granulari
 le danno gratis.
 
+## Cambio anno scolastico
+
+**Non serve una migrazione, ma serve rivedere ogni area che aggrega o elenca
+nel tempo.** Il modello dati è già pensato per il cambio anno ("nessuna
+migrazione tra anni scolastici", vedi sopra): niente si sovrascrive, un
+`CORSO` è sempre materia+classe+**anno**, e `CONFIG.annoScolasticoCorrente`
+invalida da solo i codici di accesso delle annate passate. Il lavoro reale,
+identificato in una sessione di analisi (2026-09) prima di scrivere codice,
+non è "spostare i dati" ma decidere per ognuna delle aree seguenti se e come
+restare **di default sull'anno corrente**, con lo storico raggiungibile ma
+mai mescolato:
+
+1. Ingresso studente a un quiz (codice) — **niente da fare**, già corretto per
+   costruzione.
+2. Statistiche personali studente (`StatisticheStudente`) — **da fare**.
+   Disegno concordato: il gruppo per `corsoId::argomento` (vedi "Statistiche
+   studente" sopra) appartiene già a un solo anno per costruzione (un corso è
+   sempre di un anno), quindi il filtro anno è un filtro di **visibilità sulle
+   tab**, non un'aggregazione diversa — nessuna fusione da gestire. UI: una
+   checkbox "Mostra anni precedenti" spenta di default (stessa convenzione di
+   "Mostra inattivi"/"Mostra archiviati" sotto); quando accesa, la tab "Anno"
+   diventa un combobox con gli anni per cui lo studente ha dati, e le tab
+   corso si ricalcolano per l'unico anno selezionato (mai un accumulo di tutte
+   le tab insieme).
+3. Identità visualizzata (`UTENTE.classeId` in `IdentitaStudente`) — ⚠️
+   segnalazione, non ancora affrontata: campo statico, nessun flusso lo
+   aggiorna quando lo studente cambia classe/anno. Da riprendere insieme a
+   "Iscrizione degli studenti al corso" (sopra, "Non ancora deciso").
+4. Creazione corso (`GestioneCorsi` → `creaCorso`) — **niente da fare**, già
+   vincolato all'anno corrente per costruzione.
+5. Elenco "i miei corsi" (`GestioneCorsi`) — **da fare**, priorità bassa
+   (decluttering, non correttezza): stessa coppia checkbox "Mostra anni
+   precedenti" + combobox anno di cui al punto 2, dentro una riga filtri da
+   aggiungere alla pagina.
+6. **Selettore corso in creazione/modifica quiz (`CreaQuiz.jsx`) — fatto
+   (2026-09).** Era l'unico buco reale, non solo di decluttering: nulla
+   impediva di costruire e pubblicare un nuovo quiz su un corso di un anno
+   passato, che genera comunque un codice di accesso valido (il codice è
+   per-quiz, non condizionato dall'anno del corso a cui è agganciato).
+   `getCorsiDocente(docenteId, { soloAnnoCorrente: true })` (nuova opzione,
+   default `false` per non cambiare il comportamento delle altre pagine)
+   filtra ai soli corsi di `CONFIG.annoScolasticoCorrente` — una lettura di
+   `getConfig()` in più, solo quando richiesta. Nessuna checkbox qui: a
+   differenza dei punti 2/5 (rivedere dati passati, operazione rara ma
+   legittima), non c'è un caso d'uso legittimo per agganciare un *nuovo* quiz
+   a un corso morto, quindi l'esclusione è secca, non un'opzione nascosta.
+   **Caso duplicazione/bozza a cavallo del cambio anno**: `duplicaQuiz` copia
+   `corsoId` invariato dall'originale; se quel corso non è (più) tra quelli
+   dell'anno corrente — quiz duplicato da un'annata passata, o bozza lasciata
+   aperta al cambio anno — `CreaQuiz.jsx` non lo tiene selezionato in
+   silenzio: forza `corsoId` vuoto e mostra un avviso ("Il corso originale
+   (materia) non è più disponibile per l'anno corrente: scegline uno prima di
+   salvare"), obbligando una scelta esplicita tra i corsi correnti. Per
+   riutilizzare un quiz di un anno passato la via resta "Duplica" (già
+   esistente) più la scelta del nuovo corso — nessun meccanismo di "porta
+   avanti il corso al nuovo anno" automatico.
+7. Elenco "i miei quiz" (`DocenteHome`) — **da fare**, stesso schema del punto
+   5; qui l'anno di ogni quiz va risolto passando dal suo corso (stesso
+   pattern "niente JOIN" già usato per la materia).
+8. Andamento di un corso (`AndamentoCorso`) — **niente da fare**, un corso è
+   sempre di un anno per costruzione, non mischia mai.
+9. Elenco corsi istituto (`AdminCorsi`) — priorità bassa, coerente con
+   "cruscotto minimale": la colonna anno c'è già, un filtro si aggiungerà se
+   la lista diventa scomoda.
+10. Cambio di `CONFIG.annoScolasticoCorrente` — resta un'operazione da
+    console/Admin SDK (coerente con come si scrive già tutto `CONFIG`),
+    **non** una scrittura da `AdminImpostazioni` (sola lettura di proposito).
+    Da scrivere, quando si arriva al primo cambio anno reale: un runbook
+    breve in `docs/deploy.md` (ordine delle operazioni, cosa verificare),
+    non una UI.
+
+**Deliberatamente non fatto: un'area/sito separato per gli anni passati.**
+Valutato e scartato: qui nulla viene mai cancellato o spostato, ogni entità
+resta raggiungibile per id in ogni vista esistente per sempre — un'area
+separata dovrebbe reimplementare le stesse pagine con la stessa logica su
+un'altra fonte dati, puro doppione. Il filtro anno (checkbox + combobox,
+punti 2/5/7) copre lo stesso bisogno riusando le pagine esistenti.
+
 ## Non ancora deciso
 
 - **Vivacità del guscio condiviso lato studente (`AppLayout`).** Direzione

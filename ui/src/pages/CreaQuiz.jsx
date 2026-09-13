@@ -138,7 +138,10 @@ export default function CreaQuiz() {
 
       try {
         const [corsiDocente, quesitiDocente] = await Promise.all([
-          getCorsiDocente(utente.id),
+          // Solo l'anno corrente: un nuovo quiz non deve poter agganciarsi a un
+          // corso di un anno passato (vedi DECISIONI_DESIGN.md, "Cambio anno
+          // scolastico").
+          getCorsiDocente(utente.id, { soloAnnoCorrente: true }),
           // include anche gli inattivi: il filtro visibilità è client-side (toggle)
           getBancaDocente(utente.id, { includiInattivi: true }),
         ]);
@@ -165,14 +168,27 @@ export default function CreaQuiz() {
         const ids = q.quesiti.map((qq) => ultimaPerBase.get(qq.baseId)?.id ?? qq.id);
         const nAggiornati = ids.filter((id, i) => id !== q.quesiti[i].id).length;
 
+        // Il corso originale potrebbe non essere più tra quelli dell'anno
+        // corrente (bozza rimasta a cavallo del cambio anno, o quiz duplicato
+        // da un corso di un'annata passata — vedi DECISIONI_DESIGN.md, "Cambio
+        // anno scolastico"): mai tenerlo silenziosamente, si forza una scelta.
+        const corsoValido = corsiDocente.some((c) => c.id === q.corsoId);
+
         setTitolo(q.titolo ?? "");
-        setCorsoId(q.corsoId ?? corsiDocente[0]?.id ?? "");
+        setCorsoId(corsoValido ? q.corsoId : "");
         setSelezionati(ids);
         setQuesitiCaricati(q.quesiti);
+
+        const avvisi = [];
         if (nAggiornati > 0)
-          setAvviso(
+          avvisi.push(
             `${nAggiornati} ${nAggiornati === 1 ? "quesito aggiornato" : "quesiti aggiornati"} all'ultima versione.`,
           );
+        if (!corsoValido)
+          avvisi.push(
+            `Il corso originale${q.materia ? ` (${q.materia})` : ""} non è più disponibile per l'anno corrente: scegline uno prima di salvare.`,
+          );
+        if (avvisi.length > 0) setAvviso(avvisi.join(" "));
       } catch (err) {
         if (attivo) setErrore("Impossibile caricare i dati. L'emulatore Firestore è avviato?");
         console.error(err);
@@ -585,7 +601,7 @@ export default function CreaQuiz() {
 
       {corsi.length === 0 && (
         <div className="mb-6 rounded-xl border border-bordo bg-sfondo px-4 py-3 text-sm text-inchiostro/70">
-          Non hai ancora un corso: un quiz appartiene sempre a un corso.{" "}
+          Non hai ancora un corso per l'anno corrente: un quiz appartiene sempre a un corso.{" "}
           <Link
             to="/docente/corsi?ritorno=crea-quiz"
             className="font-medium text-primario"
@@ -609,7 +625,7 @@ export default function CreaQuiz() {
             {corsi.length === 0 && <option value="">Nessun corso</option>}
             {corsi.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.materia} — {c.classeId} ({c.annoScolastico})
+                {c.materia} — {c.classeId}
               </option>
             ))}
           </select>

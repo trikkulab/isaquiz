@@ -50,7 +50,16 @@ export async function getCorso(corsoId) {
 // selettore corso in CreaQuiz.jsx (mai vedere un doppione disattivato tra le
 // opzioni per un nuovo quiz); GestioneCorsi.jsx passa true per mostrarli con
 // un'etichetta, in sola lettura (disattivazione resta solo admin).
-export async function getCorsiDocente(docenteId, { includiDisattivati = false } = {}) {
+// `soloAnnoCorrente`: filtra ai soli corsi di `CONFIG.annoScolasticoCorrente`
+// (una lettura in più, solo se richiesto) — usato dal selettore corso in
+// CreaQuiz.jsx: non ha senso agganciare un NUOVO quiz a un corso di un anno
+// passato (vedi DECISIONI_DESIGN.md, "Cambio anno scolastico"). Le altre
+// pagine (GestioneCorsi, DocenteHome) continuano a vedere tutte le annate:
+// qui è un default `false` apposta, non va cambiato per tutti i chiamanti.
+export async function getCorsiDocente(
+  docenteId,
+  { includiDisattivati = false, soloAnnoCorrente = false } = {},
+) {
   // "Niente JOIN": prima le righe di collegamento, poi i corsi, assemblati qui.
   const legami = await getDocs(
     query(collection(db, "docenti_corso"), where("docenteId", "==", docenteId)),
@@ -66,7 +75,11 @@ export async function getCorsiDocente(docenteId, { includiDisattivati = false } 
   );
 
   const esistenti = corsi.filter(Boolean);
-  return includiDisattivati ? esistenti : esistenti.filter((c) => c.attivo !== false);
+  const attivi = includiDisattivati ? esistenti : esistenti.filter((c) => c.attivo !== false);
+
+  if (!soloAnnoCorrente) return attivi;
+  const config = await getConfig();
+  return attivi.filter((c) => c.annoScolastico === config?.annoScolasticoCorrente);
 }
 
 // Materie già in uso in TUTTI i corsi dell'istituto (non solo i propri): sono i
