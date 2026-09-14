@@ -1304,26 +1304,50 @@ mai mescolato:
 
 1. Ingresso studente a un quiz (codice) — **niente da fare**, già corretto per
    costruzione.
-2. Statistiche personali studente (`StatisticheStudente`) — **da fare**.
-   Disegno concordato: il gruppo per `corsoId::argomento` (vedi "Statistiche
+2. **Statistiche personali studente (`StatisticheStudente`) — fatto
+   (2026-09).** Il gruppo per `corsoId::argomento` (vedi "Statistiche
    studente" sopra) appartiene già a un solo anno per costruzione (un corso è
-   sempre di un anno), quindi il filtro anno è un filtro di **visibilità sulle
-   tab**, non un'aggregazione diversa — nessuna fusione da gestire. UI: una
-   checkbox "Mostra anni precedenti" spenta di default (stessa convenzione di
-   "Mostra inattivi"/"Mostra archiviati" sotto); quando accesa, la tab "Anno"
-   diventa un combobox con gli anni per cui lo studente ha dati, e le tab
-   corso si ricalcolano per l'unico anno selezionato (mai un accumulo di tutte
-   le tab insieme).
+   sempre di un anno), quindi il filtro anno è un filtro di **visibilità
+   sulle righe prima del raggruppamento in tab**, non un'aggregazione diversa
+   — nessuna fusione tra anni in nessun caso. `corsiInfo()`
+   (`risposteRepository.js`) porta ora anche `annoScolastico` (nessuna
+   lettura in più: il documento `corso` era già in memoria), propagato come
+   `anno` su ogni gruppo restituito da `getStatistichePerArgomento`.
+   Nuovo componente `ui/src/components/SelettoreAnno.jsx` (riusabile,
+   controllato dalla pagina che lo usa): checkbox "Mostra anni precedenti"
+   spenta di default (stessa convenzione di "Mostra inattivi"/"Mostra
+   archiviati"), che si nasconde da sola se lo studente non ha storico
+   (un solo anno tra i suoi dati). Accesa, rivela un combobox con gli anni
+   disponibili (unione degli anni presenti nei dati + l'anno corrente da
+   `CONFIG`, anche se lo studente non ha ancora risposto a nulla
+   quest'anno); cambiando anno le tab-corso di `FiltroMaterie` si
+   ricalcolano da zero per l'unico anno selezionato. Non è stato fuso dentro
+   `FiltroMaterie` (che pure ha una prima tab "Anno"): il selettore anno deve
+   restare visibile anche quando l'anno selezionato ha 0 o 1 solo corso —
+   sono due controlli distinti, composti dalla pagina, non uno annidato
+   nell'altro. **Bug trovato in prova e corretto**: `FiltroMaterie` si
+   nascondeva (tab "Anno" compresa) con `corsi.length <= 1` — regola pensata
+   per "uno studente con un solo corso in assoluto", ma con un anno passato
+   che spesso ne ha uno solo faceva sparire l'unica indicazione a schermo di
+   quale corso si stesse guardando, sembrando un guasto. Ora si nasconde solo
+   con zero corsi. Verificato uno scenario a due anni (uno studente con un
+   corso di un anno passato oltre a quelli correnti) leggendo
+   `getStatistichePerArgomento` via script contro l'emulatore: le righe
+   dell'anno passato restano fuori dalla vista di default e compaiono,
+   isolate per corso, solo selezionando quell'anno.
 3. Identità visualizzata (`UTENTE.classeId` in `IdentitaStudente`) — ⚠️
    segnalazione, non ancora affrontata: campo statico, nessun flusso lo
    aggiorna quando lo studente cambia classe/anno. Da riprendere insieme a
    "Iscrizione degli studenti al corso" (sopra, "Non ancora deciso").
 4. Creazione corso (`GestioneCorsi` → `creaCorso`) — **niente da fare**, già
    vincolato all'anno corrente per costruzione.
-5. Elenco "i miei corsi" (`GestioneCorsi`) — **da fare**, priorità bassa
-   (decluttering, non correttezza): stessa coppia checkbox "Mostra anni
-   precedenti" + combobox anno di cui al punto 2, dentro una riga filtri da
-   aggiungere alla pagina.
+5. **Elenco "i miei corsi" (`GestioneCorsi`) — fatto (2026-09).** Stesso
+   `SelettoreAnno.jsx` del punto 2, di default sul solo anno corrente
+   (`annoScolastico` è già un campo diretto su `CORSO`, nessuna lettura in
+   più). "Mostra disattivati" resta un controllo indipendente, ma ora
+   valutato solo sui corsi dell'anno selezionato (non su tutti gli anni), per
+   non proporre di spuntarlo quando non ci sono disattivati da vedere in
+   quell'anno.
 6. **Selettore corso in creazione/modifica quiz (`CreaQuiz.jsx`) — fatto
    (2026-09).** Era l'unico buco reale, non solo di decluttering: nulla
    impediva di costruire e pubblicare un nuovo quiz su un corso di un anno
@@ -1346,9 +1370,13 @@ mai mescolato:
    riutilizzare un quiz di un anno passato la via resta "Duplica" (già
    esistente) più la scelta del nuovo corso — nessun meccanismo di "porta
    avanti il corso al nuovo anno" automatico.
-7. Elenco "i miei quiz" (`DocenteHome`) — **da fare**, stesso schema del punto
-   5; qui l'anno di ogni quiz va risolto passando dal suo corso (stesso
-   pattern "niente JOIN" già usato per la materia).
+7. **Elenco "i miei quiz" (`DocenteHome`) — fatto (2026-09).** Stesso schema
+   del punto 5. Un quiz non ha un campo anno proprio: `getQuizDocente`
+   (`quizRepository.js`) ora propaga anche `annoScolastico` del corso insieme
+   alla `materia` che già risolveva — stesso giro di letture di prima (una
+   per corso distinto), nessuna lettura aggiuntiva. "Mostra archiviati"
+   stessa correzione del punto 5: valutato sui soli quiz dell'anno
+   selezionato.
 8. Andamento di un corso (`AndamentoCorso`) — **niente da fare**, un corso è
    sempre di un anno per costruzione, non mischia mai.
 9. Elenco corsi istituto (`AdminCorsi`) — priorità bassa, coerente con

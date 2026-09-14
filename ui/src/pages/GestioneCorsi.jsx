@@ -6,6 +6,13 @@
 // archiviati" altrove) ma in sola lettura: la disattivazione/riattivazione
 // resta un'azione solo admin (AdminCorsi.jsx).
 //
+// Filtro anno scolastico (SelettoreAnno, vedi DECISIONI_DESIGN.md, "Cambio
+// anno scolastico"): di default si vedono solo i corsi dell'anno corrente,
+// coerente col resto del progetto — lo storico resta a un checkbox di
+// distanza, mai mescolato di default. L'anno è già un campo diretto su ogni
+// corso, nessuna lettura in più oltre a quella già fatta per popolare il
+// selettore.
+//
 // Stile "docente": sobrio e funzionale. Niente accesso diretto a Firestore:
 // tutto dai repository in /data.
 
@@ -14,6 +21,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import CampoCombobox from "../components/CampoCombobox.jsx";
+import SelettoreAnno from "../components/SelettoreAnno.jsx";
 import { coloreMateria } from "../utils/colori.js";
 import {
   getCorsiDocente,
@@ -21,6 +29,7 @@ import {
   getClassiEsistenti,
   creaCorso,
 } from "../../../data/corsiRepository.js";
+import { getConfig } from "../../../data/configRepository.js";
 
 const BOTTONE_PRIMARIO =
   "rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-su-primario transition-colors hover:bg-primario-scuro disabled:cursor-not-allowed disabled:opacity-40";
@@ -37,6 +46,9 @@ export default function GestioneCorsi() {
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState(null);
   const [mostraDisattivati, setMostraDisattivati] = useState(false);
+  const [annoCorrente, setAnnoCorrente] = useState(null);
+  const [mostraPrecedenti, setMostraPrecedenti] = useState(false);
+  const [annoSel, setAnnoSel] = useState(null); // rilevante solo se mostraPrecedenti
 
   const [materia, setMateria] = useState("");
   const [classe, setClasse] = useState("");
@@ -44,14 +56,16 @@ export default function GestioneCorsi() {
 
   async function ricarica() {
     try {
-      const [miei, materieEs, classiEs] = await Promise.all([
+      const [miei, materieEs, classiEs, config] = await Promise.all([
         getCorsiDocente(utente.id, { includiDisattivati: true }),
         getMaterieEsistenti(),
         getClassiEsistenti(),
+        getConfig(),
       ]);
       setCorsi(miei);
       setMaterie(materieEs);
       setClassi(classiEs);
+      setAnnoCorrente(config?.annoScolasticoCorrente ?? null);
     } catch (err) {
       setErrore("Impossibile caricare i corsi. L'emulatore Firestore è avviato?");
       console.error(err);
@@ -85,16 +99,36 @@ export default function GestioneCorsi() {
     }
   }
 
+  // Anni per cui esistono corsi, uniti all'anno corrente (anche se il
+  // docente non ne ha ancora creato uno quest'anno), più recenti prima.
+  const anni = useMemo(() => {
+    const set = new Set(corsi.map((c) => c.annoScolastico).filter(Boolean));
+    if (annoCorrente) set.add(annoCorrente);
+    return [...set].sort((a, b) => b.localeCompare(a, "it"));
+  }, [corsi, annoCorrente]);
+
+  const annoEffettivo = mostraPrecedenti ? (annoSel ?? annoCorrente) : annoCorrente;
+
+  function alternaPrecedenti(v) {
+    setMostraPrecedenti(v);
+    setAnnoSel(null);
+  }
+
+  const corsiAnno = useMemo(
+    () => (annoEffettivo ? corsi.filter((c) => c.annoScolastico === annoEffettivo) : corsi),
+    [corsi, annoEffettivo],
+  );
+
   const corsiOrdinati = useMemo(
     () =>
-      corsi
+      corsiAnno
         .filter((c) => mostraDisattivati || c.attivo !== false)
         .sort(
           (a, b) =>
             (a.materia || "").localeCompare(b.materia || "", "it") ||
             (a.classeId || "").localeCompare(b.classeId || "", "it"),
         ),
-    [corsi, mostraDisattivati],
+    [corsiAnno, mostraDisattivati],
   );
 
   return (
@@ -150,22 +184,34 @@ export default function GestioneCorsi() {
         </p>
       </section>
 
-      {corsi.some((c) => c.attivo === false) && (
-        <label className="mb-3 flex items-center gap-2 text-sm text-inchiostro/70">
-          <input
-            type="checkbox"
-            checked={mostraDisattivati}
-            onChange={(e) => setMostraDisattivati(e.target.checked)}
-          />
-          Mostra disattivati
-        </label>
-      )}
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <SelettoreAnno
+          anni={anni}
+          annoCorrente={annoCorrente}
+          mostraPrecedenti={mostraPrecedenti}
+          onMostraPrecedenti={alternaPrecedenti}
+          annoSelezionato={annoSel}
+          onSelezionaAnno={setAnnoSel}
+        />
+        {corsiAnno.some((c) => c.attivo === false) && (
+          <label className="flex items-center gap-2 text-sm text-inchiostro/70">
+            <input
+              type="checkbox"
+              checked={mostraDisattivati}
+              onChange={(e) => setMostraDisattivati(e.target.checked)}
+            />
+            Mostra disattivati
+          </label>
+        )}
+      </div>
 
       {caricamento ? (
         <p className="text-sm text-inchiostro/60">Caricamento…</p>
       ) : corsiOrdinati.length === 0 ? (
         <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
-          Nessun corso. Creane uno qui sopra per poter comporre dei quiz.
+          {corsi.length === 0
+            ? "Nessun corso. Creane uno qui sopra per poter comporre dei quiz."
+            : "Nessun corso per l'anno selezionato."}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">

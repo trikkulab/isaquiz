@@ -2,6 +2,11 @@
 // per quiz — pubblicare/modificare/eliminare una bozza, chiudere/riaprire un
 // quiz attivo, duplicare, rivedere il link/QR.
 //
+// Filtro anno scolastico (SelettoreAnno, vedi DECISIONI_DESIGN.md, "Cambio
+// anno scolastico"): di default si vedono solo i quiz dell'anno corrente.
+// L'anno di un quiz è quello del suo corso (getQuizDocente lo risolve già
+// insieme alla materia, "niente JOIN" — nessuna lettura in più).
+//
 // Stile "docente": sobrio e funzionale (vedi CLAUDE.md, "Schermate docente").
 // Niente accesso diretto a Firestore: tutto dai repository in /data.
 //
@@ -21,8 +26,10 @@ import {
   archiviaQuiz,
   ripristinaQuiz,
 } from "../../../data/quizRepository.js";
+import { getConfig } from "../../../data/configRepository.js";
 import AccessoQuiz from "../components/AccessoQuiz.jsx";
 import BottoneVerso from "../components/BottoneVerso.jsx";
+import SelettoreAnno from "../components/SelettoreAnno.jsx";
 import { coloreMateria } from "../utils/colori.js";
 
 const BOTTONE_PRIMARIO =
@@ -105,13 +112,38 @@ export default function DocenteHome() {
   // Come "Mostra inattivi" per i quesiti (CreaQuiz): gli archiviati escono
   // dalle liste attive salvo spunta esplicita.
   const [mostraArchiviati, setMostraArchiviati] = useState(false);
+  const [annoCorrente, setAnnoCorrente] = useState(null);
+  const [mostraPrecedenti, setMostraPrecedenti] = useState(false);
+  const [annoSel, setAnnoSel] = useState(null); // rilevante solo se mostraPrecedenti
 
-  const ciSonoArchiviati = useMemo(() => quiz.some((q) => q.stato === "archiviato"), [quiz]);
-  // Base su cui lavorano filtri, ordinamenti e conteggi: quiz meno gli
-  // archiviati (a meno del toggle).
+  // Anni per cui esistono quiz, uniti all'anno corrente, più recenti prima.
+  const anni = useMemo(() => {
+    const set = new Set(quiz.map((q) => q.annoScolastico).filter(Boolean));
+    if (annoCorrente) set.add(annoCorrente);
+    return [...set].sort((a, b) => b.localeCompare(a, "it"));
+  }, [quiz, annoCorrente]);
+
+  const annoEffettivo = mostraPrecedenti ? (annoSel ?? annoCorrente) : annoCorrente;
+
+  function alternaPrecedenti(v) {
+    setMostraPrecedenti(v);
+    setAnnoSel(null);
+  }
+
+  const quizAnno = useMemo(
+    () => (annoEffettivo ? quiz.filter((q) => q.annoScolastico === annoEffettivo) : quiz),
+    [quiz, annoEffettivo],
+  );
+
+  const ciSonoArchiviati = useMemo(
+    () => quizAnno.some((q) => q.stato === "archiviato"),
+    [quizAnno],
+  );
+  // Base su cui lavorano filtri, ordinamenti e conteggi: quiz dell'anno
+  // selezionato meno gli archiviati (a meno del toggle).
   const quizBase = useMemo(
-    () => (mostraArchiviati ? quiz : quiz.filter((q) => q.stato !== "archiviato")),
-    [quiz, mostraArchiviati],
+    () => (mostraArchiviati ? quizAnno : quizAnno.filter((q) => q.stato !== "archiviato")),
+    [quizAnno, mostraArchiviati],
   );
 
   const materieDisponibili = useMemo(
@@ -150,7 +182,9 @@ export default function DocenteHome() {
 
   async function ricarica() {
     try {
-      setQuiz(await getQuizDocente(utente.id));
+      const [quizDocente, config] = await Promise.all([getQuizDocente(utente.id), getConfig()]);
+      setQuiz(quizDocente);
+      setAnnoCorrente(config?.annoScolasticoCorrente ?? null);
     } catch (err) {
       setErrore("Impossibile caricare i quiz. L'emulatore Firestore è avviato?");
       console.error(err);
@@ -203,6 +237,19 @@ export default function DocenteHome() {
       {errore && (
         <div className="mb-4 rounded-lg border border-errore bg-errore-sfondo px-3 py-2 text-sm text-errore">
           {errore}
+        </div>
+      )}
+
+      {!caricamento && quiz.length > 0 && (
+        <div className="mb-3">
+          <SelettoreAnno
+            anni={anni}
+            annoCorrente={annoCorrente}
+            mostraPrecedenti={mostraPrecedenti}
+            onMostraPrecedenti={alternaPrecedenti}
+            annoSelezionato={annoSel}
+            onSelezionaAnno={setAnnoSel}
+          />
         </div>
       )}
 
@@ -285,6 +332,10 @@ export default function DocenteHome() {
             corso
           </Link>
           .
+        </div>
+      ) : quizAnno.length === 0 ? (
+        <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">
+          Nessun quiz per l'anno selezionato.
         </div>
       ) : quizVisibili.length === 0 ? (
         <div className="rounded-xl border border-bordo bg-superficie p-6 text-sm text-inchiostro/60">

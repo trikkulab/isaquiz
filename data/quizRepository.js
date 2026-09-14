@@ -74,7 +74,15 @@ export async function getQuizDocente(docenteId) {
   );
 
   return quizzes
-    .map((q) => ({ ...q, materia: corsi.get(q.corsoId)?.materia ?? null }))
+    .map((q) => ({
+      ...q,
+      materia: corsi.get(q.corsoId)?.materia ?? null,
+      // Anno del CORSO, non del quiz (che non ha un campo proprio): un quiz
+      // appartiene sempre a un solo anno per via del suo corso. Usato dal
+      // filtro anno in DocenteHome.jsx — vedi DECISIONI_DESIGN.md, "Cambio
+      // anno scolastico".
+      annoScolastico: corsi.get(q.corsoId)?.annoScolastico ?? null,
+    }))
     .sort((a, b) => (b.creato?.toMillis?.() ?? 0) - (a.creato?.toMillis?.() ?? 0));
 }
 

@@ -133,9 +133,12 @@ async function risposteArricchite(studenteId) {
 // statistiche studente per CORSO (non più per la `materia` testuale del
 // quesito — vedi DECISIONI_DESIGN.md, "Statistiche studente": due corsi di
 // due docenti diversi con la stessa materia non devono più mischiarsi, così
-// lo studente sa sempre a quale corso/docente fare riferimento). `in`
-// Firestore: max 30 valori — sufficiente a scala pilota, uno studente non
-// tocca decine di corsi diversi in un anno.
+// lo studente sa sempre a quale corso/docente fare riferimento). Porta anche
+// `annoScolastico` del corso — un corso è sempre di un solo anno per
+// costruzione, quindi basta questo per il filtro anno (vedi
+// DECISIONI_DESIGN.md, "Cambio anno scolastico"), nessuna lettura in più
+// rispetto a prima. `in` Firestore: max 30 valori — sufficiente a scala
+// pilota, uno studente non tocca decine di corsi diversi in un anno.
 async function corsiInfo(corsoIds) {
   if (corsoIds.length === 0) return new Map();
 
@@ -161,6 +164,7 @@ async function corsiInfo(corsoIds) {
     info.set(corsoId, {
       materia: corso?.materia ?? null,
       docente: docenteId ? nomePerDocente.get(docenteId) : null,
+      anno: corso?.annoScolastico ?? null,
     });
   }
   return info;
@@ -176,9 +180,12 @@ async function corsiInfo(corsoIds) {
 // conteggio. Ogni gruppo porta con sé il dettaglio dei quiz che vi hanno
 // contribuito (drill-down senza altre letture), col punteggio CONTESTUALE
 // ("3/4 su questo argomento"), mai il totale del quiz. `corsoId` (opzionale)
-// filtra al termine; null/undefined = tutti.
-// Ritorna: [{ chiave, argomento, corsoId, materia, docente, corrette, totali,
-//             quiz: [{ quizId, titolo, data, corrette, totali }] }]
+// filtra al termine; null/undefined = tutti. `anno` è l'annoScolastico del
+// corso: un gruppo appartiene sempre a un solo anno (un corso è di un solo
+// anno per costruzione), usato dal filtro anno lato pagina — vedi
+// DECISIONI_DESIGN.md, "Cambio anno scolastico".
+// Ritorna: [{ chiave, argomento, corsoId, materia, docente, anno, corrette,
+//             totali, quiz: [{ quizId, titolo, data, corrette, totali }] }]
 export async function getStatistichePerArgomento(studenteId, corsoId = null) {
   const righe = await risposteArricchite(studenteId);
 
@@ -196,6 +203,7 @@ export async function getStatistichePerArgomento(studenteId, corsoId = null) {
         corsoId: r.corsoId,
         materia: inf.materia ?? null,
         docente: inf.docente ?? null,
+        anno: inf.anno ?? null,
         corrette: 0,
         totali: 0,
         _quiz: new Map(),
@@ -222,6 +230,7 @@ export async function getStatistichePerArgomento(studenteId, corsoId = null) {
     corsoId: g.corsoId,
     materia: g.materia,
     docente: g.docente,
+    anno: g.anno,
     corrette: g.corrette,
     totali: g.totali,
     quiz: [...g._quiz.values()].sort(perDataDesc),

@@ -8,12 +8,16 @@
 // elemento della tab. Il colore non porta informazione qui — è solo
 // evidenza dello stato attivo (vedi DECISIONI_DESIGN.md, "Sistema colore").
 //
-// Con un solo corso le tab non aggiungono nulla ("Anno" e il corso danno la
-// stessa lista): il componente non rende niente, come le tab di area in
-// AppLayout quando l'utente ha una sola area.
+// Si nasconde solo se non c'è NESSUN corso (niente da filtrare). Con un solo
+// corso "Anno" e quella tab danno la stessa lista di argomenti, ma le tab
+// restano comunque visibili: sono l'unico punto in cui compaiono materia e
+// docente, quindi nascondersi anche qui lascerebbe la pagina senza alcuna
+// indicazione di quale corso si sta guardando — capita spesso selezionando
+// un anno scolastico passato con un solo corso (vedi SelettoreAnno.jsx):
+// prima si nascondeva anche "Anno" insieme alla tab, sembrando un guasto.
 
 export default function FiltroMaterie({ corsi, selezione, onSelezione }) {
-  if (!corsi || corsi.length <= 1) return null;
+  if (!corsi || corsi.length === 0) return null;
 
   const tab = (valore, materia, docente, chiave) => {
     const attiva = selezione === valore;

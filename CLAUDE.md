@@ -317,8 +317,12 @@ Fase 0 — setup:
       `IdentitaStudente` (variante chiara) in testa, poi vista dello studente
       sui propri risultati **aggregati per argomento** (non
       per quiz), con punteggio **contestuale** ("3/4 su questo argomento").
-      Filtro materia (`components/FiltroMaterie.jsx`: "Anno" = tutte, o una
-      specifica; nascosto con ≤1 materia). **Layout adattivo**: sotto ~960px
+      Filtro per CORSO, non materia (`components/FiltroMaterie.jsx`: "Anno" =
+      tutti i corsi dell'anno selezionato, o uno specifico; nascosto solo
+      senza corsi) + filtro anno scolastico (`components/SelettoreAnno.jsx`:
+      checkbox "Mostra anni precedenti", default spenta = solo l'anno
+      corrente — vedi `DECISIONI_DESIGN.md`, "Cambio anno scolastico").
+      **Layout adattivo**: sotto ~960px
       (`useBreakpoint`) `AccordionArgomenti` + `ModaleCorrezione` (overlay, con
       "Apri come pagina" → `/quiz/:id/risultati`); sopra, `PannelloArgomenti`
       master-detail con la correzione **inline**. La correzione è sempre
