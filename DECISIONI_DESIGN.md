@@ -76,7 +76,7 @@ bisogno di far scadere ogni codice singolarmente.
 
 **Utente: tabella unica per persona, ruolo sempre contestuale al corso.**
 Non esistono tabelle separate `STUDENTE` e `DOCENTE`: un'unica `UTENTE`
-(email, nome, cognome, ruolo, classeId) rappresenta la persona. Il campo
+(email, nome, cognome, ruolo) rappresenta la persona. Il campo
 `ruolo` su `UTENTE` è solo una cache di comodo — decide quale dashboard
 mostrare di default al login — mai la fonte di verità su cosa quella persona
 fosse in un corso specifico in un dato momento. La fonte di verità è sempre
@@ -802,7 +802,7 @@ comunque il modo corretto di gestire i colori — non si è perso nulla.
 ## Identità studente (avatar, nickname, livello)
 
 **Il problema (2026-09).** L'header del quiz (`BarraQuiz`) mostra avatar,
-nickname, classe e livello con un linguaggio "vivo" (gradiente, badge a
+nickname e livello con un linguaggio "vivo" (gradiente, badge a
 stella) — ma quell'identità spariva del tutto appena usciti dal quiz:
 `StudenteHome` aveva solo un "Ciao {nickname}" testuale, `StatisticheStudente`
 nessun riferimento. Risultato: la parte più curata graficamente esisteva solo
@@ -811,8 +811,8 @@ perché è proprio in "Statistiche" che il livello ha senso stare (è la pagina
 che ne giustifica il valore).
 
 **Decisione: componente unico, due varianti di colore.**
-`ui/src/components/IdentitaStudente.jsx` — riga avatar+nickname+classe+
-livello, riusata da `BarraQuiz` (in testa al quiz e ai risultati) e da
+`ui/src/components/IdentitaStudente.jsx` — riga avatar+nickname+livello,
+riusata da `BarraQuiz` (in testa al quiz e ai risultati) e da
 `StudenteHome`/`StatisticheStudente` (in testa alla pagina). Non un'unica
 riga "nuda": in entrambi i contesti è racchiusa in una piccola barra
 (`rounded-2xl`), cosicché avatar e livello si leggano come un solo blocco,
@@ -836,6 +836,30 @@ non è un colore-ruolo nuovo, è una tecnica di presentazione applicata due
 volte. Le opacità (14%/22%/30%) sono tarate a occhio per la resa attuale, non
 un valore "giusto" in astratto: da ritoccare liberamente se in pratica un
 contesto risulta troppo tenue o troppo carico rispetto all'altro.
+
+**`UTENTE.classeId` tolto dalla riga di identità — rimosso del tutto
+(2026-09-14).** Segnalato durante l'avvio della sperimentazione coi docenti
+veri: il campo non è mai scritto da nessun flusso reale (solo dal seed),
+quindi ogni utente vero aveva già quella riga vuota in silenzio. Ma il
+problema di fondo non era la mancata scrittura, era il campo stesso: su un
+**docente** non ha mai avuto senso (insegna a più classi, un solo valore non
+può rappresentarlo — non a caso era già documentato "rilevante solo se
+studente"); su uno **studente** violerebbe lo stesso principio già applicato
+al resto del progetto per il cambio anno ("nessuna migrazione dati tra anni
+scolastici", vedi "Cambio anno scolastico") — aggiornarlo ogni settembre
+sovrascriverebbe senza lasciare traccia di quale fosse la classe l'anno
+prima. L'informazione "classe" resta modellata correttamente dove già
+esisteva, `CORSO.classeId` (per-anno per costruzione, nessun doppione da
+tenere sincronizzato). La versione "giusta" per sapere la classe di uno
+studente in un dato anno sarebbe `ISCRIZIONE_CLASSE` (nell'ERD, mai
+implementata) — deliberatamente non costruita ora per un beneficio solo
+cosmetico: si rifà quando servirà davvero per qualcosa di funzionale
+(tipicamente la vista coordinatore, Fase 4/5). Tolto da
+`IdentitaStudente.jsx` (mostra solo avatar+nickname+livello) e dal modello
+concettuale in `CLAUDE.md`/`docs/isaquiz_ERD.md`; lasciato invariato nel seed
+(`scripts/seed.mjs` continua a scriverlo sugli utenti demo — campo in più
+ignorato, innocuo, non vale la pena toccare uno script che serve solo
+all'emulatore).
 
 ## Internazionalizzazione
 
@@ -1335,10 +1359,9 @@ mai mescolato:
    `getStatistichePerArgomento` via script contro l'emulatore: le righe
    dell'anno passato restano fuori dalla vista di default e compaiono,
    isolate per corso, solo selezionando quell'anno.
-3. Identità visualizzata (`UTENTE.classeId` in `IdentitaStudente`) — ⚠️
-   segnalazione, non ancora affrontata: campo statico, nessun flusso lo
-   aggiorna quando lo studente cambia classe/anno. Da riprendere insieme a
-   "Iscrizione degli studenti al corso" (sopra, "Non ancora deciso").
+3. **Identità visualizzata (`UTENTE.classeId` in `IdentitaStudente`) —
+   risolto rimuovendo il campo (2026-09-14)**, non aggiornandolo: vedi
+   "Identità studente", più sotto.
 4. Creazione corso (`GestioneCorsi` → `creaCorso`) — **niente da fare**, già
    vincolato all'anno corrente per costruzione.
 5. **Elenco "i miei corsi" (`GestioneCorsi`) — fatto (2026-09).** Stesso

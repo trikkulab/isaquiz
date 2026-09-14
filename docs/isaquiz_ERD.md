@@ -1,6 +1,6 @@
 # Diagramma ERD — isaquiz
 
-*Ultimo aggiornamento: 6 settembre 2026.*
+*Ultimo aggiornamento: 14 settembre 2026.*
 
 Diagramma concettuale (mermaid) dello schema dati, versione con corsi per
 materia, classi come unità amministrativa, e utente unico multi-ruolo.
@@ -14,7 +14,6 @@ erDiagram
         string nome
         string cognome
         string ruolo
-        string classeId
         string photoURL
         string nickname
         string avatarEmoji

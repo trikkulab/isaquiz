@@ -1,4 +1,4 @@
-// Riga di identità dello studente (avatar, nickname, classe, livello) — lo
+// Riga di identità dello studente (avatar, nickname, livello) — lo
 // stesso linguaggio visivo (avatar a cerchio, badge livello a stella,
 // riga racchiusa in una barra) in due varianti di colore, pensate per
 // convergere sulla STESSA tonalità percepita pur partendo da fondi
@@ -34,19 +34,14 @@ export default function IdentitaStudente({ studente, variante }) {
         {studente.avatarEmoji || iniziali}
       </span>
 
-      <div className="flex flex-col leading-tight">
-        <span
-          className={
-            "font-titoli text-[15px] font-semibold " +
-            (scura ? "text-su-primario" : "text-inchiostro")
-          }
-        >
-          {studente.nickname || studente.nome}
-        </span>
-        <span className={"text-xs " + (scura ? "text-su-primario/80" : "text-inchiostro/55")}>
-          {studente.classeId}
-        </span>
-      </div>
+      <span
+        className={
+          "font-titoli text-[15px] font-semibold " +
+          (scura ? "text-su-primario" : "text-inchiostro")
+        }
+      >
+        {studente.nickname || studente.nome}
+      </span>
 
       {studente.livello != null && (
         <span

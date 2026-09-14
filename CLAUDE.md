@@ -79,8 +79,12 @@ fissi (es. padronanza bassa/media/alta). Dettaglio in `DECISIONI_DESIGN.md`,
 ## Modello dati: ruoli e corsi (leggere prima di toccare auth/permessi)
 
 - **Tabella `UTENTE` unica**, niente `STUDENTE`/`DOCENTE` separate. Contiene
-  email, nome, cognome, `classeId` (rilevante solo se studente) e un campo
-  `ruolo`.
+  email, nome, cognome e un campo `ruolo`. **Niente `classeId` su `UTENTE`**
+  (rimosso, vedi `DECISIONI_DESIGN.md`, "Identità studente": non aveva senso
+  su un docente — che insegna a più classi — e per uno studente violava
+  "nessuna migrazione dati tra anni" appena lo si fosse aggiornato a fine
+  anno; la classe vive correttamente solo su `CORSO.classeId`, per-anno per
+  costruzione).
 - **`UTENTE.ruolo` è un campo *solo-DB*: lo scrive SOLO la console (Admin SDK),
   MAI il client** (il provisioning non lo tocca, le rules lo vietano). Designa
   l'amministratore (`ruolo === 'admin'`) e basta — per gli altri utenti di
