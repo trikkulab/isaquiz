@@ -3,8 +3,9 @@
 // Firebase Auth direttamente, passa da qui (come per Firestore e i repository).
 //
 // Flusso:
-//  - accediConGoogle(): popup Google, con hint `hd` sul dominio; se l'email
-//    non è del dominio istituzionale -> signOut + ErroreDominio.
+//  - accediConGoogle(): popup Google (aperto senza await prima, vedi sotto —
+//    Safari mobile lega il popup al gesture dell'utente); se l'email non è
+//    del dominio istituzionale -> signOut + ErroreDominio.
 //  - ascoltaUtenteCorrente(cb): wrapper su onAuthStateChanged. A ogni login
 //    (anche al refresh, sessione persistita) fa l'upsert di `utenti/{uid}` coi
 //    dati Google e RICALCOLA `isDocente` da CONFIG.docentiAutorizzati, poi
@@ -80,15 +81,19 @@ function dominioDi(email) {
 }
 
 export async function accediConGoogle() {
-  const dominio = await getDominioIstituzionale();
-
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({
-    prompt: "select_account",
-    ...(dominio ? { hd: dominio } : {}),
-  });
+  provider.setCustomParameters({ prompt: "select_account" });
 
-  const cred = await signInWithPopup(auth, provider);
+  // signInWithPopup va chiamato PRIMA di qualunque await: su Safari (specie
+  // mobile) il popup è legato al gesture dell'utente, e un giro di rete
+  // interposto tra il tap e l'apertura del popup lo fa scadere — Safari
+  // blocca il popup senza errore visibile né finestra aperta ("Accesso non
+  // riuscito. Riprova." in Accedi.jsx). Il dominio (usato solo per l'hint
+  // `hd`, qui rimosso, e per il controllo post-login) si legge in parallelo.
+  const [cred, dominio] = await Promise.all([
+    signInWithPopup(auth, provider),
+    getDominioIstituzionale(),
+  ]);
   const email = cred.user.email;
 
   // L'hint `hd` è solo suggerimento lato Google: il controllo vero è qui
