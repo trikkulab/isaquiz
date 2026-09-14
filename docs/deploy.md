@@ -13,6 +13,7 @@ un admin, ridispiegare le regole dopo una modifica).
 - modifica alle Cloud Functions → `npm run deploy:functions`;
 - nuovo docente pilota → §B-bis (email in `config/current.docentiAutorizzati`);
 - nuovo amministratore → §B-ter (`utenti/{uid}.ruolo = "admin"` da console);
+- cambio anno scolastico → §B-quinquies (`config/current.annoScolasticoCorrente`);
 - UI → merge `dev` → `rel` (il workflow builda e pubblica).
 
 ## Come funziona
@@ -317,6 +318,33 @@ reale dell'autore).
 >   "Prepay required", prova a generarne una nuova sotto **"Default Gemini
 >   Project"** (o un altro progetto ancora in "Free tier" senza quel badge)
 >   invece di attivare la fatturazione.
+
+### B-quinquies. Cambio anno scolastico
+
+Un solo campo, ma **prima** che i docenti creino i corsi del nuovo anno —
+`creaCorso` legge `config/current.annoScolasticoCorrente` al momento della
+creazione, quindi un corso creato mentre il campo è ancora sul vecchio anno
+nasce già con l'anno sbagliato (nessun modo per "spostarlo" dopo, vedi
+"Nessuna migrazione dati tra anni scolastici" in `CLAUDE.md`).
+
+1. Console Firestore → `config/current` → campo `annoScolasticoCorrente` →
+   nuovo valore (es. `"2026/27"`). Basta questo: nessun'altra riga va toccata
+   o migrata, tutto ciò che esiste (corsi, quiz, risposte) resta con l'anno
+   con cui è nato.
+2. Effetto immediato su due cose, senza bisogno di altro intervento:
+   - i **codici di accesso** dei corsi delle annate precedenti smettono di
+     valere per qualunque *nuovo* quiz (il controllo è sempre contro l'anno
+     corrente, mai una scadenza scritta sul singolo codice);
+   - il selettore corso in **creazione/modifica quiz** (`CreaQuiz.jsx`)
+     mostra da subito solo i corsi del nuovo anno (vedi
+     `DECISIONI_DESIGN.md`, "Cambio anno scolastico", punto 6).
+3. Da lì, ogni docente crea da sé i corsi del nuovo anno in `/docente/corsi`
+   (stesso flusso self-service di sempre) — nessuno script, nessun
+   intervento admin oltre al punto 1.
+4. Lo storico resta raggiungibile per tutti tramite il filtro anno
+   (`SelettoreAnno.jsx`, checkbox "Mostra anni precedenti" spenta di
+   default) in statistiche studente, "i miei corsi" e "i miei quiz" — vedi
+   `DECISIONI_DESIGN.md`, "Cambio anno scolastico".
 
 ### C. Costante del dominio in `firestore.rules`
 

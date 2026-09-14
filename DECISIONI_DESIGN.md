@@ -1382,12 +1382,17 @@ mai mescolato:
 9. Elenco corsi istituto (`AdminCorsi`) — priorità bassa, coerente con
    "cruscotto minimale": la colonna anno c'è già, un filtro si aggiungerà se
    la lista diventa scomoda.
-10. Cambio di `CONFIG.annoScolasticoCorrente` — resta un'operazione da
-    console/Admin SDK (coerente con come si scrive già tutto `CONFIG`),
-    **non** una scrittura da `AdminImpostazioni` (sola lettura di proposito).
-    Da scrivere, quando si arriva al primo cambio anno reale: un runbook
-    breve in `docs/deploy.md` (ordine delle operazioni, cosa verificare),
-    non una UI.
+10. **Cambio di `CONFIG.annoScolasticoCorrente` — fatto (2026-09), primo
+    cambio anno reale.** Resta un'operazione da console/Admin SDK (coerente
+    con come si scrive già tutto `CONFIG`), **non** una scrittura da
+    `AdminImpostazioni` (sola lettura di proposito) — un solo campo, nessuna
+    migrazione. Runbook in `docs/deploy.md`, §B-quinquies. Fatto insieme a
+    una pulizia del DB di produzione (rimossi utenti/corsi/quiz/quesiti di
+    prova accumulati nel dogfooding, teneva solo `config` e gli utenti
+    reali) prima di aprire l'app ai docenti pilota veri — le due cose non
+    sono legate in generale (un cambio anno normale, con dati reali
+    dell'anno precedente, non richiede alcuna pulizia), è stata una
+    coincidenza di questa prima volta.
 
 **Deliberatamente non fatto: un'area/sito separato per gli anni passati.**
 Valutato e scartato: qui nulla viene mai cancellato o spostato, ogni entità
