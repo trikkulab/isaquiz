@@ -191,8 +191,10 @@ service cloud.firestore {
     // ── risposte ─────────────────────────────────────────────────────────
     // Lettura: la propria risposta, o l'autore del quiz (vista risultati).
     // Creazione: solo la propria (studenteId = uid), su quiz ATTIVO, senza il
-    // campo `corretta`. Aggiornamento: solo rispostaData/timestamp (mai
-    // `corretta`, che scrive solo il server). Nessun delete dal client.
+    // campo `corretta`. Nessun update né delete dal client: una risposta data
+    // non si cambia più (niente secondo tentativo dopo aver visto l'esito, né
+    // da ricaricamento né da console — vedi DECISIONI_DESIGN.md, "Flusso quiz
+    // studente"). `corretta` la scrive solo il server (Admin SDK).
     match /risposte/{id} {
       allow read: if isSignedIn()
         && (resource.data.studenteId == request.auth.uid
@@ -200,15 +202,14 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && request.resource.data.studenteId == request.auth.uid
+        // id deterministico obbligato: senza, una seconda risposta allo stesso
+        // quesito con un id qualsiasi aggirerebbe il divieto di update.
+        && id == request.resource.data.quizId + '_' + request.auth.uid + '_' + request.resource.data.quesitoId
         && request.resource.data.rispostaData != null
         && !('corretta' in request.resource.data)
         && get(/databases/$(database)/documents/quiz/$(request.resource.data.quizId)).data.stato == 'attivo';
 
-      allow update: if isSignedIn()
-        && resource.data.studenteId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rispostaData', 'timestamp'])
-        && get(/databases/$(database)/documents/quiz/$(resource.data.quizId)).data.stato == 'attivo';
-
+      allow update: if false;
       allow delete: if false;
     }
   }

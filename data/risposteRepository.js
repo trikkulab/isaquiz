@@ -15,6 +15,7 @@ import { db } from "./firebaseClient.js";
 import {
   collection,
   doc,
+  getDocFromServer,
   setDoc,
   getDocs,
   onSnapshot,
@@ -30,18 +31,46 @@ import { getUtente, nomeVisibile } from "./utentiRepository.js";
 
 const risposteCol = collection(db, "risposte");
 
+// Oltre questo tempo senza conferma dal server la scrittura si considera non
+// riuscita (offline, rete scolastica bloccata): setDoc da sola, offline, non
+// rifiuta mai — resterebbe in attesa indefinitamente.
+const TIMEOUT_SALVATAGGIO_MS = 10000;
+
+// Registra la risposta e ritorna, a scrittura CONFERMATA dal server, la
+// `rispostaData` effettivamente registrata. Una risposta data non si cambia
+// più: le rules consentono solo la `create` (niente update) e l'id
+// deterministico garantisce una risposta per tripla quiz+studente+quesito.
+// Il chiamante mostra l'esito ✓/✗ solo dopo che questa promise si è risolta
+// — così un ricaricamento a scrittura non ancora arrivata non regala un
+// secondo tentativo dopo aver visto l'esito (vedi DECISIONI_DESIGN.md,
+// "Flusso quiz studente").
+//
+// Se la create viene rifiutata perché la risposta ESISTE GIÀ (un tentativo
+// precedente scaduto per timeout ma poi arrivato, o un'altra scheda), non è
+// un errore: si ritorna la risposta già registrata, che vince sempre.
 export async function saveAnswer(quizId, studenteId, quesitoId, rispostaData) {
-  // Id deterministico: una seconda risposta allo stesso quesito sovrascrive,
-  // non duplica (una risposta per tripla quiz+studente+quesito).
-  const id = `${quizId}_${studenteId}_${quesitoId}`;
-  // merge: rispondere di nuovo aggiorna rispostaData/timestamp senza rimuovere
-  // `corretta` (scritto dal server) — così le rules vedono un update che tocca
-  // solo i campi consentiti al client, e calcolaPunteggio ricalcola sull'update.
-  await setDoc(
-    doc(db, "risposte", id),
-    { quizId, studenteId, quesitoId, rispostaData, timestamp: serverTimestamp() },
-    { merge: true },
-  );
+  const ref = doc(db, "risposte", `${quizId}_${studenteId}_${quesitoId}`);
+  try {
+    await conTimeout(
+      setDoc(ref, { quizId, studenteId, quesitoId, rispostaData, timestamp: serverTimestamp() }),
+      TIMEOUT_SALVATAGGIO_MS,
+    );
+    return rispostaData;
+  } catch (err) {
+    // Dal SERVER, mai dalla cache: offline getDoc restituirebbe la nostra
+    // stessa scrittura ancora in sospeso, scambiandola per una confermata.
+    const esistente = await getDocFromServer(ref).catch(() => null);
+    if (esistente?.exists()) return esistente.data().rispostaData;
+    throw err;
+  }
+}
+
+function conTimeout(promise, ms) {
+  let timer;
+  const scadenza = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Timeout di salvataggio")), ms);
+  });
+  return Promise.race([promise, scadenza]).finally(() => clearTimeout(timer));
 }
 
 export async function getRisposteQuiz(quizId) {
@@ -89,8 +118,8 @@ export async function getTutteLeRisposteStudente(studenteId) {
 //
 // Una riga per OGNI domanda dei quiz toccati (almeno una risposta), non solo
 // per le domande effettivamente risposte: una domanda saltata (quiz chiuso dal
-// docente a metà somministrazione, o una scrittura fallita — `saveAnswer` è
-// fire-and-forget) conta come tentata e sbagliata (`esatta: false`), non
+// docente a metà somministrazione, o una scrittura fallita e mai riprovata)
+// conta come tentata e sbagliata (`esatta: false`), non
 // sparisce dall'aggregazione. Decisione e motivazione in
 // DECISIONI_DESIGN.md, "Domande non risposte (correzione e aggregazioni)".
 async function risposteArricchite(studenteId) {

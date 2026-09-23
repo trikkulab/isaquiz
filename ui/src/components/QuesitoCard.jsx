@@ -14,7 +14,10 @@
 //   - indiceSelezionato: number | null
 //
 // Props modalità "quiz":
-//   - corretta: boolean | null — esito della scelta, noto solo dopo aver risposto
+//   - corretta: boolean | null — esito della scelta. Con una scelta fatta ma
+//     `corretta` ancora null, la risposta è "in salvataggio": opzione
+//     evidenziata (pulsante) ma senza ✓/✗, che arriva solo a scrittura
+//     confermata (vedi DECISIONI_DESIGN.md, "Flusso quiz studente")
 //   - onSeleziona(indice): chiamata solo se non si è ancora risposto
 //
 // Props modalità "correzione":
@@ -63,6 +66,9 @@ export default function QuesitoCard({
     if (!haRisposto) {
       return `${BASE_OPZIONE} border-bordo bg-superficie text-inchiostro`;
     }
+    if (corretta === null) {
+      return `${BASE_OPZIONE} animate-pulse border-primario bg-superficie text-inchiostro`;
+    }
     return corretta
       ? `${BASE_OPZIONE} border-corretto bg-corretto-sfondo text-inchiostro`
       : `${BASE_OPZIONE} border-errato bg-errato-sfondo text-inchiostro`;
@@ -74,7 +80,7 @@ export default function QuesitoCard({
       if (indice === indiceSelezionato) return "✗";
       return null;
     }
-    if (indice === indiceSelezionato && haRisposto) return corretta ? "✓" : "✗";
+    if (indice === indiceSelezionato && haRisposto && corretta !== null) return corretta ? "✓" : "✗";
     return null;
   }
 

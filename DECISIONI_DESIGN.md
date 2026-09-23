@@ -459,6 +459,30 @@ abilitare il login".
   corrente. Accettato (contesto didattico di informatica). Vedi anche "Modello
   dati: le risposte (granulari, non aggregate)": un documento per risposta rende
   banale la regola che vieta al client di scrivere `corretta`.
+- **Una risposta data non si cambia più; ricaricare non ricomincia il quiz
+  (2026-09).** Scoperto nel pilota: un ricaricamento a metà quiz ripartiva dal
+  primo quesito (stato solo in memoria) e le rules consentivano l'update di
+  `rispostaData` su quiz attivo — lo studente poteva rifare i quesiti
+  sbagliati sapendo già l'esito, e la nuova risposta sovrascriveva la vecchia.
+  Ora, su tre livelli:
+  - **Rules**: su `risposte` solo `create` (update e delete vietati) e l'id
+    deve essere `quizId_uid_quesitoId` — altrimenti una seconda risposta con
+    un id qualsiasi aggirerebbe il divieto. Vale anche contro chi scrive dalla
+    console del browser.
+  - **Ripresa**: `QuizStudente` legge al caricamento le risposte già
+    registrate (`getRisposteStudente`) e riparte dal primo quesito senza
+    risposta; se sono tutte date, va dritto a `/quiz/:id/risultati`.
+  - **Esito solo a scrittura confermata**: al tocco l'opzione resta
+    evidenziata "in salvataggio" (senza ✓/✗); l'esito compare quando
+    `saveAnswer` ha la conferma del server. Senza questo, ricaricando nella
+    finestra tra il feedback (calcolato in locale) e l'arrivo della scrittura
+    la risposta andava persa e il quesito si poteva rifare conoscendo
+    l'esito. Se il salvataggio fallisce (timeout 10 s, quiz chiuso nel
+    frattempo) compare "Riprova", che rimanda la STESSA scelta; se il server
+    ha già una risposta (tentativo precedente arrivato in ritardo), vince
+    quella. Costo accettato: un piccolo ritardo del feedback su reti lente.
+  Resta il buco già accettato sopra (`indiceCorretto` leggibile nel client):
+  questa modifica chiude il "riprovo dopo aver visto l'errore", non quello.
 
 ## Correzione (`QuizRisultati`)
 
@@ -498,7 +522,10 @@ risposta, e lo studente non se ne accorge (ha già visto il proprio ✓/✗
 locale). Prima di questa scelta il caso non era mai stato considerato, perché
 nell'interfaccia non è mai stato possibile saltare volontariamente una
 domanda (niente tasto "salta" in `QuizStudente`) — il caso esisteva solo per
-vie traverse.
+vie traverse. (Aggiornamento 2026-09: `saveAnswer` non è più fire-and-forget
+— lo studente vede "Riprova" se la scrittura fallisce, vedi "Flusso quiz
+studente" — ma il caso resta possibile: quiz chiuso a metà, o studente che
+abbandona. La gestione qui sotto resta necessaria.)
 
 **Il problema che questo causava, concretamente:**
 - `QuesitoCard` in modalità `correzione` evidenziava SEMPRE in verde
@@ -1272,19 +1299,19 @@ aprire il link lungo — è la via comoda per l'uso in classe.
 
 **Una `RISPOSTA` = un documento**, id deterministico
 `quizId_studenteId_quesitoId` nella collezione top-level `risposte`.
-Rispondere di nuovo allo stesso quesito sovrascrive, non duplica. Valutata e
+Una risposta data non si sovrascrive (rules: solo `create`, id imposto —
+vedi "Flusso quiz studente"). Valutata e
 scartata l'alternativa "un documento per `(quizId, studenteId)` con dentro una
 mappa di tutte le risposte".
 
 **Perché granulare, adesso:**
 
 - **Security rules (Fase 2 — fatte).** `corretta` non è scrivibile dal client:
-  con un documento per risposta la regola è banale (`create` senza il campo;
-  `update` solo su `rispostaData`/`timestamp` via `affectedKeys().hasOnly(...)`).
-  Con l'aggregato servirebbe validare che un `update` abbia aggiunto *solo* una
-  chiave nella mappa senza toccare i `corretta` annidati — in Firestore rules è
-  complicato e fragile. (Per far tornare i conti con `hasOnly`, `saveAnswer` usa
-  `merge`: un re-invio non rimuove `corretta` scritto dal server.)
+  con un documento per risposta la regola è banale (`create` senza il campo,
+  nessun `update` dal client). Con l'aggregato servirebbe validare che un
+  `update` abbia aggiunto *solo* una chiave nella mappa senza toccare né i
+  `corretta` annidati né le risposte già date — in Firestore rules è
+  complicato e fragile.
 - **`calcolaPunteggio.js` come trigger (Fase 2 — fatto).** Scatta su
   `onDocumentWritten` di una risposta, calcola `corretta`, riscrive quel campo
   (guardia anti-loop). Con l'aggregato dovrebbe fare il diff before/after dello

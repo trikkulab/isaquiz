@@ -11,6 +11,13 @@
 // Cloud Function invocate, una per risposta) e la complessità di validare
 // ogni risposta lato server. Da rivedere SOLO se il problema si presenta
 // concretamente, non preventivamente.
+//
+// Una risposta data non si cambia più (rules: solo `create` su `risposte`).
+// Per questo: (1) al caricamento si rileggono le risposte già registrate e si
+// riprende dal primo quesito senza risposta — o si va dritti ai risultati se
+// sono già tutte date; (2) l'esito ✓/✗ si mostra solo a scrittura CONFERMATA
+// dal server, così ricaricare la pagina non regala mai un secondo tentativo
+// dopo aver visto l'esito. Vedi DECISIONI_DESIGN.md, "Flusso quiz studente".
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -20,7 +27,7 @@ import QuesitoCard from "../components/QuesitoCard.jsx";
 import BottoneAvanti from "../components/BottoneAvanti.jsx";
 import { useUtenteCorrente } from "../auth/AuthContext.jsx";
 import { getQuizConQuesiti } from "../../../data/quizRepository.js";
-import { saveAnswer } from "../../../data/risposteRepository.js";
+import { getRisposteStudente, saveAnswer } from "../../../data/risposteRepository.js";
 
 export default function QuizStudente() {
   const { quizId } = useParams();
@@ -34,20 +41,39 @@ export default function QuizStudente() {
 
   const [indiceQuesito, setIndiceQuesito] = useState(0);
   const [indiceSelezionato, setIndiceSelezionato] = useState(null);
-  const [risposte, setRisposte] = useState({}); // { [quesitoId]: indiceSelezionato }
+  const [confermata, setConfermata] = useState(false); // scrittura confermata → si mostra ✓/✗
+  const [erroreSalvataggio, setErroreSalvataggio] = useState(false);
+  const [risposte, setRisposte] = useState({}); // { [quesitoId]: opzioneScelta }, solo quelle registrate
 
   useEffect(() => {
     let attivo = true;
     (async () => {
       try {
-        const q = await getQuizConQuesiti(quizId);
+        const [q, giaDate] = await Promise.all([
+          getQuizConQuesiti(quizId),
+          getRisposteStudente(quizId, studente.id),
+        ]);
         if (!attivo) return;
         if (!q) setErrore("Quiz non trovato.");
         else if (q.stato === "bozza") setErrore("Questo quiz non è ancora stato avviato dal docente.");
         else if (q.stato === "chiuso") setErrore("Questo quiz è chiuso: non accetta più risposte.");
         else if (q.stato === "archiviato") setErrore("Questo quiz non è più disponibile.");
         else if (!q.quesiti?.length) setErrore("Questo quiz non ha ancora quesiti.");
-        else setQuiz(q);
+        else {
+          const registrate = Object.fromEntries(
+            giaDate.map((r) => [r.quesitoId, r.rispostaData?.opzioneScelta]),
+          );
+          const primoDaFare = q.quesiti.findIndex((qs) => !(qs.id in registrate));
+          if (primoDaFare === -1) {
+            // Già tutto risposto (refresh sull'ultimo quesito, QR riaperto):
+            // niente da rifare, si va alla correzione.
+            navigate(`/quiz/${q.id}/risultati`, { replace: true, state: { quiz: q, risposte: registrate } });
+            return;
+          }
+          setRisposte(registrate);
+          setIndiceQuesito(primoDaFare);
+          setQuiz(q);
+        }
       } catch (err) {
         if (attivo) setErrore("Impossibile caricare il quiz.");
         console.error(err);
@@ -58,7 +84,7 @@ export default function QuizStudente() {
     return () => {
       attivo = false;
     };
-  }, [quizId]);
+  }, [quizId, studente.id, navigate]);
 
   if (caricamento) {
     return (
@@ -88,15 +114,26 @@ export default function QuizStudente() {
 
   function handleSeleziona(indice) {
     if (indiceSelezionato !== null) return;
-
     setIndiceSelezionato(indice);
-    setRisposte((precedenti) => ({ ...precedenti, [quesitoCorrente.id]: indice }));
-    // Fire-and-forget: la correzione immediata usa lo stato in memoria; se la
-    // scrittura fallisce lo studente non se ne accorge (la rivedrà solo un
-    // eventuale accesso differito ai risultati).
-    saveAnswer(quiz.id, studente.id, quesitoCorrente.id, { opzioneScelta: indice }).catch(
-      (err) => console.error("saveAnswer:", err),
-    );
+    salva(indice);
+  }
+
+  // La scelta resta bloccata anche se il salvataggio fallisce: "Riprova"
+  // rimanda la STESSA opzione. Se il server ha già una risposta registrata
+  // (tentativo precedente arrivato in ritardo), vince quella.
+  async function salva(indice) {
+    const quesitoId = quesitoCorrente.id;
+    setErroreSalvataggio(false);
+    try {
+      const registrata = await saveAnswer(quiz.id, studente.id, quesitoId, { opzioneScelta: indice });
+      const scelta = registrata?.opzioneScelta ?? indice;
+      setIndiceSelezionato(scelta);
+      setRisposte((precedenti) => ({ ...precedenti, [quesitoId]: scelta }));
+      setConfermata(true);
+    } catch (err) {
+      console.error("saveAnswer:", err);
+      setErroreSalvataggio(true);
+    }
   }
 
   function handleAvanti() {
@@ -110,6 +147,7 @@ export default function QuizStudente() {
     }
     setIndiceQuesito((i) => i + 1);
     setIndiceSelezionato(null);
+    setConfermata(false);
   }
 
   return (
@@ -125,12 +163,27 @@ export default function QuizStudente() {
         <QuesitoCard
           quesito={quesitoCorrente}
           indiceSelezionato={indiceSelezionato}
-          corretta={indiceSelezionato !== null ? indiceSelezionato === quesitoCorrente.indiceCorretto : null}
+          corretta={confermata ? indiceSelezionato === quesitoCorrente.indiceCorretto : null}
           onSeleziona={handleSeleziona}
         />
       </main>
 
-      {indiceSelezionato !== null && (
+      {erroreSalvataggio && (
+        <div className="fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 bg-gradient-to-t from-sfondo to-transparent p-4">
+          <p className="text-center text-sm text-errato">
+            Risposta non salvata: controlla la connessione. Se il docente ha chiuso il quiz, non accetta più risposte.
+          </p>
+          <button
+            type="button"
+            onClick={() => salva(indiceSelezionato)}
+            className="rounded-full bg-primario px-6 py-3 font-semibold text-su-primario transition-transform active:scale-[0.97]"
+          >
+            Riprova
+          </button>
+        </div>
+      )}
+
+      {confermata && (
         <div className="fixed inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-sfondo to-transparent p-4">
           <BottoneAvanti onAvanti={handleAvanti} etichetta={`${ultimoQuesito ? "Vedi risultati" : "Avanti"} →`} />
         </div>

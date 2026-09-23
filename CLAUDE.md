@@ -164,7 +164,8 @@ fissi (es. padronanza bassa/media/alta). Dettaglio in `DECISIONI_DESIGN.md`,
   eccezione ammessa all'italiano (vedi `DECISIONI_DESIGN.md`,
   "Internazionalizzazione"). Area Admin: **sola lettura** in questa fase.
 - **Il campo `corretta` su una risposta non si scrive mai dal client.** Il
-  client scrive solo la risposta grezza (`saveAnswer`, con `merge`); il calcolo
+  client scrive solo la risposta grezza (`saveAnswer`, **solo create**: una
+  risposta data non si cambia più, le rules vietano l'update); il calcolo
   e la scrittura di `corretta` sono di `functions/calcolaPunteggio.js` (trigger
   Firestore su `risposte/{id}`), e le security rules vietano `corretta` nel
   payload del client. Il calcolo client che resta in UI serve solo al display.
@@ -309,7 +310,11 @@ Fase 0 — setup:
       avviato" (`bozza`) / "chiuso" / "non più disponibile" (`archiviato`) /
       "senza quesiti" — mostrati con lo stesso stile di "Area riservata"
       (`RichiediAuth`): messaggio + link "Torna alla home" (`/studente`).
-      `saveAnswer` scrive davvero su `risposte` (fire-and-forget).
+      `saveAnswer` scrive davvero su `risposte`; l'esito ✓/✗ si mostra solo a
+      scrittura **confermata** (con "Riprova" se fallisce), e al caricamento si
+      riprende dal primo quesito senza risposta (o si va ai risultati) — così
+      ricaricare non dà un secondo tentativo. Vedi `DECISIONI_DESIGN.md`,
+      "Flusso quiz studente".
       `BarraQuiz`/`QuizRisultati` mostrano `materia · docente` solo se presenti.
 - [x] `ui/src/pages/StudenteHome.jsx` (route `/studente`) — pagina post-login
       dello studente: `IdentitaStudente` (variante chiara) in testa,
@@ -348,7 +353,9 @@ Fase 0 — setup:
       `getCorsiDocente`, `getTuttiICorsi`, `getMaterieEsistenti`,
       `getClassiEsistenti`, `creaCorso`), `data/utentiRepository.js` (`getUtente`,
       `nomeVisibile`), `data/risposteRepository.js` (`saveAnswer` — id
-      deterministico `quizId_studenteId_quesitoId`, mai `corretta`;
+      deterministico `quizId_studenteId_quesitoId` (imposto dalle rules), solo
+      create, mai `corretta`; attende la conferma del server (timeout 10 s) e
+      ritorna la risposta registrata;
       `getRisposteQuiz(quizId)` tutte; `getRisposteStudente(quizId,
       studenteId)`; `ascoltaRisposteQuiz(quizId, onDati, onErrore)` — live
       via `onSnapshot`, ritorna l'unsubscribe;

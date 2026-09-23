@@ -8,8 +8,10 @@
 // lato client che resta in UI (RisultatiDocente, QuizRisultati) è solo per il
 // display immediato e non è la fonte di verità.
 //
-// Trigger su onDocumentWritten (create + update): copre sia la prima risposta
-// sia il cambio di risposta (stesso id, `rispostaData` diverso -> ricalcolo).
+// Trigger su onDocumentWritten: il client può solo CREARE una risposta (le
+// rules vietano l'update — una risposta data non si cambia), ma il trigger
+// rientra anche sulla propria scrittura di `corretta` (vedi guardia sotto) e
+// ricalcola se un'eventuale correzione da console cambia `rispostaData`.
 
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
